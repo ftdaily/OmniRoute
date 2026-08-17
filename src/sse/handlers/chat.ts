@@ -67,7 +67,7 @@ import { isRuntimeProviderRetirementError } from "@/shared/constants/providerRet
 import { isCommonChatGptWebRetirementError } from "@/shared/constants/chatgptWebRetirement";
 import { deleteHandoff, getHandoff } from "@/lib/db/contextHandoffs";
 import { getComboByName, updateCombo } from "@/lib/db/combos";
-import { isModelAllowedForKey } from "@/lib/db/apiKeys";
+import { isModelAllowedForKey, isComboNameAllowedForKey } from "@/lib/db/apiKeys";
 import { promoteSuccessfulComboModel } from "@/lib/combos/autoPromote";
 import {
   deleteSessionAccountAffinity,
@@ -938,12 +938,26 @@ async function handleChatImplementation(
       // skips isModelAllowedForKey, so the per-candidate check here is the only
       // enforcement point during combo routing. Without it, a key with
       // disableNonPublicModels=true can reach free/prohibited models through auto/*.
+      //
+      // FORK-FIX: a key may allow-list a COMBO by its display name
+      // (e.g. "[Yogathedev]_GPT_5.6_Terra") rather than the expanded target model
+      // ids. isModelAllowedForKey is called below with the combo's *target* model
+      // string (e.g. "gpt-5.6-terra"), which never matches a combo-name allowlist
+      // entry — so every target is skipped and the combo 503s (ALL_TARGETS_SKIPPED).
+      // The combo-name -> membership authorization already happened at the outer
+      // policy gate, so if this combo's name is itself allow-listed, the target is
+      // authorized transitively and the per-target model check is skipped. This does
+      // NOT weaken auto/* enforcement (auto combos are virtual and not name-listed)
+      // and deny-list patterns still apply inside isComboNameAllowedForKey.
       const hasModelRestrictions =
         apiKeyInfo &&
         (Boolean(apiKeyInfo.allowedModels?.length) || apiKeyInfo.disableNonPublicModels === true);
       if (hasModelRestrictions && apiKey) {
-        const modelAllowed = await isModelAllowedForKey(apiKey, modelString);
-        if (!modelAllowed) return false;
+        const comboNameAllowed = await isComboNameAllowedForKey(apiKey, combo?.name ?? null);
+        if (!comboNameAllowed) {
+          const modelAllowed = await isModelAllowedForKey(apiKey, modelString);
+          if (!modelAllowed) return false;
+        }
       }
 
       // Use getModelInfo to resolve custom prefixes, but prefer the combo

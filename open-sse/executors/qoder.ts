@@ -22,6 +22,7 @@ import {
   runQoderCli,
 } from "../services/qoderCli.ts";
 import { sanitizeErrorMessage } from "../utils/error.ts";
+import { executeQoderHttp } from "../services/qoderHttp.ts";
 
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
@@ -187,7 +188,15 @@ export class QoderExecutor extends BaseExecutor {
     return sanitizeQwenThinkingToolChoice(payload, "QoderExecutor");
   }
 
-  async execute({ model, body, stream, credentials, signal, upstreamExtraHeaders }: ExecuteInput) {
+  async execute({
+    model,
+    body,
+    stream,
+    credentials,
+    signal,
+    upstreamExtraHeaders,
+    log,
+  }: ExecuteInput) {
     const token = getAuthToken(credentials);
 
     if (!token) {
@@ -210,12 +219,26 @@ export class QoderExecutor extends BaseExecutor {
 
     const resolvedModel = model || "qwen3.8-max-preview";
 
-    // Detect token type: PAT (Personal Access Token) starts with "pt-".
-    // PATs are driven through the local qodercli binary (see executeViaQoderCli);
-    // only the qodercli binary can produce the WASM-signed Cosy request the raw
-    // HTTP path can no longer replicate.
+    // PATs (pt-...) are driven through the direct COSY HTTP path (see
+    // qoderHttp.ts) — the same approach 9router uses. The raw HTTP path
+    // supports native OpenAI tool-calling because the request body (including
+    // `tools`) flows straight to Qoder's inference endpoint. The qodercli
+    // spawn remains as a fallback when the HTTP path fails (e.g. WAF/COSY
+    // signature drift).
     const isPatToken = token.startsWith("pt-");
     if (isPatToken) {
+      const direct = await this.executeViaQoderHttp({
+        model: resolvedModel,
+        body,
+        credentials,
+        signal,
+        log: log as Parameters<typeof executeQoderHttp>[0]["log"],
+      });
+      if (direct.response.ok) {
+        return direct;
+      }
+      // HTTP path failed (auth/network/billing) — fall back to the CLI.
+      // The CLI needs the raw token (it does its own exchange), so pass it.
       return this.executeViaQoderCli({ model: resolvedModel, body, stream, token, signal });
     }
 
@@ -316,6 +339,35 @@ export class QoderExecutor extends BaseExecutor {
    * performs Qoder's WASM-signed Cosy auth internally, so this is the only path
    * that works for PATs now that the pure-HTTP Cosy reimplementation is dead.
    */
+  private async executeViaQoderHttp({
+    model,
+    body,
+    credentials,
+    signal,
+    log,
+  }: {
+    model: string;
+    body: unknown;
+    credentials: ProviderCredentials;
+    signal?: AbortSignal | null;
+    log?: unknown;
+  }): Promise<{
+    response: Response;
+    url: string;
+    headers: Record<string, string>;
+    transformedBody: unknown;
+  }> {
+    const creds = credentials as unknown as Record<string, unknown>;
+    const { response, url } = await executeQoderHttp({
+      model,
+      body,
+      credentials: creds,
+      signal,
+      log: log as Parameters<typeof executeQoderHttp>[0]["log"],
+    });
+    return { response, url, headers: {}, transformedBody: body };
+  }
+
   private async executeViaQoderCli({
     model,
     body,

@@ -109,6 +109,7 @@ export {
   updateApiKeyPermissions,
   regenerateApiKey,
   isModelAllowedForKey,
+  isComboNameAllowedForKey,
   pickApiKeyForInternalUse,
   clearApiKeyCaches,
   resetApiKeyState,

@@ -715,6 +715,77 @@ test("enforceApiKeyPolicy treats combo wildcard, empty list, and names as distin
   }
 });
 
+test("FORK-FIX: a combo named only in allowedModels is authorized despite empty allowedCombos", async () => {
+  // Real-world Hermes key shape: model_access_mode='restricted', allowedCombos=[],
+  // combo DISPLAY NAMES listed in allowedModels. Before the fix this hard-403'd at
+  // the outer policy gate ("Combo X is not allowed"); after, the combo-name is
+  // authorized transitively via the model allow-list, while non-listed combos and
+  // empty-allowlist keys still 403.
+  const namedInModelsKey = await createKeyWithPolicy({
+    modelAccessMode: "restricted",
+    allowedCombos: [],
+    allowedModels: ["fast-chat"],
+  });
+  const emptyBothKey = await createKeyWithPolicy({
+    modelAccessMode: "restricted",
+    allowedCombos: [],
+    allowedModels: [],
+  });
+  await combosDb.createCombo({
+    name: "fast-chat",
+    strategy: "priority",
+    models: ["openai/gpt-4.1"],
+  });
+  await combosDb.createCombo({
+    name: "slow-chat",
+    strategy: "priority",
+    models: ["anthropic/claude-3-5-sonnet"],
+  });
+  const policy = await loadPolicy("combo-name-in-allowed-models");
+
+  // combo name IS in allowedModels → allowed
+  const allowedByName = await policy.enforceApiKeyPolicy(
+    makePolicyRequest(namedInModelsKey.key),
+    "combo/fast-chat"
+  );
+  assert.equal(allowedByName.rejection, null);
+
+  // a different combo NOT in allowedModels → still 403
+  const deniedOther = await policy.enforceApiKeyPolicy(
+    makePolicyRequest(namedInModelsKey.key),
+    "combo/slow-chat"
+  );
+  assert.equal(deniedOther.rejection.status, 403);
+
+  // empty allowedModels must NOT implicitly grant combo access → 403
+  const deniedEmpty = await policy.enforceApiKeyPolicy(
+    makePolicyRequest(emptyBothKey.key),
+    "combo/fast-chat"
+  );
+  assert.equal(deniedEmpty.rejection.status, 403);
+
+  // same guarantees at the per-target routing gate
+  const req = makePolicyRequest(namedInModelsKey.key);
+  const namedMeta = await apiKeysDb.getApiKeyMetadata(namedInModelsKey.key);
+  const emptyMeta = await apiKeysDb.getApiKeyMetadata(emptyBothKey.key);
+  assert.ok(namedMeta && emptyMeta);
+  assert.equal(
+    (await policy.validateApiKeyRoutingTarget(req, namedInModelsKey.key, namedMeta, "combo/fast-chat"))
+      ?.status ?? null,
+    null
+  );
+  assert.equal(
+    (await policy.validateApiKeyRoutingTarget(req, namedInModelsKey.key, namedMeta, "combo/slow-chat"))
+      ?.status ?? null,
+    403
+  );
+  assert.equal(
+    (await policy.validateApiKeyRoutingTarget(req, emptyBothKey.key, emptyMeta, "combo/fast-chat"))
+      ?.status ?? null,
+    403
+  );
+});
+
 test("enforceApiKeyPolicy applies configured throttle delay", async () => {
   const delayedKey = await createKeyWithPolicy({ throttleDelayMs: 25 });
   const policy = await loadPolicy("throttle-delay");

@@ -13,6 +13,7 @@ import {
   getApiKeyMetadata,
   getComboByName,
   isModelAllowedForKey,
+  isComboNameAllowedForKey,
   getApiKeyById,
 } from "@/lib/localDb";
 import { isDashboardSessionAuthenticated } from "./apiAuth";
@@ -257,6 +258,26 @@ async function isComboAllowedForKey(
   return { allowed, comboName };
 }
 
+/**
+ * Fork compatibility: older/API-manager keys may keep combo display names in
+ * `allowedModels` while `allowedCombos` is empty. Accept only an EXPLICIT,
+ * non-empty model allow-list match; empty allowedModels never grants combo
+ * access. `isComboNameAllowedForKey` also enforces blockedModels deny rules.
+ */
+async function isComboExplicitlyAllowedViaModels(
+  apiKey: string | null,
+  allowedModels: string[] | undefined,
+  comboName: string | null
+): Promise<boolean> {
+  return Boolean(
+    apiKey &&
+      comboName &&
+      Array.isArray(allowedModels) &&
+      allowedModels.length > 0 &&
+      (await isComboNameAllowedForKey(apiKey, comboName))
+  );
+}
+
 function quotaPolicyResponse(message: string, code: string): Response {
   const body = buildErrorBody(HTTP_STATUS.FORBIDDEN, message);
   body.error.code = code;
@@ -310,10 +331,20 @@ async function validateStandardRoutingTarget(
       const comboAccess = await isComboAllowedForKey(apiKeyInfo.allowedCombos, modelStr);
       requestedComboName = comboAccess.comboName;
       if (!comboAccess.allowed) {
-        return errorResponse(
-          HTTP_STATUS.FORBIDDEN,
-          `Combo "${comboAccess.comboName || modelStr}" is not allowed for this API key`
+        // FORK-FIX: honor combo display names in allowedModels (empty/legacy
+        // allowedCombos). Empty allowedModels still 403s. See
+        // isComboExplicitlyAllowedViaModels.
+        const comboNameExplicitlyAllowed = await isComboExplicitlyAllowedViaModels(
+          apiKey,
+          apiKeyInfo.allowedModels,
+          comboAccess.comboName
         );
+        if (!comboNameExplicitlyAllowed) {
+          return errorResponse(
+            HTTP_STATUS.FORBIDDEN,
+            `Combo "${comboAccess.comboName || modelStr}" is not allowed for this API key`
+          );
+        }
       }
     } catch (error) {
       log.error("API_POLICY", "Routing target combo check failed. Request blocked.", { error });
@@ -524,7 +555,12 @@ async function validateQuotaAccess(context: PolicyContext): Promise<Response | n
 async function validateModelAccess(context: PolicyContext): Promise<Response | null> {
   const { request, apiKey, apiKeyInfo, modelStr } = context;
   if (!modelStr || apiKeyInfo.allowedQuotas?.length) return null;
-  const comboAccess = await validateComboAccess(apiKeyInfo.allowedCombos, modelStr);
+  const comboAccess = await validateComboAccess(
+    apiKey,
+    apiKeyInfo.allowedCombos,
+    apiKeyInfo.allowedModels,
+    modelStr
+  );
   if (comboAccess.rejection) return comboAccess.rejection;
   let requestedComboName = comboAccess.comboName;
 
@@ -556,13 +592,21 @@ async function validateModelAccess(context: PolicyContext): Promise<Response | n
 }
 
 async function validateComboAccess(
+  apiKey: string | null,
   allowedCombos: string[] | undefined,
+  allowedModels: string[] | undefined,
   modelStr: string
 ): Promise<{ comboName: string | null; rejection: Response | null }> {
   if (!Array.isArray(allowedCombos)) return { comboName: null, rejection: null };
   try {
     const comboAccess = await isComboAllowedForKey(allowedCombos, modelStr);
     if (comboAccess.allowed) return { comboName: comboAccess.comboName, rejection: null };
+    // FORK-FIX: honor combo display names listed in allowedModels when
+    // allowedCombos doesn't match (empty/legacy keys). See
+    // isComboExplicitlyAllowedViaModels.
+    if (await isComboExplicitlyAllowedViaModels(apiKey, allowedModels, comboAccess.comboName)) {
+      return { comboName: comboAccess.comboName, rejection: null };
+    }
     return {
       comboName: comboAccess.comboName,
       rejection: errorResponse(

@@ -51,6 +51,7 @@ import { getAdobeFireflyUsage } from "./usage/adobeFirefly.ts";
 import { getOpenrouterUsage } from "./usage/openrouter.ts";
 import { getOllamaCloudUsage, getOpenCodeGoUsage } from "./opencodeOllamaUsage.ts";
 import { getCodeBuddyCnUsage } from "./usage/codebuddy-cn.ts";
+import { getCodeBuddyIntlUsage } from "./usage/codebuddy-intl.ts";
 import { getPromptQlUsage } from "./usage/promptql.ts";
 import { getHyperAgentUsage } from "./usage/hyperagent.ts";
 import { getGitHubUsage, formatGitHubQuotaSnapshot, inferGitHubPlanName } from "./usage/github.ts";
@@ -127,6 +128,7 @@ export const USAGE_FETCHER_PROVIDERS = [
   "vertex",
   "vertex-partner",
   "codebuddy-cn",
+  "codebuddy-intl",
   "openrouter",
   // PromptQL playground credits (data.pro.ql.app getCreditSummary)
   "promptql",
@@ -233,6 +235,8 @@ export async function getUsageForProvider(
       return await getGrokCliUsage(accessToken);
     case "codebuddy-cn":
       return await getCodeBuddyCnUsage(accessToken, apiKey, providerSpecificData);
+    case "codebuddy-intl":
+      return await getCodeBuddyIntlUsage(accessToken, apiKey, providerSpecificData);
     case "promptql":
     case "pql":
       // DDN lux JWTs carry projectId only in JWT aud; connection.projectId may be set by sync.

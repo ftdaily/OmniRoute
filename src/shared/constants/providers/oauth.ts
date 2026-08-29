@@ -274,6 +274,19 @@ export const OAUTH_PROVIDERS = {
     subscriptionRisk: true,
     riskNoticeVariant: "oauth",
     authHint:
-      "Tencent CodeBuddy CN (copilot.tencent.com). Sign in via the official CLI device-code flow, or paste a direct API key (sent as Authorization: Bearer). Catalog: GLM / Kimi / MiniMax / DeepSeek / Hunyuan.",
+      "Tencent CodeBuddy CN (copilot.tencent.com). Sign in via the official CLI device-code flow, or paste a direct API key (sent as Authorization: *** Catalog: GLM / Kimi / MiniMax / DeepSeek / Hunyuan.",
+  },
+  "codebuddy-intl": {
+    id: "codebuddy-intl",
+    alias: "cbai",
+    name: "CodeBuddy International",
+    icon: "smart_toy",
+    color: "#006EFF",
+    textIcon: "CB",
+    website: "https://www.codebuddy.ai",
+    subscriptionRisk: true,
+    riskNoticeVariant: "oauth",
+    authHint:
+      "CodeBuddy International (codebuddy.ai). Sign in via the official IDE device-code flow, or paste a direct API key. Catalog: GLM / Kimi / MiniMax / DeepSeek / Hy3.",
   },
 };

@@ -113,6 +113,20 @@ export const CODEBUDDY_CN_CONFIG = {
   pollInterval: 5000,
 };
 
+// CodeBuddy International (codebuddy.ai) OAuth Configuration.
+// Mirrors the CN device-auth flow but uses the codebuddy.ai endpoint set
+// and `platform=ide` (CN uses platform=CLI). All /v2/plugin/* URLs are the
+// same shape, only the host and X-Domain header differ.
+export const CODEBUDDY_INTL_CONFIG = {
+  baseUrl: "https://www.codebuddy.ai",
+  stateUrl: "https://www.codebuddy.ai/v2/plugin/auth/state",
+  tokenUrl: "https://www.codebuddy.ai/v2/plugin/auth/token",
+  refreshUrl: "https://www.codebuddy.ai/v2/plugin/auth/token/refresh",
+  userAgent: "IDE/2.63.2 CodeBuddy/2.63.2",
+  platform: "ide",
+  pollInterval: 5000,
+};
+
 // Grok Build (xAI) OAuth Configuration (Device Code + import-token fallback)
 // Public client_id resolved through resolvePublicCred so it is never a literal.
 export const GROK_CLI_CONFIG = {
@@ -505,6 +519,7 @@ export const PROVIDERS = {
   DEVIN_CLI: "devin-cli",
   TRAE: "trae",
   CODEBUDDY_CN: "codebuddy-cn",
+  CODEBUDDY_INTL: "codebuddy-intl",
   GROK_CLI: "grok-cli",
   XAI_OAUTH: "xai-oauth",
   OPENFERENCE: "openference",

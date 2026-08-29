@@ -483,9 +483,11 @@ if (existsSync(cliSrcFile)) {
 // flow for every downstream user.
 const opencodePluginSrc = join(ROOT, "@omniroute", "opencode-plugin");
 const opencodePluginDist = join(opencodePluginSrc, "dist", "index.js");
-const opencodePluginCjs = join(opencodePluginSrc, "dist", "index.cjs");
 if (existsSync(opencodePluginSrc) && existsSync(join(opencodePluginSrc, "package.json"))) {
-  const pluginAlreadyBuilt = existsSync(opencodePluginDist) && existsSync(opencodePluginCjs);
+  // The plugin's tsup config is ESM-only (format: ["esm"]), so a successful
+  // build only ever produces dist/index.js (+ dist/index.d.ts) — never
+  // dist/index.cjs. Gate the skip solely on dist/index.js.
+  const pluginAlreadyBuilt = existsSync(opencodePluginDist);
   if (!pluginAlreadyBuilt) {
     console.log("\n  🔨 Building @omniroute/opencode-plugin (tsup)...");
     try {

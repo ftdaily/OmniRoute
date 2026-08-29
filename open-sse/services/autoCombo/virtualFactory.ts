@@ -44,8 +44,8 @@ import { filterExcludedCandidates } from "./candidateOverrides";
 import { getExcludedConnectionIds } from "@/lib/db/autoCandidateOverrides";
 import {
   filterResilienceBlockedCandidates,
+  buildConnectionResilienceMap,
   SYNTHETIC_NOAUTH_CONNECTION_ID as RESILIENCE_NOAUTH_CONNECTION_ID,
-  type ConnectionResilienceView,
 } from "./resilienceCandidateFilter";
 import type { ChaosTuning } from "./chaosEngine";
 
@@ -584,7 +584,8 @@ export async function prepareVirtualAutoComboInputs(
   options: {
     includeResolvedCapabilities?: boolean;
     resolutionSnapshot?: ModelCapabilityResolutionSnapshot;
-  } = {}
+  } = {},
+  skip = false // #9133 — inspector opt-out, see filterResilienceBlockedCandidates
 ): Promise<PreparedVirtualAutoComboInputs> {
   const [rawConnections, rawDisabledNoAuthConnections, settings] = await Promise.all([
     getCachedProviderConnections({ isActive: true }) as Promise<VirtualFactoryConn[]>,
@@ -708,10 +709,10 @@ export async function prepareVirtualAutoComboInputs(
 
   // #7623: honor existing model lockouts + connection cooldown/terminal state so
   // auto/* never advertises models the dispatch path would immediately skip.
-  const connectionsById = new Map<string, ConnectionResilienceView>();
-  for (const conn of [...runtimeConnections, ...disabledNoAuthConnections]) {
-    connectionsById.set(conn.id, conn);
-  }
+  const connectionsById = buildConnectionResilienceMap([
+    ...runtimeConnections,
+    ...disabledNoAuthConnections,
+  ]);
 
   const connectedProviders = new Set(validConnections.map((conn) => conn.provider));
   const buildPreparedPool = (bypassNoAuthAllowlist: boolean) => {
@@ -727,7 +728,7 @@ export async function prepareVirtualAutoComboInputs(
       ),
     ];
 
-    const resilienceFilteredPool = filterResilienceBlockedCandidates(pool, connectionsById);
+    const resilienceFilteredPool = filterResilienceBlockedCandidates(pool, connectionsById, skip);
     if (resilienceFilteredPool !== pool) pool = resilienceFilteredPool;
 
     // #6512 (follow-up to #6328/#6495): when the operator opts into `hidePaidModels`,

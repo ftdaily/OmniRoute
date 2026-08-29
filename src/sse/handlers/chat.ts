@@ -1927,11 +1927,15 @@ async function handleSingleModelChat(
         }
         if (telemetry) telemetry.startPhase("finalize");
         if (telemetry) telemetry.endPhase();
+        const successResponse = withSelectedConnectionHeader(
+          result.response,
+          credentials?.connectionId
+        );
         if (requestBody.stream === true) {
-          return wrapResponseWithOAuthSessionRelease(result.response, releaseOAuthSession);
+          return wrapResponseWithOAuthSessionRelease(successResponse, releaseOAuthSession);
         }
         releaseOAuthSession();
-        return result.response;
+        return successResponse;
       }
 
       // A final hard-lease fence rejection is authoritative. It must never mutate

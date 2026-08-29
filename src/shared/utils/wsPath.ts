@@ -49,52 +49,16 @@ export function resolveLiveWsPublicUrl(env: NodeJS.ProcessEnv = process.env): st
   return null;
 }
 
-export function sanitizeLiveWsPort(value: unknown): number | null {
-  const port = typeof value === "string" && value.trim() ? Number(value) : value;
-  return typeof port === "number" && Number.isInteger(port) && port >= 1 && port <= 65535
-    ? port
-    : null;
-}
-
-export function resolveLiveWsUrl({
-  explicit,
-  handshakeUrl,
-  handshakePort,
-  handshakePath,
-  defaultUrl,
-}: {
-  explicit?: string;
-  handshakeUrl?: string | null;
-  handshakePort?: unknown;
-  handshakePath?: string | null;
-  defaultUrl: string;
-}): string {
-  if (explicit) return explicit;
-  if (handshakeUrl) return handshakeUrl;
-
-  const port = sanitizeLiveWsPort(handshakePort);
-  if (port === null && !handshakePath?.startsWith("/")) return defaultUrl;
-
-  try {
-    const url = new URL(defaultUrl);
-    if (port !== null) url.port = String(port);
-    if (handshakePath?.startsWith("/")) url.pathname = handshakePath;
-    return url.toString();
-  } catch {
-    return defaultUrl;
-  }
-}
-
 /** Convenience: read the env var at call time and derive the path. */
 export function getLiveWsPath(): string {
   return deriveLiveWsPath(resolveLiveWsPublicUrl() ?? undefined);
 }
 
-/** A port the handshake may report, or null when it is not usable. */
-export function sanitizeLiveWsPort(port: unknown): number | null {
-  const value = typeof port === "string" ? Number(port) : port;
-  if (typeof value !== "number" || !Number.isInteger(value)) return null;
-  return value > 0 && value < 65536 ? value : null;
+export function sanitizeLiveWsPort(value: unknown): number | null {
+  const port = typeof value === "string" && value.trim() ? Number(value) : value;
+  return typeof port === "number" && Number.isInteger(port) && port >= 1 && port <= 65535
+    ? port
+    : null;
 }
 
 export interface LiveWsUrlParts {

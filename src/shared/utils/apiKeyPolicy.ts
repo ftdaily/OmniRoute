@@ -11,11 +11,11 @@
 import { extractApiKey } from "@/sse/services/auth";
 import {
   getApiKeyMetadata,
-  getComboByName,
   isModelAllowedForKey,
   isComboNameAllowedForKey,
   getApiKeyById,
-} from "@/lib/localDb";
+} from "@/lib/db/apiKeys";
+import { getComboByName } from "@/lib/db/combos";
 import { isDashboardSessionAuthenticated } from "./apiAuth";
 import { resolveComboForModel } from "@/lib/db/modelComboMappings";
 import { checkBudget } from "@/domain/costRules";
@@ -271,10 +271,10 @@ async function isComboExplicitlyAllowedViaModels(
 ): Promise<boolean> {
   return Boolean(
     apiKey &&
-      comboName &&
-      Array.isArray(allowedModels) &&
-      allowedModels.length > 0 &&
-      (await isComboNameAllowedForKey(apiKey, comboName))
+    comboName &&
+    Array.isArray(allowedModels) &&
+    allowedModels.length > 0 &&
+    (await isComboNameAllowedForKey(apiKey, comboName))
   );
 }
 

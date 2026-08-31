@@ -1,14 +1,7 @@
 import { PROVIDER_MODELS, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
 import { NOAUTH_PROVIDERS } from "@/shared/constants/providers";
-import {
-  getCachedRawProviderConnections,
-  getCombos,
-  getAllCustomModels,
-  getSettings,
-  getCachedProviderNodes,
-  getModelAliases,
-  getHiddenModelsByProvider,
-} from "@/lib/localDb";
+import { getCombos } from "@/lib/db/combos";
+import { getSettings } from "@/lib/db/settings";
 import { getUserDatabaseSettings } from "@/lib/db/databaseSettings";
 import { createLazyConnectionView } from "@/lib/db/providers/lazyConnectionView";
 import { extractAliasBackedModels } from "./aliasBackedModels";
@@ -49,9 +42,16 @@ import {
   getSyncedAvailableModelsByConnection,
   SYNCED_AVAILABLE_MODELS_MALFORMED,
   type SyncedAvailableModel,
+  getAllCustomModels,
+  getModelAliases,
+  getHiddenModelsByProvider,
 } from "@/lib/db/models";
 import { getAllActiveSyncedModels } from "@/lib/db/models/activeSyncedCatalog";
-import { getModelCatalogCacheVersion } from "@/lib/db/readCache";
+import {
+  getModelCatalogCacheVersion,
+  getCachedRawProviderConnections,
+  getCachedProviderNodes,
+} from "@/lib/db/readCache";
 import { getCompatibleFallbackModels } from "@/lib/providers/managedAvailableModels";
 import {
   providerUsesCuratedModelsOnly,
@@ -123,6 +123,7 @@ import {
 import { incrementCcDiscoveryHitCount } from "@/lib/db/ccDiscoveryMetrics";
 import { isUnifiedChatSourceModelSelectable } from "./catalogModelPolicy";
 import { isFreeModel } from "@/shared/utils/freeModels";
+import { isModelExposureAllowed } from "@/shared/utils/modelExposureList";
 import { isCodexDiscoveryModelExcluded } from "@/shared/services/codexDiscoveryPolicy";
 import { buildErrorBody } from "@omniroute/open-sse/utils/error";
 
@@ -341,7 +342,12 @@ async function buildUnifiedModelsResponseCore(
     // explicitly — a disabled router rejects every auto/* id with a 400, so
     // listing them offers the client a choice that cannot succeed.
     const hideAuto = settings.hideAutoCombos === true || settings.autoRoutingEnabled === false;
-    const shouldHidePaid = (providerKey: string, modelId: string, pricing?: unknown, isFree?: boolean): boolean => {
+    const shouldHidePaid = (
+      providerKey: string,
+      modelId: string,
+      pricing?: unknown,
+      isFree?: boolean
+    ): boolean => {
       if (!hidePaid) return false;
       const provider = aliasToProviderId[providerKey] || providerKey;
       // isFree:true is the first door — custom row kept even when its provider is outside FREE_MODEL_BUDGETS.
@@ -351,6 +357,13 @@ async function buildUnifiedModelsResponseCore(
       // already returned above.
       return true;
     };
+    // #11481: opt-in explicit model exposure allow/deny list — same call sites
+    // as shouldHidePaid above (mirrored into the auto/* combo candidate pool
+    // via open-sse/services/autoCombo/modelExposureFilter.ts, per #6512's
+    // catalog-only-filter-leaks-into-combo-routing lesson). Independent of
+    // hidePaidModels — operator curation, not a cost signal.
+    const shouldHideByExposure = (providerKey: string, modelId: string): boolean =>
+      !isModelExposureAllowed(aliasToProviderId[providerKey] || providerKey, modelId, settings);
 
     // Get active provider connections
     let connections = [];
@@ -869,17 +882,56 @@ async function buildUnifiedModelsResponseCore(
         const virtualCombo = await createBuiltinAutoCombo(autoId, suffix, preparedAutoInputs);
         const contextLength = virtualCombo.advertisedContextLength || 128000;
         const maxOutputTokens = virtualCombo.advertisedMaxOutputTokens || 8192;
+
+        // #11947: derive modalities and vision from the effective target pool so
+        // OpenAI-compatible clients can detect vision support for auto/* combos.
+        const autoTargets: ComboCatalogTarget[] = virtualCombo.models.map((m) => ({
+          modelStr: m.model,
+          providerId: m.providerId,
+          connectionId: m.connectionId,
+          ...(m.allowedConnectionIds ? { allowedConnectionIds: m.allowedConnectionIds } : {}),
+        }));
+        const autoTargetMetadata = autoTargets.map((t) => getComboTargetCatalogMetadata(t));
+        const knownAutoMeta = autoTargetMetadata.filter(
+          (m): m is ComboTargetCatalogMetadata => m !== null
+        );
+        const autoInputModalities =
+          knownAutoMeta.length > 0 &&
+          knownAutoMeta.every(
+            (m) => Array.isArray(m.inputModalities) && m.inputModalities.length > 0
+          )
+            ? intersectStringArrays(knownAutoMeta.map((m) => m.inputModalities || []))
+            : [];
+        const autoOutputModalities =
+          knownAutoMeta.length > 0 &&
+          knownAutoMeta.every(
+            (m) => Array.isArray(m.outputModalities) && m.outputModalities.length > 0
+          )
+            ? intersectStringArrays(knownAutoMeta.map((m) => m.outputModalities || []))
+            : [];
+        const autoCapabilities: Record<string, boolean | string[]> = {
+          tool_calling: true,
+          reasoning: true,
+          thinking: true,
+          temperature: true,
+        };
+        if (knownAutoMeta.length > 0) {
+          const allVision = knownAutoMeta.every((m) => m.capabilities.vision === true);
+          if (allVision) autoCapabilities.vision = true;
+        }
+
         models.push({
           ...baseAutoEntry,
           context_length: contextLength,
           max_input_tokens: contextLength,
           max_output_tokens: maxOutputTokens,
-          capabilities: {
-            tool_calling: true,
-            reasoning: true,
-            thinking: true,
-            temperature: true,
-          },
+          ...(autoInputModalities.length > 0
+            ? { input_modalities: autoInputModalities }
+            : {}),
+          ...(autoOutputModalities.length > 0
+            ? { output_modalities: autoOutputModalities }
+            : {}),
+          capabilities: autoCapabilities,
         });
       } catch (err) {
         console.log(`[catalog] Could not materialize built-in auto model ${autoId}:`, err);
@@ -1025,6 +1077,7 @@ async function buildUnifiedModelsResponseCore(
         if (isExcludedByProviderConnections(canonicalProviderId, model.id)) continue;
         if (shouldHidePaid(canonicalProviderId, model.id, (model as { pricing?: unknown }).pricing))
           continue;
+        if (shouldHideByExposure(canonicalProviderId, model.id)) continue;
 
         const visionFields =
           getVisionCapabilityFields(aliasId) || getVisionCapabilityFields(model.id);
@@ -1184,6 +1237,7 @@ async function buildUnifiedModelsResponseCore(
           // are hidden when hidePaid is on.
           if (shouldHidePaid(canonicalProviderId, sm.id, (sm as { pricing?: unknown }).pricing))
             continue;
+          if (shouldHideByExposure(canonicalProviderId, sm.id)) continue;
 
           const registryEntry = REGISTRY[providerId];
           const displayModelId =
@@ -1580,9 +1634,15 @@ async function buildUnifiedModelsResponseCore(
           // Custom entries do not carry pricing, so shouldHidePaid() decides
           // via FREE_MODEL_IDS_BY_PROVIDER — matches synced/PROVIDER_MODELS.
           if (
-            shouldHidePaid(canonicalProviderId, modelId, (model as { pricing?: unknown }).pricing, (model as any).isFree)
+            shouldHidePaid(
+              canonicalProviderId,
+              modelId,
+              (model as { pricing?: unknown }).pricing,
+              (model as any).isFree
+            )
           )
             continue;
+          if (shouldHideByExposure(canonicalProviderId, modelId)) continue;
           // noAuth providers have no connection rows; keep auth providers gated. (#2798/#3200)
           const isNoAuthProvider = isNoAuthProviderKey(canonicalProviderId, providerId, alias);
           if (
@@ -1760,6 +1820,7 @@ async function buildUnifiedModelsResponseCore(
         // point at providerKey/modelId with no pricing, so shouldHidePaid()
         // decides via the FREE_MODEL_IDS_BY_PROVIDER catalog tier.
         if (shouldHidePaid(canonicalProviderId, modelId)) continue;
+        if (shouldHideByExposure(canonicalProviderId, modelId)) continue;
 
         const aliasId = `${alias}/${modelId}`;
         const rawPrefixedId = `${providerKey}/${modelId}`;
@@ -1835,6 +1896,7 @@ async function buildUnifiedModelsResponseCore(
         // FREE_MODEL_IDS_BY_PROVIDER catalog tier.
         if (shouldHidePaid(canonicalProviderId, modelId, (model as { pricing?: unknown }).pricing))
           continue;
+        if (shouldHideByExposure(canonicalProviderId, modelId)) continue;
         if (!hasEligibleConnectionForModel([conn], modelId)) continue;
 
         const aliasId = `${alias}/${modelId}`;

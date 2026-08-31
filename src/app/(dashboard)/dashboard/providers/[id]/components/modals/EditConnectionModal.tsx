@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, Badge, Input, Modal, Toggle, Select } from "@/shared/components";
 import {
@@ -117,7 +117,7 @@ export default function EditConnectionModal({
     maxWaitMs: "",
     rateLimitMaxConcurrent: "",
     apiKey: "",
-    healthCheckInterval: 60,
+    healthCheckInterval: "" as number | "",
     baseUrl: "",
     targetFormat: "",
     cx: "",
@@ -262,8 +262,19 @@ export default function EditConnectionModal({
       : apiKeyOptional
         ? t("apiKeyOptionalHint")
         : t("leaveBlankKeepCurrentApiKey");
-  useEffect(() => {
-    if (isOpen && connection) {
+  // Modal-open form initialization from the loaded connection — applied as a
+  // render-phase adjustment guarded by the previously initialized connection
+  // (react.dev "adjusting state when a prop changes") instead of the former
+  // synchronous-setState effect. Remounting the 30+ field form per connection
+  // id stays out of scope (#11251 follow-up, #9985); closing clears the marker
+  // so the next open re-initializes again.
+  const [initializedFor, setInitializedFor] = useState<{
+    connection: EditConnectionModalConnection;
+    providerId: string;
+  } | null>(null);
+  if (isOpen && connection) {
+    if (initializedFor?.connection !== connection || initializedFor.providerId !== providerId) {
+      setInitializedFor({ connection, providerId });
       const effectiveProvider = connection.provider || providerId;
       const existingBaseUrl = stringField(connection.providerSpecificData?.baseUrl);
       const existingTargetFormat = stringField(connection.providerSpecificData?.targetFormat);
@@ -275,10 +286,6 @@ export default function EditConnectionModal({
       const existingOpenRouterPreset = stringField(connection.providerSpecificData?.preset);
       const existingCx = stringField(connection.providerSpecificData?.cx);
       const existingAccountId = stringField(connection.providerSpecificData?.accountId);
-      const existingOpenCodeGoWorkspaceId =
-        stringField(connection.providerSpecificData?.opencodeGoWorkspaceId) ||
-        stringField(connection.providerSpecificData?.openCodeGoWorkspaceId) ||
-        stringField(connection.providerSpecificData?.workspaceId);
       const existingGlmOrganizationId =
         stringField(connection.providerSpecificData?.glmOrganizationId) ||
         stringField(connection.providerSpecificData?.bigmodelOrganization) ||
@@ -297,13 +304,6 @@ export default function EditConnectionModal({
         connection.providerSpecificData?.quotaPerUnit != null
           ? String(connection.providerSpecificData.quotaPerUnit)
           : "";
-      // Modal-open form initialization from the loaded connection (sync with an
-      // external system on `isOpen`); remounting the 30+ field form per
-      // connection id is a behavior-risking restructure out of scope here
-      // (#11251 follow-up, #9985).
-      // NOTE: no react-hooks/set-state-in-effect suppression needed — the rule
-      // only fires on unconditional synchronous setState, and this one is
-      // guarded by the isOpen/connection condition above.
       setFormData({
         name: connection.name || "",
         priority: connection.priority || 1,
@@ -336,7 +336,9 @@ export default function EditConnectionModal({
             ? String(connection.rateLimitOverrides.maxConcurrent)
             : "",
         apiKey: "",
-        healthCheckInterval: connection.healthCheckInterval ?? 60,
+        // Unset per-connection override means "follow the global default" —
+        // surface that as an empty field (0 renders as an explicit opt-out).
+        healthCheckInterval: connection.healthCheckInterval ?? "",
         baseUrl: existingBaseUrl || defaultBaseUrl,
         targetFormat: existingTargetFormat || "",
         cx: existingCx,
@@ -369,8 +371,6 @@ export default function EditConnectionModal({
         quotaPerUnit: existingQuotaPerUnit,
         glmOrganizationId: existingGlmOrganizationId,
         glmProjectId: existingGlmProjectId,
-        opencodeGoWorkspaceId: existingOpenCodeGoWorkspaceId,
-        opencodeGoAuthCookie: "",
         ollamaCloudUsageCookie: "",
         alibabaConsoleCookie: stringField(connection.providerSpecificData?.alibabaConsoleCookie),
         qwenCloudCookie: stringField(connection.providerSpecificData?.qwenCloudCookie),
@@ -441,15 +441,9 @@ export default function EditConnectionModal({
       setValidatedProviderSpecificData(undefined);
       setSaveError(null);
     }
-  }, [
-    isOpen,
-    connection,
-    providerId,
-    defaultBaseUrl,
-    showsRegion,
-    defaultRegion,
-    setOpenRouterPreset,
-  ]);
+  } else if (initializedFor !== null) {
+    setInitializedFor(null);
+  }
   const handleTest = async () => {
     if (!provider) return;
     setTesting(true);
@@ -556,7 +550,10 @@ export default function EditConnectionModal({
         name: formData.name,
         priority: formData.priority,
         maxConcurrent: parsedMaxConcurrent,
-        healthCheckInterval: formData.healthCheckInterval,
+        // Empty field = "follow the global default" → send undefined so the
+        // stored per-connection override is cleared; 0 = explicit opt-out.
+        healthCheckInterval:
+          formData.healthCheckInterval === "" ? undefined : formData.healthCheckInterval,
       };
       const overrides: Record<string, number> = {};
       if (formData.rpm.trim()) overrides.rpm = Number(formData.rpm);
@@ -920,20 +917,19 @@ export default function EditConnectionModal({
             </p>
           </div>
         )}
-        {isOAuth && (
-          <Input
-            label={t("healthCheckMinutes")}
-            type="number"
-            value={formData.healthCheckInterval}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                healthCheckInterval: Math.max(0, Number.parseInt(e.target.value) || 0),
-              })
-            }
-            hint={t("healthCheckHint")}
-          />
-        )}
+        <Input
+          label={t("healthCheckMinutes")}
+          type="number"
+          min={0}
+          max={1440}
+          value={formData.healthCheckInterval}
+          onChange={(e) => {
+            const parsed = Number.parseInt(e.target.value, 10);
+            const next = Number.isNaN(parsed) ? 0 : Math.min(1440, Math.max(0, parsed));
+            setFormData({ ...formData, healthCheckInterval: next });
+          }}
+          hint={t("healthCheckHint")}
+        />
         <Input
           label={t("priorityLabel")}
           type="number"

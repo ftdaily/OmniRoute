@@ -74,6 +74,35 @@ function isNextIntlExtractorDynamicImportWarning(warning) {
   );
 }
 
+const IGNORED_INFRASTRUCTURE_BUILD_DEPENDENCY_MODULES = [
+  "/node_modules/fumadocs-mdx/dist/load-from-file-",
+  "/node_modules/next-intl/dist/esm/production/extractor/format/index.js",
+];
+
+function isKnownInfrastructureBuildDependencyWarning(args) {
+  const message = args
+    .filter((value) => typeof value === "string")
+    .join(" ")
+    .replaceAll("\\", "/");
+  return (
+    message.includes("webpack.FileSystemInfo") &&
+    message.includes("for build dependencies failed at 'import(") &&
+    message.includes("incorrect cache invalidation") &&
+    IGNORED_INFRASTRUCTURE_BUILD_DEPENDENCY_MODULES.some((modulePath) =>
+      message.includes(modulePath)
+    )
+  );
+}
+
+function filterKnownInfrastructureWarnings(baseConsole) {
+  const filteredConsole = Object.create(baseConsole);
+  filteredConsole.warn = (...args) => {
+    if (isKnownInfrastructureBuildDependencyWarning(args)) return;
+    Reflect.apply(baseConsole.warn, baseConsole, args);
+  };
+  return filteredConsole;
+}
+
 // OMNIROUTE_BUILD_PROFILE=minimal physically removes four optional privileged
 // modules (MITM cert install, Zed keychain import, Cloud Sync, 9router
 // installer) from the built bundle by aliasing them to feature-disabled stubs.
@@ -132,9 +161,7 @@ const nextConfig = {
     // instead of keeping the old generation in control. Falls back to a
     // value that is unique per build run when git is absent (CI tarball).
     NEXT_PUBLIC_SW_BUILD_ID:
-      process.env.OMNIROUTE_SW_BUILD_ID ||
-      process.env.SOURCE_VERSION ||
-      `${Date.now()}`,
+      process.env.OMNIROUTE_SW_BUILD_ID || process.env.SOURCE_VERSION || `${Date.now()}`,
   },
   distDir,
   // Turbopack config: redirect native modules to stubs at build time
@@ -344,6 +371,11 @@ const nextConfig = {
       ...(config.ignoreWarnings || []),
       isNextIntlExtractorDynamicImportWarning,
     ];
+    const infrastructureLogging = config.infrastructureLogging || {};
+    config.infrastructureLogging = {
+      ...infrastructureLogging,
+      console: filterKnownInfrastructureWarnings(infrastructureLogging.console || console),
+    };
     const nextDefaultSplitChunks = config.optimization?.splitChunks;
     config.optimization = config.optimization || {};
     config.optimization.splitChunks = {

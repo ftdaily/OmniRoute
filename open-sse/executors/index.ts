@@ -5,7 +5,7 @@ import { assertCommonChatGptWebProviderAvailable } from "@/shared/constants/chat
 import { registerLazyExecutor, loadRegisteredExecutor, hasRegisteredExecutor } from "./registry.ts";
 // Type-only: pulls no runtime code, keeps DefaultExecutor the only eager class.
 import type { BaseExecutor } from "./base.ts";
-import { DefaultExecutor } from "./default.ts";
+import { getDefaultExecutor } from "./defaultResolver.ts";
 
 // R0.3 — declarative built-in table, made LAZY by #11220.
 //
@@ -192,8 +192,6 @@ for (const [alias, load] of Object.entries(lazyExecutors)) {
   registerLazyExecutor(alias, load);
 }
 
-const defaultCache = new Map();
-
 // #6699 — providers that exist ONLY as Cloud Agent task-API entries
 // (CLOUD_AGENT_PROVIDERS / staticModels "Available Models" catalog) and have no
 // chat-completions REGISTRY entry anywhere in open-sse/. Without this guard,
@@ -236,8 +234,7 @@ export async function getExecutor(provider: string): Promise<BaseExecutor> {
     (err as Error & { status?: number }).status = 400;
     throw err;
   }
-  if (!defaultCache.has(provider)) defaultCache.set(provider, new DefaultExecutor(provider));
-  return defaultCache.get(provider)!;
+  return getDefaultExecutor(provider);
 }
 
 export function hasSpecializedExecutor(provider: string): boolean {

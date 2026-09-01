@@ -415,6 +415,7 @@ Controls how OmniRoute discovers and launches CLI sidecars (Claude Code, Codex, 
 | `CLI_CRUSH_BIN`           | `crush`     | `src/shared/services/cliRuntime.ts`                 | Custom path to the Crush CLI binary.                                                                                                                                           |
 | `CLI_OMP_BIN`             | `omp`       | `src/shared/services/cliRuntime.ts`                 | Custom path to the Oh My Pi (`omp`) agent binary.                                                                                                                              |
 | `CLI_LETTA_BIN`           | `letta`     | `src/shared/services/cliRuntime.ts`                 | Custom path to the Letta CLI binary.                                                                                                                                           |
+| `CLI_PRIME_AGENT_BIN`     | `prime-agent` | `src/shared/services/cliRuntime.ts`               | Custom path to the Prime Agent (Prime Intellect) binary.                                                                                                                       |
 | `CLI_WINDSURF_BIN`        | _(none)_    | `src/shared/services/cliRuntime.ts`                 | Custom path to the Windsurf binary. Windsurf ships **no default command** — binary detection stays disabled until this is set.                                                        |
 | `CLI_DEVIN_BIN`           | `devin`     | `open-sse/executors/devin-cli.ts`                   | Custom path to the Devin CLI binary (v3.8.0). Used by the Windsurf/Devin executor.                                                                                             |
 | `DEVIN_DESKTOP_VERSION`   | `3.6.27`    | `open-sse/executors/devin-desktop.ts`               | Devin Desktop `ide_version`. Overrides must use `x.y.z` format; invalid values fall back to the verified default.                                                            |
@@ -972,6 +973,16 @@ Reverse-engineered session bridge for hyperagent.com (`src/shared/constants/prov
 | Variable                | Default                                                    | Source File                             | Description                                    |
 | ------------------------ | ------------------------------------------------------------ | ----------------------------------------- | ------------------------------------------------- |
 | `HYPERAGENT_USAGE_URL`  | `https://hyperagent.com/api/settings/billing/usage`         | `open-sse/services/usage/hyperagent.ts` | Endpoint used to fetch billing/usage credit blocks. |
+
+---
+
+## Kilo Code Usage Quotas
+
+Personal USD balance and Kilo Pass usage lookup for the Kilo Code provider. Optional — the default points at the public Kilo API; override only for a relay/test fixture. Authentication uses the connection's existing OAuth access token.
+
+| Variable        | Default                | Source File                             | Description                                             |
+| ---------------- | ---------------------- | ----------------------------------------- | ------------------------------------------------------- |
+| `KILO_API_URL`   | `https://api.kilo.ai`  | `open-sse/services/usage/kilocode.ts`   | Base URL used to fetch personal Kilo Code balance and Kilo Pass usage. |
 
 ---
 
@@ -1609,7 +1620,12 @@ Globale Defaults für den headless Browser und den ausgehenden Tool-Tunnel. Im D
 | `CHATGPT_WEB_CODEX_CDP_URL`          | _(unset)_                        | `open-sse/executors/chatgpt-web-codex.ts`        | Interner CDP-Endpunkt; Docker verwendet den Sidecar auf Port `9223`.        |
 | `CHATGPT_WEB_CODEX_TUNNEL_ID`        | _(unset)_                        | `open-sse/executors/chatgpt-web-codex.ts`        | Globale OpenAI-Tunnel-ID für lokale Codex-Tool-Runden.                      |
 | `CHATGPT_WEB_CODEX_RUNTIME_KEY`      | _(unset)_                        | `open-sse/executors/chatgpt-web-codex.ts`        | Globaler Tunnel Runtime-Key; niemals in Logs ausgeben.                      |
-| `CHATGPT_WEB_CODEX_CONNECTOR_NAME`   | _(unset)_                        | `open-sse/executors/chatgpt-web-codex.ts`        | Name des ChatGPT-Custom-Connectors für die MCP-Brücke.                      |
+| `CHATGPT_WEB_CODEX_CONNECTOR_NAME`   | `OmniRoute Codex v2`             | `open-sse/executors/chatgpt-web-codex.ts`        | Exakter Name des neu erstellten ChatGPT-Custom-Connectors für die MCP-Brücke. |
+| `CODEX_CHATGPT_WEB_HOME`             | `<DATA_DIR>/chatgpt-web-codex`   | `open-sse/vendor/codex-chatgpt-web/config.ts`    | Dediziertes Verzeichnis für Browser-, Broker- und Tunnelzustand.            |
+| `CODEX_CHATGPT_WEB_BROWSER_DIAGNOSTICS` | `0`                           | `open-sse/vendor/codex-chatgpt-web/adapters/chatgpt-web/browser-worker.ts` | Bei `1` werden Browser-Diagnosebilder an jedem Checkpoint erfasst. |
+| `CODEX_CHATGPT_WEB_LAUNCHER`         | _(unset)_                        | `open-sse/vendor/codex-chatgpt-web/config.ts`    | Optionaler absoluter Pfad zu einem dauerhaften Launcher-Binary.             |
+| `CODEX_CHATGPT_WEB_BUN`              | _(auto-detect)_                  | `open-sse/vendor/codex-chatgpt-web/config.ts`    | Optionaler absoluter Pfad zum Bun-Runtime-Binary.                           |
+| `CODEX_WEB_GPT_BUN`                  | _(unset)_                        | `open-sse/vendor/codex-chatgpt-web/config.ts`    | Legacy-Fallback für `CODEX_CHATGPT_WEB_BUN`; neue Setups verwenden den kanonischen Namen. |
 ---
 
 ## OmniConductor Bridge

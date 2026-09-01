@@ -8,27 +8,27 @@
  * where `require` is unavailable; the `createRequire(import.meta.url)` fallback
  * handles those callers.
  */
-import { createRequire } from "node:module";
-
-declare const require: NodeRequire | undefined;
+import * as nodeModule from "node:module";
 
 function esmRuntimeRequire(specifier: string): unknown {
-  return createRequire(import.meta.url)(specifier);
+  return nodeModule.createRequire(import.meta.url)(specifier);
 }
 
 export function runtimeRequire(specifier: string): unknown {
-  if (typeof require === "function") {
+  const isCjs = typeof module !== "undefined" && typeof module.require === "function";
+  if (isCjs) {
+    const req = module.require;
     switch (specifier) {
       case "better-sqlite3":
-        return require("better-sqlite3");
+        return req("better-sqlite3");
       case "node:sqlite":
-        return require("node:sqlite");
+        return req("node:sqlite");
       case "bun:sqlite":
-        return require("bun:sqlite");
+        return req("bun:sqlite");
       case "sql.js":
-        return require("sql.js");
+        return req("sql.js");
       case "sqlite-vec":
-        return require("sqlite-vec");
+        return req("sqlite-vec");
     }
   }
 

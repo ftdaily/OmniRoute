@@ -236,8 +236,11 @@ const nextConfig = {
     },
     // Reduce peak heap during production builds (Next.js 15+).
     webpackMemoryOptimizations: true,
-    // Run webpack in a separate Node worker, lowering main-process memory.
-    webpackBuildWorker: true,
+    // Build in-process and serialize workers. This avoids duplicating the full module
+    // graph and keeps production builds within the 10 GB cgroup used by local deploys.
+    webpackBuildWorker: false,
+    cpus: 1,
+    workerThreads: false,
     // Next.js proxy (middleware) has a default 10MB body clone limit. File
     // uploads (OpenAI-compatible /v1/files) routinely exceed this. Match the
     // 512 MB server-side cap; tune via env if needed.
@@ -367,6 +370,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   webpack(config, { dev, webpack }) {
+    // PackFile cache serializes the full graph into one giant string and causes a late
+    // memory spike. Cache affects build speed only, not runtime output.
+    if (!dev) config.cache = false;
     config.ignoreWarnings = [
       ...(config.ignoreWarnings || []),
       isNextIntlExtractorDynamicImportWarning,

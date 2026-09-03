@@ -308,6 +308,7 @@ export const OAUTH_PROVIDERS = {
   },
   "codebuddy-intl": {
     id: "codebuddy-intl",
+    serviceKinds: ["llm"],
     alias: "cbai",
     name: "CodeBuddy International",
     icon: "smart_toy",

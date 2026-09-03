@@ -47,6 +47,7 @@ import {
 } from "./responsesCommentaryDrop.ts";
 import { buildErrorBody } from "./error.ts";
 import { parseTextualToolCallCandidate, isValidToolCallHeaderPrefix } from "./textualToolCall.ts";
+import { stripObfuscationZeroWidth } from "./zeroWidth.ts";
 import {
   formatTranslatedStreamError,
   normalizeStreamFailurePayload,
@@ -272,7 +273,7 @@ function containsMalformedTextualToolCall(
   allowedToolNames?: Set<string> | null
 ): boolean {
   if (typeof text !== "string") return false;
-  const normalized = text.replace(/[\u200B-\u200D\uFEFF]/g, "");
+  const normalized = stripObfuscationZeroWidth(text);
 
   let searchIdx = 0;
   while (true) {
@@ -763,12 +764,15 @@ export function createSSEStream(options: StreamOptions = {}) {
   let passthroughAccumulatedContent = "";
   let passthroughAccumulatedReasoning = "";
   let passthroughBufferedTextualToolCallContent = "";
+  /** Passthrough: whether a usage block was already forwarded to the client (prevents double). */
+  let passthroughForwardedUsage = false;
   // Passthrough Responses SSE: snapshots of items seen via `response.output_item.done`,
   // used to backfill `response.completed.response.output` when upstream returns it
   // empty (which happens when `store: false` — see backfillResponsesCompletedOutput).
   const passthroughResponsesOutputItems: unknown[] = [];
   const passthroughResponsesPendingFunctionCalls = new Map<string, JsonRecord>();
   let passthroughResponsesId: string | null = null;
+  let passthroughLastChatId: string | null = null;
   let passthroughResponsesCurrentFunctionCallKey: string | null = null;
   const passthroughResponsesReasoningSummarySeen = new Set<string>();
   // #6199 — commentary-phase items announced via `response.output_item.added` are
@@ -839,13 +843,6 @@ export function createSSEStream(options: StreamOptions = {}) {
   const clientPayloadCollector = createStructuredSSECollector({
     stage: "client_response",
   });
-  const requestRecord = asRecord(body);
-  const requestStreamOptions = asRecord(
-    requestRecord.stream_options ?? requestRecord.streamOptions
-  );
-  const expectsOpenAIUsageOnlyChunk =
-    requestStreamOptions.include_usage === true || requestStreamOptions.includeUsage === true;
-
   // Per-stream instances to avoid shared state with concurrent streams
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
@@ -1641,10 +1638,7 @@ export function createSSEStream(options: StreamOptions = {}) {
                         isResponsesCommentaryMessageItem
                       ).items
                     : passthroughResponsesOutputItems;
-                  const backfilled = backfillResponsesCompletedOutput(
-                    parsed,
-                    backfillCandidates
-                  );
+                  const backfilled = backfillResponsesCompletedOutput(parsed, backfillCandidates);
                   const usageNormalized = normalizeUsage(parsed);
                   if (
                     stripped ||
@@ -1751,7 +1745,7 @@ export function createSSEStream(options: StreamOptions = {}) {
                         !parsed.choices[0]?.finish_reason))
                   ) {
                     const emptyChoicesUsage = extractUsage(parsed) ?? parsed.usage;
-                    if (hasValidUsage(emptyChoicesUsage)) {
+                    if (hasValidUsage(emptyChoicesUsage) && !passthroughForwardedUsage) {
                       // Some upstreams (e.g. Ollama Cloud) emit prompt_tokens: 0
                       // even when input was sent — they simply don't count input
                       // tokens.  When we have a non-zero output but zero input,
@@ -1764,7 +1758,11 @@ export function createSSEStream(options: StreamOptions = {}) {
                       ) {
                         const pt = emptyChoicesUsage.prompt_tokens ?? 0;
                         if (pt === 0) {
-                          const estimated = estimateUsage(body, totalContentLength, FORMATS.OPENAI);
+                          const estimated = estimateUsage(
+                            body,
+                            totalContentLength,
+                            sourceFormat || FORMATS.OPENAI
+                          );
                           if (estimated?.prompt_tokens > 0) {
                             emptyChoicesUsage.prompt_tokens = estimated.prompt_tokens;
                             emptyChoicesUsage.total_tokens =
@@ -1773,12 +1771,18 @@ export function createSSEStream(options: StreamOptions = {}) {
                         }
                       }
                       usage = emptyChoicesUsage;
+                      passthroughForwardedUsage = true;
                       output = `data: ${JSON.stringify(parsed)}\n\n`;
                       injectedUsage = true;
                       clientPayload = parsed;
                       clientPayloadCollector.push(clientPayload);
                       reqLogger?.appendConvertedChunk?.(output);
                       forward(controller, encoder.encode(output));
+                      continue;
+                    }
+
+                    // If we already forwarded usage, drop any trailing empty-choices valid usage
+                    if (passthroughForwardedUsage && hasValidUsage(emptyChoicesUsage)) {
                       continue;
                     }
 
@@ -1954,6 +1958,16 @@ export function createSSEStream(options: StreamOptions = {}) {
 
                   const isFinishChunk = parsed.choices?.[0]?.finish_reason;
 
+                  // Remember the upstream's chat-completion id so synthetic chunks
+                  // emitted at flush (e.g. the estimated usage-only chunk) carry the
+                  // stream's real string id instead of null on the chat path
+                  // (passthroughResponsesId is only ever set on the Responses path).
+                  if (typeof parsed.id === "string" && parsed.id) {
+                    passthroughLastChatId = parsed.id;
+                  } else if (typeof parsed.id === "number") {
+                    passthroughLastChatId = String(parsed.id);
+                  }
+
                   if (isFinishChunk) {
                     passthroughSawFinishReason = true;
                   }
@@ -1972,26 +1986,25 @@ export function createSSEStream(options: StreamOptions = {}) {
                     parsed.choices[0].finish_reason !== "tool_calls"
                   ) {
                     parsed.choices[0].finish_reason = "tool_calls";
-                    // If we modify it, we must output the modified object
-                    if (!injectedUsage && hasValidUsage(parsed.usage)) {
-                      output = `data: ${JSON.stringify(parsed)}\n\n`;
-                      injectedUsage = true;
-                    }
-                  }
-                  if (
-                    isFinishChunk &&
-                    !hasValidUsage(parsed.usage) &&
-                    !expectsOpenAIUsageOnlyChunk
-                  ) {
-                    const estimated = estimateUsage(body, totalContentLength, FORMATS.OPENAI);
-                    parsed.usage = filterUsageForFormat(estimated, FORMATS.OPENAI);
+                    // If we modify it, we must output the modified object. This used to
+                    // piggyback on the estimated-usage rewrite below; with the estimate
+                    // moved to flush() (#12151 follow-up) the rewrite must happen here.
+                    // injectedUsage doubles as the "output already rewritten" latch —
+                    // without it the raw line overwrites this rewrite further down.
                     output = `data: ${JSON.stringify(parsed)}\n\n`;
-                    usage = estimated;
                     injectedUsage = true;
-                  } else if (isFinishChunk && usage) {
+                  }
+                  // #12151 follow-up: do NOT inject estimated usage into the finish chunk.
+                  // A genuine OpenAI upstream sends its usage in a trailing empty-choices
+                  // chunk AFTER the finish; estimating here marked passthroughForwardedUsage
+                  // and made the real trailing block get dropped in favor of the estimate
+                  // (billing regression pinned by tests/unit/stream-utils.test.ts). The
+                  // estimate is now emitted in flush(), only when the upstream stayed silent.
+                  if (isFinishChunk && hasValidUsage(usage) && !passthroughForwardedUsage) {
                     const buffered = addBufferToUsage(usage);
-                    parsed.usage = filterUsageForFormat(buffered, FORMATS.OPENAI);
+                    parsed.usage = filterUsageForFormat(buffered, sourceFormat || FORMATS.OPENAI);
                     output = `data: ${JSON.stringify(parsed)}\n\n`;
+                    passthroughForwardedUsage = true;
                     injectedUsage = true;
                   } else if (textualToolCallConverted) {
                     output = `data: ${JSON.stringify(parsed)}\n\n`;
@@ -2502,6 +2515,26 @@ export function createSSEStream(options: StreamOptions = {}) {
                 reqLogger?.appendConvertedChunk?.(finishOutput);
                 forward(controller, encoder.encode(finishOutput));
                 clientPayloadCollector.push(syntheticFinishChunk);
+              }
+              // #12151: upstream never reported usage — emit the estimate as a
+              // canonical OpenAI trailing usage-only chunk (empty choices) before
+              // [DONE], so metered clients still see token counts. When the
+              // upstream DID send usage (trailing or in-band), it was forwarded
+              // already and passthroughForwardedUsage guards this off.
+              if (shouldEmitDoneTerminator && !passthroughForwardedUsage && hasValidUsage(usage)) {
+                const usageOnlyChunk = {
+                  id: passthroughLastChatId ?? passthroughResponsesId ?? `chatcmpl-${Date.now()}`,
+                  object: "chat.completion.chunk",
+                  created: Math.floor(Date.now() / 1000),
+                  model,
+                  choices: [],
+                  usage: filterUsageForFormat(usage, sourceFormat || FORMATS.OPENAI),
+                };
+                const usageOutput = `data: ${JSON.stringify(usageOnlyChunk)}\n\n`;
+                reqLogger?.appendConvertedChunk?.(usageOutput);
+                forward(controller, encoder.encode(usageOutput));
+                clientPayloadCollector.push(usageOnlyChunk);
+                passthroughForwardedUsage = true;
               }
               await emitFinalSseMetadata(controller, usage);
               doneSent = true;

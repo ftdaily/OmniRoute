@@ -289,7 +289,7 @@ function parseDeepseek(data: any) {
 // #10078 follow-up: AgentRouter's `quotas.balance` entry (open-sse/services/usage/agentrouter.ts)
 // carries a real USD amount in `remaining` + `currency: "USD"`. The generic path
 // (normalizeQuotaEntry via parseGeneric) drops `currency` entirely and never sets
-// `isCredits`/`creditCount`, so QuotaCardBody/QuotaCardExpanded's dollar-formatted
+// `isCredits`/`creditCount`, so QuotaCardExpanded's dollar-formatted
 // renderer (which only activates on `q.isCredits`) never triggers — the balance was
 // rendered as a bare "100%/0% left" percentage instead of "$X.XX". Route it through
 // buildCreditsQuota() (same shape DeepSeek/Claude-extra-usage credits rows use) so the
@@ -305,6 +305,27 @@ function parseAgentrouterQuota(quotaKey: string, quota: any) {
 
 function parseAgentrouter(data: any) {
   return quotaEntries(data).map(([quotaKey, quota]) => parseAgentrouterQuota(quotaKey, quota));
+}
+
+// OpenRouter is credit-based, not subscription-based: the `credits` quota entry
+// (open-sse/services/usage/openrouter.ts) carries the account balance in
+// `remaining` + `currency: "USD"` with `unlimited: true` / total 0. The generic
+// path (normalizeQuotaEntry via parseGeneric) drops `currency` and never sets
+// `isCredits`/`creditCount`, so the row rendered as a meaningless "100% left"
+// instead of the dollar balance. Route it through buildCreditsQuota() (same
+// shape DeepSeek/AgentRouter credits rows use) so the credit count renders as
+// USD. Free-tier request windows keep the generic percentage treatment.
+function parseOpenrouterQuota(quotaKey: string, quota: any) {
+  if (quotaKey !== "credits") return normalizeQuotaEntry(quotaKey, quota);
+  const remaining = Math.max(0, Number(quota?.remaining ?? 0));
+  const currency = quota?.currency || "USD";
+  const remainingPercentage =
+    safePercentage(quota?.remainingPercentage) ?? (remaining > 0 ? 100 : 0);
+  return buildCreditsQuota("credits", remaining, remainingPercentage, { currency });
+}
+
+function parseOpenrouter(data: any) {
+  return quotaEntries(data).map(([quotaKey, quota]) => parseOpenrouterQuota(quotaKey, quota));
 }
 
 /**
@@ -422,6 +443,7 @@ function parseProviderQuotas(providerId: string, data: any) {
   if (providerId === "deepseek") return parseDeepseek(data);
   if (providerId === "kilocode") return parseKilocode(data);
   if (providerId === "agentrouter") return parseAgentrouter(data);
+  if (providerId === "openrouter") return parseOpenrouter(data);
   return parseGeneric(data);
 }
 

@@ -77,7 +77,11 @@ import {
   isStripReasoningRequested,
 } from "./chatCore/headers.ts";
 import { markCodexScopeRateLimited } from "./chatCore/codexFailover.ts";
-import { getCodexClientSessionId, isCodexOriginatedHeaders, isClaudeCodeOriginatedHeaders } from "../config/codexIdentity.ts";
+import {
+  getCodexClientSessionId,
+  isCodexOriginatedHeaders,
+  isClaudeCodeOriginatedHeaders,
+} from "../config/codexIdentity.ts";
 import {
   noteCodexTurnStateProvenance,
   readCodexTurnStateHeader,
@@ -119,11 +123,7 @@ export {
   buildStreamingResponseHeaders,
   stripStaleForwardingHeaders,
 };
-import {
-  extractMemoryTextFromResponse,
-  extractMemoryTextFromRequestBody,
-  resolveMemoryOwnerId,
-} from "./chatCore/memoryExtraction.ts";
+import { resolveMemoryOwnerId, runMemoryExtractionGate } from "./chatCore/memoryExtraction.ts";
 import { CORS_HEADERS } from "../utils/cors.ts";
 import { checkResourcePressureGuard } from "../utils/resourcePressure.ts";
 import { normalizeHeaders } from "../utils/headers.ts";
@@ -359,6 +359,7 @@ import { assertExclusiveConnectionLeaseFence } from "@/lib/db/exclusiveConnectio
 import { deleteSessionAccountAffinity } from "@/lib/db/sessionAccountAffinity";
 import { getCacheControlSettings } from "@/lib/cacheControlSettings";
 import { guardrailRegistry } from "@/lib/guardrails";
+import type { VideoBridgeLogRedactionEntry } from "@/lib/guardrails/videoBridge";
 import {
   shouldPreserveCacheControl,
   resolveConnectionCacheOverride,
@@ -472,11 +473,21 @@ import {
   isRpmExhausted,
 } from "../services/geminiRateLimitTracker.ts";
 import { isSmallEnoughForSemanticCache } from "../utils/estimateSize.ts";
+import { getProactiveCompressionRatio } from "@/lib/db/compression";
 
 type ChatCoreExecutorResult = ReturnType<typeof normalizeExecutorResult> & {
   _executionCredentials?: Record<string, unknown>;
   _accountSemaphoreRelease?: () => void;
 };
+
+/**
+ * #12150 P1b: shape of handleChatCore's optional `videoBridgeLog` param — see
+ * its destructure default below. `handleChatCore`'s own params object has no
+ * type annotation (pre-existing convention for this god-function), so this
+ * alias is applied via a local cast at each read site instead of widening
+ * the whole destructure to a typed object.
+ */
+type VideoBridgeLogParam = { observed: boolean; redaction: VideoBridgeLogRedactionEntry[] } | null;
 
 /**
  * Core chat handler - shared between SSE and Worker
@@ -528,8 +539,23 @@ export async function handleChatCore({
   skipResourcePressureGuard = false,
   reasoningTransportFallback = "drop",
   managedLease = null,
+  // #12150 P1b: additive, optional video-bridge log/Memory shadow — shape is
+  // VideoBridgeLogParam (defined near the top of this file). Built once in chat.ts from
+  // preCallGuardrails.results (video-bridge guardrail meta) and threaded here
+  // through executeChatWithBreaker. `undefined` for every non-video request,
+  // so this parameter changes nothing on the byte-identical default path.
+  // `observed` gates durable Memory extraction (surface 3); `redaction` is
+  // applied to a CLONE of `body` at the persistAttemptLogs sink (surface 1) —
+  // the model-bound `body` itself is never touched.
+  videoBridgeLog = undefined,
 }) {
   let { provider, model, extendedContext } = modelInfo;
+  // #12150 P1b: true iff the video-bridge guardrail rendered >=1 transcript
+  // cue into a replaced part of this request. Gates both request- and
+  // response-derived Memory extraction
+  // (chatCore/memoryExtraction.ts::runMemoryExtractionGate).
+  const videoBridgeObserved: boolean =
+    (videoBridgeLog as VideoBridgeLogParam | undefined)?.observed === true;
   const resilienceSettings = resolveResilienceSettings(cachedSettings);
   if (!skipResourcePressureGuard) {
     try {
@@ -1062,6 +1088,9 @@ export async function handleChatCore({
       // client explicitly sent x-omniroute-session-id. The raw header remains a
       // fallback for any caller that somehow bypassed conversationId resolution.
       sessionTag: conversationId || explicitSessionIdHeader,
+      // #12150 P1b surface 1: undefined for every non-video request (byte-identical
+      // to before this param existed) — see applyVideoBridgeLogRedaction.
+      videoBridgeLogRedaction: (videoBridgeLog as VideoBridgeLogParam | undefined)?.redaction,
     });
 
   // Primary path: merge client model id + alias target so config on either key applies; resolved
@@ -1580,12 +1609,12 @@ export async function handleChatCore({
             await import("../services/compression/outputStyles/backCompat.ts");
           const selection = resolveOutputStyleSelection(config);
           if (selection.length > 0) {
-            const { applyOutputStyles } =
+            const { applyOutputStyles, resolveOutputStyleLanguage } =
               await import("../services/compression/outputStyles/apply.ts");
-            const outputStyleLanguage =
-              config.languageConfig?.enabled === true
-                ? config.languageConfig.defaultLanguage
-                : "en";
+            const outputStyleLanguage = resolveOutputStyleLanguage(
+              config.languageConfig,
+              body as Parameters<typeof resolveOutputStyleLanguage>[1]
+            );
             outputStyleResult = applyOutputStyles(
               body as Parameters<typeof applyOutputStyles>[0],
               selection,
@@ -1993,7 +2022,7 @@ export async function handleChatCore({
       }
     }
 
-    const COMPRESSION_THRESHOLD = 0.7;
+    const COMPRESSION_THRESHOLD = getProactiveCompressionRatio();
     let reservedTokens = 0;
     if (Array.isArray(body.tools)) {
       reservedTokens = estimateTokens(body.tools);
@@ -5131,17 +5160,22 @@ export async function handleChatCore({
       }
     );
 
-    if (memoryOwnerId && memorySettings?.enabled && memorySettings.maxTokens > 0) {
-      const requestMemoryText = extractMemoryTextFromRequestBody(body as Record<string, unknown>);
-      if (requestMemoryText) {
-        extractFacts(requestMemoryText, memoryOwnerId, pipelineSessionId);
-      }
-
-      const memoryText = extractMemoryTextFromResponse(memoryExtractionResponse);
-      if (memoryText) {
-        extractFacts(memoryText, memoryOwnerId, pipelineSessionId);
-      }
-    }
+    // #12150 P1b surface 3 (fix round 1): a video-bridge-observed request's
+    // request- AND response-derived text both carry the full transcript (the
+    // flattened description on the request side, the model's own reply on
+    // the response side) — neither may populate durable Memory. See
+    // runMemoryExtractionGate for the shared gate + extraction wiring, unit
+    // tested directly in tests/unit/video-bridge-memory-suppression.test.ts.
+    runMemoryExtractionGate({
+      memoryOwnerId,
+      memorySettings,
+      videoBridgeObserved,
+      pipelineSessionId,
+      requestBody: body as Record<string, unknown>,
+      responseBody: memoryExtractionResponse as Record<string, unknown> | null,
+      extractFacts,
+      log,
+    });
 
     const customSkillExecutionEnabled =
       Boolean(memoryOwnerId) && memorySettings?.skillsEnabled === true;
@@ -5755,23 +5789,20 @@ export async function handleChatCore({
     });
     // === /Quota Share POST-hook streaming ===
 
-    if (
-      memoryOwnerId &&
-      memorySettings?.enabled &&
-      memorySettings.maxTokens > 0 &&
-      streamStatus === 200
-    ) {
-      const requestMemoryText = extractMemoryTextFromRequestBody(body as Record<string, unknown>);
-      if (requestMemoryText) {
-        extractFacts(requestMemoryText, memoryOwnerId, pipelineSessionId);
-      }
-
-      const streamedMemoryText = extractMemoryTextFromResponse(
-        (streamResponseBody ?? null) as Record<string, unknown> | null
-      );
-      if (streamedMemoryText) {
-        extractFacts(streamedMemoryText, memoryOwnerId, pipelineSessionId);
-      }
+    if (streamStatus === 200) {
+      // #12150 P1b surface 3 (fix round 1): see the matching non-streaming
+      // gate above — an observed request populates NO durable memory from
+      // either the request-derived text or this streamed response.
+      runMemoryExtractionGate({
+        memoryOwnerId,
+        memorySettings,
+        videoBridgeObserved,
+        pipelineSessionId,
+        requestBody: body as Record<string, unknown>,
+        responseBody: (streamResponseBody ?? null) as Record<string, unknown> | null,
+        extractFacts,
+        log,
+      });
     }
 
     // Semantic cache: store assembled streaming response for future cache hits

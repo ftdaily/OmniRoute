@@ -39,7 +39,7 @@ Biggest **documented** contributors: `mistral` 1.00B, `llm7` 150M, `nara` 150M, 
 
 A 50-agent web-research pass (official docs + last-7-days news, adversarially verified) refreshed the whole catalog. Highlights:
 
-- **Removed / no free tier (2026):** `chutes` (free tier ended 2026-03), `phind` (company shut down 2026-01), `kluster` (sunset 2026-06-09 → MITO), `gitlawb` + `gitlawb-gmi` (MiMo free revoked 2026-05-24, Nemotron promo ended 2026-06 — re-verified 2026-06-18), `aimlapi` (free tier paused — re-verified 2026-06-18), `yi` (Yi-Light retired, pay-as-you-go — re-verified 2026-06-18), `theoldllm` / `featherless-ai` (no current free tier). `iflytek` / `sparkdesk` stay listed but carry a ToS-caution note (Spark Lite is free; the ToS restricts proxy/relay use).
+- **Removed / no free tier (2026):** `chutes` (free tier ended 2026-03), `phind` (company shut down 2026-01), `kluster` (sunset 2026-06-09 → MITO), `gitlawb` + `gitlawb-gmi` (MiMo free revoked 2026-05-24, Nemotron promo ended 2026-06 — re-verified 2026-06-18), `aimlapi` (free tier paused — re-verified 2026-06-18), `yi` (Yi-Light retired, pay-as-you-go — re-verified 2026-06-18), `featherless-ai` (no current free tier). `iflytek` / `sparkdesk` stay listed but carry a ToS-caution note (Spark Lite is free; the ToS restricts proxy/relay use).
 - **Gemini** — `2.0 Flash` / `2.0 Flash-Lite` shut down 2026-06-01 and `2.5 Pro` left the free tier (2026-04); free tier is now **Flash-family only** (2.5/3/3.1/3.5 Flash + Gemma). The catalog now **pools** the Flash family (was inflated by counting each variant separately: 462M → 60M).
 - **Corrected numbers:** `cloudflare-ai` 122M → **30M** (real 10k-Neurons/day), `doubao` reclassified as a one-time signup credit (not recurring), `llm7` 4M → **150M** (documented 5M tokens/day), `together` "-Free" endpoints discontinued → only the **$25** signup credit remains, `longcat` Preview ended + Flash models retired → **LongCat-2.0** only, reclassified as a one-time **10M**-token signup credit (KYC-gated, not recurring).
 - **New free providers discovered:** ⭐ **Kilo Code** (`kilo-gateway` — rotating "Auto Free" set: NVIDIA Nemotron 3 family, StepFun, Poolside, Nex-N2-Pro), ⭐ **OpenCode Zen** (`opencode-zen` — 6 rotating free coding models), ⭐ **Z.AI / Zhipu** (`glm-cn` — GLM-4-Flash / 4.5-Flash / 4.7-Flash permanently free + 20M signup bonus), and `arcee-ai` Trinity Large Preview.
@@ -54,10 +54,10 @@ A 50-agent web-research pass (official docs + last-7-days news, adversarially ve
 OmniRoute answers "is it free?" through two regimes that intentionally read
 different sources:
 
-| Regime | Source of truth | Surfaces |
-|---|---|---|
-| **Counting / displaying** | Resolved catalog — the shipped baseline overlaid by the Radar feed (`getRadarCatalog`) | Free-tier totals, budget card, dashboards |
-| **Deciding** | Shipped catalog only (`FREE_MODEL_BUDGETS` in `open-sse/config/freeModelCatalog.data.ts`) plus the local heuristics (`:free` suffix, zero pricing, `grantsFreeAccess`) | Every consumer of `src/shared/utils/freeModels.ts`: model import, `auto/*` routing, `GET /v1/models`, and the browser previews |
+| Regime                    | Source of truth                                                                                                                                                        | Surfaces                                                                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Counting / displaying** | Resolved catalog — the shipped baseline overlaid by the Radar feed (`getRadarCatalog`)                                                                                 | Free-tier totals, budget card, dashboards                                                                                      |
+| **Deciding**              | Shipped catalog only (`FREE_MODEL_BUDGETS` in `open-sse/config/freeModelCatalog.data.ts`) plus the local heuristics (`:free` suffix, zero pricing, `grantsFreeAccess`) | Every consumer of `src/shared/utils/freeModels.ts`: model import, `auto/*` routing, `GET /v1/models`, and the browser previews |
 
 Counting can improve whenever a feed is available. Deciding stays on the
 release artifact, so the answer is identical in the browser and on the server,
@@ -68,7 +68,8 @@ purpose.
 
 ## Methodology & caveats
 
-- Numbers are **upper-bound estimates** from each provider's documented free-tier limits as of **2026-06-17**, gathered by web research (confidence tagged per row). Free tiers change constantly — re-verify before relying on a figure.
+- Numbers are **upper-bound estimates** from each provider's documented free-tier limits as of **2026-06-17**, gathered by web research. Free tiers change constantly — re-verify before relying on a figure.
+- **What an entry actually vouches for.** No entry carries a per-row confidence rating, and the API serves none — treat every figure above as an estimate of the same, unstated quality. Two facts are different, because they are curated by hand rather than inferred: 7 entries carry an independently documented hard stop, and 13 entries carry a prompt-training disclosure. `hardStopGuaranteed` is set only when the provider's own terms say that exceeding the free allowance refuses the request rather than silently starting to bill you, with the source in a comment next to the entry; it is never defaulted to `true`, and an entry nobody has verified stays unset. So a missing hard-stop flag means "not established", not "known to bill you".
 - `estMonthlyFreeTokens` = recurring monthly tokens only. **One-time signup credits do not recur** and count as 0. Discontinued tiers are also 0.
 - Daily token cap → `monthly = daily × 30`. Only RPD documented → `RPD × ~800 output tokens × 30`. Only RPM/TPM (no daily cap) → **uncapped** (see below).
 - **Permanently free, but no published token cap** (`siliconflow`, `glm-cn`, `tencent`, `baidu`, `kilo-gateway`, `opencode-zen`): these are real recurring free access, rate/concurrency-limited. We classify them `recurring-uncapped` and **never sum them** — multiplying `RPM × 24/7 × 30d` would produce a fantasy ceiling (the inflation we reject). They are listed so you know they exist.
@@ -174,7 +175,6 @@ purpose.
 | `freemodel-dev`  | unknown   | The Terms of Service page (freemodel.dev/terms) returned only a header with no readable content via WebFetch; no clause… |
 | `gitlawb`        | unknown   | No ToS or acceptable-use policy found; proxy/resale restrictions unknown — assume caution for self-hosted proxy use.     |
 | `liquid`         | unknown   | No hosted API exists to proxy; open-source model commercial use is free for orgs under $10M annual revenue. No self-hos… |
-| `theoldllm`      | unknown   | No terms of service document was found on the site; proxying, resale, or self-hosted use policy is entirely undocumente… |
 | `yi`             | unknown   | ToS not publicly accessible without login; no proxy/resale clauses could be reviewed. Self-hosted personal proxy use st… |
 | `comfyui`        | ok        | GPL-3.0 open-source license explicitly permits self-hosted personal proxy use; Comfy Org ToS confirms commercial use of… |
 | `scaleway`       | ok        | Scaleway's General Terms of Services are a standard commercial cloud agreement with no explicit prohibition on self-hos… |
@@ -327,7 +327,6 @@ purpose.
 - **`t3-web`** — The shipped freeNote is broadly accurate (limited model access, Pro unlocks 50+ models for $8/month), but misses two key updates: (1) the free tier now resets daily instead of monthly (changed around…
 - **`tavily-search`** — Catalog ships freeNote "(none)" implying no free tier, but Tavily does in fact offer a documented recurring free tier of 1,000 credits/month with no credit card required. This is a significant discre…
 - **`tencent`** — Largely matches — the shipped freeNote ("Free Hunyuan Lite models") is accurate. Hunyuan-lite has been permanently free since May 2024 and remains so as of 2026. The catalog note undersells the detai…
-- **`theoldllm`** — Our shipped freeNote was "(none)" — this still matches in the sense that no structured API/free tier offering exists; the service remains a UI-only chat wrapper with no catalogable API tier.
 - **`together`** — The shipped note says "$25 signup credits + 3 permanently free models" but reality shows far more permanently free models (~80, not 3). The $25 trial credit figure is contested — official billing doc…
 - **`uncloseai`** — Largely matches — still free forever with no signup. However, the ToS (terms-of-use.html) clarifies IP-based throttling exists for excessive use and prohibits building competing ML services without a…
 - **`veoaifree-web`** — The shipped freeNote states "6 requests/hour" but no such explicit limit is currently documented anywhere on veoaifree.com. The site claims unlimited free generation with no login. The models listed …

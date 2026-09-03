@@ -5,13 +5,17 @@
  * The standalone server is emitted as CommonJS chunks and externalizes the
  * native database packages. Keep those requests as static `require()` calls so
  * webpack preserves the external boundary. Development and tests run as ESM,
- * where `require` is unavailable; the `createRequire(import.meta.url)` fallback
- * handles those callers.
+ * where `require` is unavailable; the fallback anchors resolution to the real
+ * process entrypoint so Turbopack cannot replace it with an in-bundle resolver.
  */
 import * as nodeModule from "node:module";
 
+const esmRequire = nodeModule.createRequire(process.argv[1] || process.cwd());
+
 function esmRuntimeRequire(specifier: string): unknown {
-  return nodeModule.createRequire(import.meta.url)(specifier);
+  // Reflect keeps the optional request dynamic. A direct call is rewritten by
+  // Turbopack and fails at runtime as "Cannot find module as expression is too dynamic".
+  return Reflect.apply(esmRequire, undefined, [specifier]);
 }
 
 export function runtimeRequire(specifier: string): unknown {

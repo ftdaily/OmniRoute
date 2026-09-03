@@ -90,6 +90,20 @@ export const scoringWeightsSchema = z
     cacheAffinity: z.number().min(0).max(1).optional().default(0),
     sessionAvailability: z.number().min(0).max(1).optional().default(0.05),
     resetWindowAffinity: z.number().min(0).max(1).optional().default(0),
+    // The scorer weighs these two as well (`DEFAULT_WEIGHTS`); leaving them out
+    // meant zod dropped them from a saved config, and `normalizeScoringWeights`
+    // then read the gap as a deliberate zero — silently disabling
+    // anti-concentration and the quality signal, and inflating every other
+    // weight to make the distribution sum to 1 again.
+    //
+    // The defaults below therefore DO change the effective weights of a stored
+    // config that omitted these keys: the other thirteen stop being renormalized
+    // upward (quota 0.1549 -> 0.1429, health 0.1740 -> 0.1605, and so on). That is
+    // the correction, not a side effect — but it is a behaviour change, and the
+    // PR says so rather than claiming the routing is untouched.
+    connectionDensity: z.number().min(0).max(1).optional().default(0.0476),
+    quality: z.number().min(0).max(1).optional().default(0.03),
+    reliability: z.number().min(0).max(1).optional().default(0),
   })
   .optional();
 
@@ -405,9 +419,12 @@ export const updateComboSchema = z
     isActive: z.boolean().optional(),
     allowedProviders: z.array(z.string().trim().min(1).max(200)).max(100).optional(),
     allowedModelFamilies: z.array(z.string().trim().min(1).max(100)).max(100).optional(),
-    system_message: z.string().max(50000).optional(),
-    tool_filter_regex: z.string().max(1000).optional(),
-    context_cache_protection: z.boolean().optional(),
+    // Nullable like `description` and `context_length` above: an absent field means
+    // "leave unchanged" because updateCombo merges over the stored record, so clearing
+    // one needs an explicit null for updateCombo's null-means-delete pass (#12158).
+    system_message: z.string().max(50000).optional().nullable(),
+    tool_filter_regex: z.string().max(1000).optional().nullable(),
+    context_cache_protection: z.boolean().optional().nullable(),
     context_length: z.number().int().min(1000).max(2000000).optional().nullable(),
     compressionOverride: comboCompressionOverrideSchema.optional(),
     dimensions: z

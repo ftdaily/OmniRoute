@@ -1,3 +1,8 @@
+---
+title: Providers removed at their operator's request
+description: Durable record of provider removals requested by service operators.
+---
+
 # Providers removed at their operator's request
 
 Some services were integrated into OmniRoute and later removed because the people who run

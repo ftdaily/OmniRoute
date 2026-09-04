@@ -1,6 +1,8 @@
 ---
-title: Providers removed at their operator's request
+title: "Removed Providers"
 description: Durable record of provider removals requested by service operators.
+version: 3.8.51
+lastUpdated: 2026-09-03
 ---
 
 # Providers removed at their operator's request

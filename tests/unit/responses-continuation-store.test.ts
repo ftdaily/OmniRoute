@@ -131,6 +131,85 @@ test("resolvePreviousResponseState reads output from a wrapped (streaming) clien
   });
 });
 
+test("resolvePreviousResponseState chains off effectiveInput, not the pre-reconstruction clientRawRequest.body", () => {
+  // Live incident (2026-09-03): clientRawRequest.body is deliberately captured
+  // BEFORE chat.ts's own previous_response_id reconstruction runs
+  // (captureDeferredClientRawBody's whole point -- it must reflect the raw
+  // client bytes for audit/guardrail purposes, not what OmniRoute rewrote the
+  // request into). For a turn that was ITSELF a continuation, body.input is
+  // just the client's own trimmed delta -- a handful of tool-call items with
+  // no leading system/user message. Chaining a LATER continuation off that
+  // instead of the request's real effective input compounds into a
+  // progressively truncated reconstruction, which the upstream provider then
+  // rejects outright ("Please ensure that function call turn comes
+  // immediately after a user turn..."). effectiveInput is captured AFTER
+  // reconstruction and must be what this function chains off.
+  insertCallLog({
+    id: "log-continued-turn",
+    responseId: "resp_continued",
+    apiKeyId: "key-1",
+    detailState: "ready",
+    artifactRelPath: "2026-01-01/log-continued-turn.json",
+  });
+  writeArtifact("2026-01-01/log-continued-turn.json", {
+    clientRawRequest: {
+      // What the client actually sent this turn: just the new delta, relying
+      // on OmniRoute to have reconstructed full history server-side.
+      body: {
+        input: [{ type: "function_call_output", call_id: "call_1", output: "42" }],
+      },
+      // What this request ACTUALLY dispatched with, after chat.ts's own
+      // reconstruction expanded the prior turn's stored input+output back in.
+      effectiveInput: [
+        { type: "message", role: "user", content: "hi" },
+        { type: "message", role: "assistant", content: "calling a tool" },
+        { type: "function_call", call_id: "call_1", name: "get_answer", arguments: "{}" },
+        { type: "function_call_output", call_id: "call_1", output: "42" },
+      ],
+    },
+    providerRequest: { body: { input: [] } },
+    clientResponse: {
+      id: "resp_continued",
+      output: [{ type: "message", role: "assistant", content: "the answer is 42" }],
+    },
+  });
+
+  const result = store.resolvePreviousResponseState("resp_continued", "key-1");
+  assert.deepEqual(result, {
+    input: [
+      { type: "message", role: "user", content: "hi" },
+      { type: "message", role: "assistant", content: "calling a tool" },
+      { type: "function_call", call_id: "call_1", name: "get_answer", arguments: "{}" },
+      { type: "function_call_output", call_id: "call_1", output: "42" },
+    ],
+    output: [{ type: "message", role: "assistant", content: "the answer is 42" }],
+  });
+});
+
+test("resolvePreviousResponseState falls back to clientRawRequest.body.input when effectiveInput is absent (pre-fix artifacts)", () => {
+  insertCallLog({
+    id: "log-legacy-no-effective-input",
+    responseId: "resp_legacy",
+    apiKeyId: "key-1",
+    detailState: "ready",
+    artifactRelPath: "2026-01-01/log-legacy-no-effective-input.json",
+  });
+  writeArtifact("2026-01-01/log-legacy-no-effective-input.json", {
+    clientRawRequest: { body: { input: [{ type: "message", role: "user", content: "hi" }] } },
+    providerRequest: { body: { input: [{ type: "message", role: "user", content: "hi" }] } },
+    clientResponse: {
+      id: "resp_legacy",
+      output: [{ type: "message", role: "assistant", content: "hello" }],
+    },
+  });
+
+  const result = store.resolvePreviousResponseState("resp_legacy", "key-1");
+  assert.deepEqual(result, {
+    input: [{ type: "message", role: "user", content: "hi" }],
+    output: [{ type: "message", role: "assistant", content: "hello" }],
+  });
+});
+
 test("resolvePreviousResponseState returns null for an unknown response id", () => {
   const result = store.resolvePreviousResponseState("resp_does_not_exist", "key-1");
   assert.equal(result, null);
@@ -259,6 +338,64 @@ test("resolvePreviousResponseState fails closed when the stored input array was 
   });
 
   assert.equal(store.resolvePreviousResponseState("resp_gen-truncated-history", "key-1"), null);
+});
+
+test("resolvePreviousResponseState fails closed when the streaming collector truncated the response", () => {
+  // Live incident (2026-09-02): a huge/reasoning-heavy response blew past
+  // createStructuredSSECollector's own event-count cap mid-stream. The
+  // stored clientResponse then carries `_truncated: true` and
+  // `summary.status: "in_progress"` (never reached "completed") with a
+  // genuinely empty `summary.output` -- not a bounded array with an
+  // `_omniroute_truncated_array` sentinel (that only covers an array capped
+  // mid-array, not a collector that stopped before populating output at
+  // all). The empty array previously passed every check here and got
+  // merged into the next turn's request as this response's entire
+  // contribution -- reconstructing to zero real messages, which the
+  // upstream provider then rejected outright ("Input required: specify
+  // prompt or messages"), breaking the conversation. Measured live: ~22%
+  // of a sample of recent successful Ping responses carried this flag.
+  insertCallLog({
+    id: "log-8",
+    responseId: "resp_gen-collector-truncated",
+    apiKeyId: "key-1",
+    detailState: "ready",
+    artifactRelPath: "2026-01-01/log-8.json",
+  });
+  writeArtifact("2026-01-01/log-8.json", {
+    clientRawRequest: { body: { input: [{ type: "message", role: "user", content: "hi" }] } },
+    providerRequest: { body: { input: [{ type: "message", role: "user", content: "hi" }] } },
+    clientResponse: {
+      _streamed: true,
+      _truncated: true,
+      _droppedEvents: 24,
+      summary: { id: "resp_gen-collector-truncated", status: "in_progress", output: [] },
+    },
+  });
+
+  assert.equal(store.resolvePreviousResponseState("resp_gen-collector-truncated", "key-1"), null);
+});
+
+test("resolvePreviousResponseState fails closed on an empty output array even without the _truncated flag", () => {
+  // Belt-and-suspenders for the same failure class when the collector
+  // truncated without ever setting `_truncated` (or for a non-streaming
+  // response that somehow logged zero output items): a response the
+  // client actually received as real/successful always has at least one
+  // output item, so an empty array here is never a legitimate prior turn
+  // to reconstruct from.
+  insertCallLog({
+    id: "log-9",
+    responseId: "resp_gen-empty-output",
+    apiKeyId: "key-1",
+    detailState: "ready",
+    artifactRelPath: "2026-01-01/log-9.json",
+  });
+  writeArtifact("2026-01-01/log-9.json", {
+    clientRawRequest: { body: { input: [{ type: "message", role: "user", content: "hi" }] } },
+    providerRequest: { body: { input: [{ type: "message", role: "user", content: "hi" }] } },
+    clientResponse: { id: "resp_gen-empty-output", output: [] },
+  });
+
+  assert.equal(store.resolvePreviousResponseState("resp_gen-empty-output", "key-1"), null);
 });
 
 test("resolvePreviousResponseState returns null when detail logging was never captured for this row", () => {

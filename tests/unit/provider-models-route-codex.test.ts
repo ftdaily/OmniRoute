@@ -116,6 +116,16 @@ test("provider models route merges live Codex models with the local catalog then
             supported_reasoning_levels: [{ effort: "low" }, { effort: "high" }],
           },
           {
+            slug: "gpt-6-astra",
+            display_name: "GPT-6-Astra GitHub",
+            visibility: "list",
+            supported_in_api: true,
+            context_window: 272000,
+            max_context_window: 872000,
+            input_modalities: ["text", "image"],
+            supported_reasoning_levels: [{ effort: "low" }, { effort: "ultra" }],
+          },
+          {
             slug: "gpt-5.4",
             display_name: "Retired GPT 5.4 GitHub",
             visibility: "list",
@@ -159,11 +169,11 @@ test("provider models route merges live Codex models with the local catalog then
   assert.equal(body.discoveredCandidateCount, undefined);
   assert.deepEqual(seenRequests, [
     {
-      url: "https://chatgpt.com/backend-api/codex/models?client_version=0.149.0",
+      url: "https://chatgpt.com/backend-api/codex/models?client_version=0.153.2",
       authorization: "Bearer codex-access-token",
       workspaceId: "account-123",
       originator: "codex_cli_rs",
-      userAgent: "codex-cli/0.149.0 (Windows 10.0.26200; x64)",
+      userAgent: "codex-cli/0.153.2 (Windows 10.0.26200; x64)",
     },
     {
       url: "https://raw.githubusercontent.com/openai/codex/refs/heads/main/codex-rs/models-manager/models.json",
@@ -191,6 +201,7 @@ test("provider models route merges live Codex models with the local catalog then
   assert.deepEqual(liveModel?.supportedEndpoints, ["responses"]);
   assert.equal(liveModel?.supportsThinking, true);
   assert.equal(liveModel?.supportsVision, true);
+  assert.ok(modelIds.has("gpt-6-astra"));
   assert.ok(modelIds.has("gpt-5.5-low"));
   assert.equal(
     [...modelIds].some((id) => String(id).startsWith("gpt-5.4")),

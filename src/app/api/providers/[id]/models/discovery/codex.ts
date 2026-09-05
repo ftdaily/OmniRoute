@@ -442,11 +442,12 @@ export function enrichCodexModelsFromGithubCatalog(
   models: CodexDiscoveryModel[],
   githubCatalogModels: CodexDiscoveryModel[]
 ): CodexDiscoveryModel[] {
-  const byId = new Map(githubCatalogModels.map((model) => [model.id, model]));
-  return models.map((model) => {
-    const githubModel = byId.get(model.id);
-    return githubModel ? { ...githubModel, ...model } : model;
-  });
+  const merged = new Map(githubCatalogModels.map((model) => [model.id, model]));
+  for (const model of models) {
+    const githubModel = merged.get(model.id);
+    merged.set(model.id, githubModel ? { ...githubModel, ...model } : model);
+  }
+  return Array.from(merged.values());
 }
 
 export async function fetchCodexDiscoveryModels({

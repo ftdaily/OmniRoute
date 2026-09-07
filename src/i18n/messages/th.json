@@ -3261,6 +3261,8 @@
     "cacheOptimizedDesc": "Routes each reusable prompt prefix consistently to the same provider account",
     "resetAware": "รีเซ็ต-Aware RR",
     "resetAwareDesc": "ปรับโควต้าที่เหลือให้สมดุลกับการรีเซ็ต 5 ชม. และการรีเซ็ตรายสัปดาห์ จากนั้นจึงทำคะแนนแบบ Round-Robins ที่คล้ายกัน",
+    "quotaWeighted": "Quota-Weighted",
+    "quotaWeightedDesc": "Skip exhausted accounts, then pick among the rest in proportion to reset-aware leftover.",
     "strictRandom": "Strict Random",
     "strictRandomDesc": "Shuffle deck — uses each model once before reshuffling",
     "fusion": "การผสาน",
@@ -7058,6 +7060,8 @@
     "costOptDesc": "ต้องการบัญชีที่ถูกที่สุด",
     "resetAware": "รีเซ็ต-Aware RR",
     "resetAwareDesc": "ต้องการบัญชีที่มีโควต้าคงเหลือที่ดีและมีการรีเซ็ตที่ใกล้กว่า",
+    "quotaWeighted": "Quota-Weighted",
+    "quotaWeightedDesc": "Skip exhausted accounts, then pick among the rest in proportion to reset-aware leftover.",
     "strictRandom": "Strict Random",
     "strictRandomDesc": "Shuffle deck — uses each account once before reshuffling",
     "stickyLimit": "ขีด จำกัด เหนียว",
@@ -12982,7 +12986,7 @@
         "description": "หลังจากการซิงโครไนซ์ผู้ให้บริการ-โมเดล ให้สร้างโปรไฟล์ ~/.codex/*.config.toml ใหม่จากแคตตาล็อกที่ใช้งานอยู่ การดำเนินการนี้จะไม่เปลี่ยนการกำหนดค่า Codex ที่ใช้งานอยู่หรือค่าเริ่มต้น และปิดใช้งานเป็นค่าเริ่มต้น"
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "หลังจากการซิงโครไนซ์ผู้ให้บริการ-โมเดล ให้สร้างโปรไฟล์ ~/.claude/profiles/<name>/settings.json ใหม่จากแคตตาล็อกที่ใช้งานอยู่ การดำเนินการนี้จะไม่เปลี่ยนการกำหนดค่า Claude ที่ใช้งานอยู่หรือค่าเริ่มต้น และปิดใช้งานเป็นค่าเริ่มต้น"
+        "description": "หลังจากการซิงโครไนซ์ผู้ให้บริการ-โมเดล ให้สร้างโปรไฟล์ ~/.claude/profiles/'<name>'/settings.json ใหม่จากแคตตาล็อกที่ใช้งานอยู่ การดำเนินการนี้จะไม่เปลี่ยนการกำหนดค่า Claude ที่ใช้งานอยู่หรือค่าเริ่มต้น และปิดใช้งานเป็นค่าเริ่มต้น"
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "ปิดใช้งานปลายทาง health-check ของอินสแตนซ์ในเครื่อง"

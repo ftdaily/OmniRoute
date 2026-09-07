@@ -3261,6 +3261,8 @@
     "cacheOptimizedDesc": "Routes each reusable prompt prefix consistently to the same provider account",
     "resetAware": "রিসেট-সচেতন RR",
     "resetAwareDesc": "5h এবং সাপ্তাহিক রিসেটের বিপরীতে অবশিষ্ট কোটা ব্যালেন্স করে, তারপর রাউন্ড-রবিনের অনুরূপ স্কোর",
+    "quotaWeighted": "Quota-Weighted",
+    "quotaWeightedDesc": "Skip exhausted accounts, then pick among the rest in proportion to reset-aware leftover.",
     "strictRandom": "Strict Random",
     "strictRandomDesc": "Shuffle deck — uses each model once before reshuffling",
     "fusion": "ফিউশন",
@@ -7058,6 +7060,8 @@
     "costOptDesc": "Prefer cheapest available account",
     "resetAware": "রিসেট-সচেতন RR",
     "resetAwareDesc": "স্বাস্থ্যকর অবশিষ্ট কোটা এবং কাছাকাছি রিসেট সহ অ্যাকাউন্ট পছন্দ করুন",
+    "quotaWeighted": "Quota-Weighted",
+    "quotaWeightedDesc": "Skip exhausted accounts, then pick among the rest in proportion to reset-aware leftover.",
     "strictRandom": "Strict Random",
     "strictRandomDesc": "Shuffle deck — uses each account once before reshuffling",
     "stickyLimit": "Sticky Limit",
@@ -12982,7 +12986,7 @@
         "description": "প্রোভাইডার-মডেল সিঙ্ক্রোনাইজেশনের পরে, লাইভ ক্যাটালগ থেকে ~/.codex/*.config.toml প্রোফাইলগুলি পুনরায় তৈরি করুন। এটি সক্রিয় বা ডিফল্ট Codex কনফিগারেশন কখনই পরিবর্তন করে না এবং ডিফল্টভাবে বন্ধ থাকে।"
       },
       "OMNIROUTE_AUTO_SYNC_CLAUDE_PROFILES": {
-        "description": "প্রোভাইডার-মডেল সিঙ্ক্রোনাইজেশনের পরে, লাইভ ক্যাটালগ থেকে ~/.claude/profiles/<name>/settings.json প্রোফাইলগুলি পুনরায় তৈরি করুন। এটি সক্রিয় বা ডিফল্ট Claude কনফিগারেশন কখনই পরিবর্তন করে না এবং ডিফল্টভাবে বন্ধ থাকে।"
+        "description": "প্রোভাইডার-মডেল সিঙ্ক্রোনাইজেশনের পরে, লাইভ ক্যাটালগ থেকে ~/.claude/profiles/'<name>'/settings.json প্রোফাইলগুলি পুনরায় তৈরি করুন। এটি সক্রিয় বা ডিফল্ট Claude কনফিগারেশন কখনই পরিবর্তন করে না এবং ডিফল্টভাবে বন্ধ থাকে।"
       },
       "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK": {
         "description": "স্থানীয় ইনস্ট্যান্স হেলথ-চেক এন্ডপয়েন্ট নিষ্ক্রিয় করুন।"

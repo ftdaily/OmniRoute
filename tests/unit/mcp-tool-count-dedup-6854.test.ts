@@ -9,6 +9,9 @@ import assert from "node:assert/strict";
 // while only 109 distinct tool names actually exist. countUniqueMcpTools
 // (open-sse/mcp-server/toolCount.ts) fixes this by unioning tool names from every
 // registered collection into a Set, so each user-visible tool is counted once.
+// The seven compression-control tools added to the compressionTools record
+// (list/get/update engines, list rules, list language packs, preview, compare)
+// raise the published inventory from 110 to 117.
 
 const { countUniqueMcpTools } = await import("../../open-sse/mcp-server/toolCount.ts");
 const { MCP_TOOLS } = await import("../../open-sse/mcp-server/schemas/tools.ts");
@@ -60,7 +63,7 @@ test("#6854: countUniqueMcpTools de-duplicates tools registered in multiple coll
   };
 
   const total = countUniqueMcpTools(collections);
-  assert.equal(total, 110, "the published MCP inventory must match the registered tool set");
+  assert.equal(total, 117, "the published MCP inventory must match the registered tool set");
 
   // Independently compute the "true" unique count by unioning every collection's
   // tool names into a Set — this must equal countUniqueMcpTools's own result AND

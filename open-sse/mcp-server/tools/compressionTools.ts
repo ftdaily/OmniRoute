@@ -268,6 +268,7 @@ import {
 } from "../../services/compression/engines/rtk/index.ts";
 import { resolveCallerScopeContext } from "../scopeEnforcement.ts";
 import { resolveMcpCallerApiKeyId } from "../mcpCallerIdentity.ts";
+import { compressionControlTools } from "./compressionControls.ts";
 
 async function resolveCcrPrincipal(
   extra: McpToolExtraLike | undefined,
@@ -651,4 +652,5 @@ export const compressionTools = {
     inputSchema: rtkLearnInput,
     handler: (args: z.infer<typeof rtkLearnInput>) => handleRtkLearn(args),
   },
+  ...compressionControlTools,
 };

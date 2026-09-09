@@ -817,9 +817,12 @@ function buildStepOptions(
   };
   // Selecting an engine in an explicit stacked pipeline is itself the enablement
   // signal. Preserve an explicit per-step opt-out, but do not let the standalone
-  // default (codexResponsesConfig.enabled=false) turn a selected stacked step into
-  // a no-op.
-  if (step.engine === "codex-responses" && stepConfig.enabled === undefined) {
+  // default (codexResponsesConfig.enabled=false, toolSchema.enabled=false) turn a
+  // selected stacked step into a no-op.
+  if (
+    (step.engine === "codex-responses" || step.engine === "tool-schema") &&
+    stepConfig.enabled === undefined
+  ) {
     stepConfig.enabled = true;
   }
   return {

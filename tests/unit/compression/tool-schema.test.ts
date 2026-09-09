@@ -52,6 +52,69 @@ describe("tool-schema engine", () => {
     assert.ok(String(tool.parameters.properties.query.description ?? "").length <= 120);
   });
 
+  it("stays OFF by default: bare apply() with no config is a no-op", () => {
+    const body = bodyWithTools([BLOATED_TOOL]);
+    const result = toolSchemaEngine.apply(body);
+    assert.equal(result.compressed, false);
+    assert.deepEqual(result.body, body);
+  });
+
+  it("stays OFF via stacked stepConfig without explicit enabled", () => {
+    const body = bodyWithTools([BLOATED_TOOL]);
+    const result = toolSchemaEngine.apply(body, { stepConfig: {} });
+    assert.equal(result.compressed, false);
+    assert.deepEqual(result.body, body);
+  });
+
+  it("trims Responses-flat tool shape {type,name,description,parameters}", () => {
+    const flat = {
+      type: "function",
+      name: "search_files",
+      description: "d".repeat(300),
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "q".repeat(300),
+            examples: ["x"],
+            "x-vendor": 1,
+          },
+        },
+        required: ["query"],
+      },
+    };
+    const body = bodyWithTools([flat]);
+    const before = JSON.stringify(body).length;
+    const result = toolSchemaEngine.apply(body, { stepConfig: { enabled: true } });
+    assert.equal(result.compressed, true);
+    assert.ok(JSON.stringify(result.body).length < before);
+    const out = (result.body.tools as Array<any>)[0];
+    assert.equal(out.name, "search_files");
+    assert.equal(out.type, "function");
+    assert.deepEqual(out.parameters.required, ["query"]);
+    assert.equal(out.parameters.properties.query.type, "string");
+    assert.ok(String(out.description).length <= 120);
+    assert.ok(String(out.parameters.properties.query.description).length <= 120);
+    assert.ok(!("examples" in out.parameters.properties.query));
+    assert.ok(!("x-vendor" in out.parameters.properties.query));
+  });
+
+  it("trims legacy body.functions array", () => {
+    const fn = {
+      name: "search_files",
+      description: "d".repeat(300),
+      parameters: { type: "object", properties: { q: { type: "string" } } },
+    };
+    const body = { messages: [{ role: "user", content: "hi" }], functions: [fn] };
+    const result = toolSchemaEngine.apply(body, { stepConfig: { enabled: true } });
+    assert.equal(result.compressed, true);
+    const out = (result.body.functions as Array<any>)[0];
+    assert.equal(out.name, "search_files");
+    assert.deepEqual(out.parameters.properties.q, { type: "string" });
+    assert.ok(String(out.description).length <= 120);
+  });
+
   it("fail-open: invalid tool entries pass through untouched", () => {
     const body = bodyWithTools([{ broken: true }]);
     const result = toolSchemaEngine.apply(body, { stepConfig: { enabled: true } });
@@ -125,7 +188,8 @@ describe("tool-schema stacked wiring", () => {
     const result = applyStackedCompression(body, [{ engine: "tool-schema" }], {
       config: {
         ...DEFAULT_COMPRESSION_CONFIG,
-        toolSchema: { enabled: true, maxDescriptionChars: 120, dropExamples: true, dropVendorExtensions: true },
+        // No explicit stepConfig/toolSchema.enabled: pipeline selection itself is
+        // the enablement signal (strategySelector default, mirrors codex-responses).
       },
     } as never);
     assert.equal(result.compressed, true);
@@ -133,6 +197,35 @@ describe("tool-schema stacked wiring", () => {
       JSON.stringify(result.body).length < JSON.stringify(body).length,
       "stacked path shrinks tools"
     );
+  });
+
+  it("stacked run honors explicit per-step opt-out {enabled:false}", async () => {
+    const { applyStackedCompression } = await import(
+      "../../../open-sse/services/compression/strategySelector.ts"
+    );
+    const { DEFAULT_COMPRESSION_CONFIG } = await import(
+      "../../../open-sse/services/compression/types.ts"
+    );
+    const body = {
+      messages: [{ role: "user", content: "go" }],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "t",
+            description: "d".repeat(300),
+            parameters: { type: "object", properties: { a: { type: "string" } } },
+          },
+        },
+      ],
+    };
+    const result = applyStackedCompression(
+      body,
+      [{ engine: "tool-schema", config: { enabled: false } }],
+      { config: { ...DEFAULT_COMPRESSION_CONFIG } } as never
+    );
+    assert.equal(result.compressed, false);
+    assert.deepEqual(result.body, body);
   });
 
   it("preserves $ref / const / nested required through a full trim", () => {

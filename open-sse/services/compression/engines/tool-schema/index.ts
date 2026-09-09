@@ -2,7 +2,7 @@
  * tool-schema compression engine.
  *
  * Clean-room, annotation-only trimming of request tool definitions
- * (`body.tools`): drops vendor extensions (`x-*`), `examples`, `title`,
+ * (`body.tools`, plus legacy `body.functions`): drops vendor extensions (`x-*`), `examples`, `title`,
  * `$comment`, and truncates over-long `description` strings. The selection
  * surface — tool/name, `type`, `properties`, `required`, `enum`, `default`,
  * `const`, `$ref`/`$defs`/`definitions`, and all validation keywords — is
@@ -84,6 +84,11 @@ function splitToolEntry(entry: unknown): {
   if (isRecord(fn) && typeof fn["name"] === "string" && fn["parameters"] !== undefined) {
     return { name: fn["name"], rest: entry, schemaKeys: ["function", "parameters"] };
   }
+  // Responses-flat shape: { type: "function", name, description?, parameters }.
+  // Also matches legacy body.functions entries ({ name, description?, parameters }).
+  if (typeof entry["name"] === "string" && entry["parameters"] !== undefined) {
+    return { name: entry["name"], rest: entry, schemaKeys: ["parameters"] };
+  }
   // Anthropic shape: { name, description?, input_schema }
   if (typeof entry["name"] === "string" && entry["input_schema"] !== undefined) {
     return { name: entry["name"], rest: entry, schemaKeys: ["input_schema"] };
@@ -112,13 +117,29 @@ function trimToolEntry(entry: unknown, opts: TrimOptions): { next: unknown; chan
     }
     trimmedFn["parameters"] = trimSchemaNode(fn["parameters"], opts);
     next = { ...split.rest, function: trimmedFn };
-  } else {
+  } else if (split.schemaKeys[0] === "input_schema") {
     next = { ...split.rest, input_schema: trimSchemaNode(split.rest["input_schema"], opts) };
     if (typeof (next as Record<string, unknown>)["description"] === "string") {
       (next as Record<string, unknown>)["description"] = truncateDesc(
         (next as Record<string, unknown>)["description"] as string,
         opts.maxDescriptionChars
       );
+    }
+  } else {
+    // Responses-flat / legacy shape: trim top-level description + full parameters schema.
+    next = { ...split.rest, parameters: trimSchemaNode(split.rest["parameters"], opts) };
+    if (typeof (next as Record<string, unknown>)["description"] === "string") {
+      (next as Record<string, unknown>)["description"] = truncateDesc(
+        (next as Record<string, unknown>)["description"] as string,
+        opts.maxDescriptionChars
+      );
+    }
+    delete (next as Record<string, unknown>)["title"];
+    if (opts.dropExamples) delete (next as Record<string, unknown>)["examples"];
+    if (opts.dropVendorExtensions) {
+      for (const key of Object.keys(next as Record<string, unknown>)) {
+        if (key.startsWith("x-")) delete (next as Record<string, unknown>)[key];
+      }
     }
   }
   if (JSON.stringify(next).length >= before) return { next: entry, changed: false };
@@ -129,13 +150,19 @@ function mergeConfig(options?: CompressionEngineApplyOptions): TrimOptions & { e
   const step = options?.stepConfig ?? {};
   const cfg = (options?.config as Record<string, unknown> | undefined)?.["toolSchema"];
   const source = isRecord(cfg) ? { ...cfg, ...step } : step;
+  const hasExplicitEnabled =
+    (isRecord(cfg) && "enabled" in (cfg as Record<string, unknown>)) || "enabled" in step;
   const maxDescriptionChars =
     typeof source["maxDescriptionChars"] === "number" &&
     Number.isFinite(source["maxDescriptionChars"])
       ? Math.min(2000, Math.max(10, Math.floor(source["maxDescriptionChars"] as number)))
       : DEFAULT_MAX_DESCRIPTION_CHARS;
   return {
-    enabled: source["enabled"] !== false,
+    // DEFAULT_TOOL_SCHEMA_CONFIG.enabled=false: bare apply()/stepConfig without an
+    // explicit `enabled` stays OFF. Selection in an explicit pipeline turns the
+    // engine on via the strategySelector default (mirrors codex-responses), but a
+    // direct apply() must never compress on an implicit default.
+    enabled: hasExplicitEnabled ? source["enabled"] !== false : false,
     maxDescriptionChars,
     dropExamples: source["dropExamples"] !== false,
     dropVendorExtensions: source["dropVendorExtensions"] !== false,
@@ -143,7 +170,7 @@ function mergeConfig(options?: CompressionEngineApplyOptions): TrimOptions & { e
 }
 
 const TOOL_SCHEMA_SCHEMA: EngineConfigField[] = [
-  { key: "enabled", type: "boolean", label: "Enabled", defaultValue: true },
+  { key: "enabled", type: "boolean", label: "Enabled", defaultValue: false },
   {
     key: "maxDescriptionChars",
     type: "number",
@@ -216,19 +243,33 @@ export const toolSchemaEngine: CompressionEngine = {
     const config = mergeConfig(options);
     if (!config.enabled) return { body, compressed: false, stats: null };
     const tools = body["tools"];
-    if (!Array.isArray(tools) || tools.length === 0) {
+    const functions = body["functions"];
+    const hasTools = Array.isArray(tools) && tools.length > 0;
+    const hasFunctions = Array.isArray(functions) && functions.length > 0;
+    if (!hasTools && !hasFunctions) {
       return { body, compressed: false, stats: null };
     }
     try {
       const start = performance.now();
       let changedCount = 0;
-      const nextTools = tools.map((entry) => {
-        const { next, changed } = trimToolEntry(entry, config);
-        if (changed) changedCount++;
-        return next;
-      });
+      let newBody: Record<string, unknown> = { ...body };
+      if (hasTools) {
+        const nextTools = (tools as unknown[]).map((entry) => {
+          const { next, changed } = trimToolEntry(entry, config);
+          if (changed) changedCount++;
+          return next;
+        });
+        newBody = { ...newBody, tools: nextTools };
+      }
+      if (hasFunctions) {
+        const nextFunctions = (functions as unknown[]).map((entry) => {
+          const { next, changed } = trimToolEntry(entry, config);
+          if (changed) changedCount++;
+          return next;
+        });
+        newBody = { ...newBody, functions: nextFunctions };
+      }
       if (changedCount === 0) return { body, compressed: false, stats: null };
-      const newBody: Record<string, unknown> = { ...body, tools: nextTools };
       const durationMs = Math.round(performance.now() - start);
       const stats = createCompressionStats(
         body,

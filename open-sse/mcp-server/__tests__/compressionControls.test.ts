@@ -421,4 +421,22 @@ describe("compression engine update persistence (BLOCKER)", () => {
     expect(r.success).toBe(true);
     await handleUpdateCompressionEngine({ engineId: "read-lifecycle", enabled: false });
   });
+
+  it("rejects llmlingua modelPath over MCP (traversal + absolute, HIGH-1)", async () => {
+    // modelPath is a local-filesystem path handed to the ONNX worker
+    // (configureTransformersEnv → env.localModelPath). The MCP writer must
+    // never persist it; dashboard/REST behavior is untouched.
+    await expect(
+      handleUpdateCompressionEngine({ engineId: "llmlingua", config: { modelPath: "../../etc/x" } })
+    ).rejects.toThrow(/not writable via MCP/i);
+    await expect(
+      handleUpdateCompressionEngine({ engineId: "llmlingua", config: { modelPath: "/etc/passwd" } })
+    ).rejects.toThrow(/not writable via MCP/i);
+    // Other llmlingua fields still persist.
+    const r = await handleUpdateCompressionEngine({ engineId: "llmlingua", config: { minTokens: 4321 } });
+    expect(r.success).toBe(true);
+    const { getCompressionSettings } = await import("../../../src/lib/db/compression.ts");
+    const s = await getCompressionSettings();
+    expect((s as { llmlingua?: { minTokens?: number } }).llmlingua?.minTokens).toBe(4321);
+  });
 });

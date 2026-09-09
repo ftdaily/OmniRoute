@@ -24,6 +24,8 @@ export function resolveStepDetailConfig(
       return config?.ccr ?? {};
     case "tool-schema":
       return config?.toolSchema ?? {};
+    case "relevance":
+      return config?.relevance ?? {};
     default:
       return {};
   }

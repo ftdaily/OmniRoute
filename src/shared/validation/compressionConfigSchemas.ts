@@ -191,6 +191,22 @@ export const toolSchemaConfigSchema = z
   })
   .strict();
 
+// Relevance detail settings (persisted under settings.relevance). Bounds mirror
+// RELEVANCE_SCHEMA (engines/relevance/configSchema.ts) so validation stays in
+// lockstep with the engine's own bounds. scorer falls back to "jaccard" at the
+// engine layer, so legacy bodies without it keep the old behavior.
+export const relevanceConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    overlapThreshold: z.number().min(0).max(1).optional(),
+    budgetPercent: z.number().min(0.1).max(1).optional(),
+    boilerplateWeight: z.number().min(0).max(1).optional(),
+    scorer: z.enum(["jaccard", "bm25"]).optional(),
+    bm25K1: z.number().min(0.1).max(3).optional(),
+    bm25B: z.number().min(0).max(1).optional(),
+  })
+  .strict();
+
 const noConfigSchema = z.object({}).strict();
 
 // Structural engines (session-dedup / ccr / headroom / relevance / llmlingua) do not
@@ -405,6 +421,7 @@ export const compressionSettingsUpdateSchema = z
     sessionDedup: sessionDedupConfigSchema.optional(),
     ccr: ccrConfigSchema.optional(),
     toolSchema: toolSchemaConfigSchema.optional(),
+    relevance: relevanceConfigSchema.optional(),
     contextBudget: contextBudgetConfigSchema.optional(),
     contextEditing: contextEditingConfigSchema.optional(),
     omniglyph: omniglyphConfigSchema.optional(),

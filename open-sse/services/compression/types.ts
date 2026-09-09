@@ -151,12 +151,33 @@ export interface CodexResponsesConfig {
   preserveToolNames: string[];
 }
 
+export type RelevanceScorer = "jaccard" | "bm25";
+
 export interface RelevanceConfig {
   enabled: boolean;
   overlapThreshold: number;
   budgetPercent: number;
   boilerplateWeight: number;
+  /** Sentence scorer. "jaccard" (default) preserves the legacy set-overlap
+   *  behavior byte-for-byte; "bm25" is a dep-free BM25 ranker (k1/b below)
+   *  whose raw scores are normalized by the top score so overlapThreshold
+   *  keeps working as a relative cutoff. */
+  scorer?: RelevanceScorer;
+  /** BM25 term-frequency saturation. Default 1.2 (standard). */
+  bm25K1?: number;
+  /** BM25 length normalization. Default 0.75 (standard). */
+  bm25B?: number;
 }
+
+export const DEFAULT_RELEVANCE_CONFIG: RelevanceConfig = {
+  enabled: false,
+  overlapThreshold: 0.1,
+  budgetPercent: 0.5,
+  boilerplateWeight: 0.5,
+  scorer: "jaccard",
+  bm25K1: 1.2,
+  bm25B: 0.75,
+};
 
 export interface CompressionLanguageConfig {
   enabled: boolean;
@@ -275,6 +296,8 @@ export interface CompressionConfig {
   ccr?: CcrConfig;
   /** Tool-schema detail settings (annotation-only tool-definition trimming). */
   toolSchema?: ToolSchemaConfig;
+  /** Relevance extractive-scoring detail settings (scorer/bm25K1/bm25B). */
+  relevance?: RelevanceConfig;
   /** Provider-delegated context editing (Claude/Anthropic only). */
   contextEditing?: ContextEditingConfig;
   /** Opt-in cache-aligned live-zone compression (default disabled). */

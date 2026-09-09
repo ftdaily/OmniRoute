@@ -24,9 +24,9 @@ interface EngineEntry {
 // persist the extra per-engine fields edited on this page. session-dedup and ccr
 // joined headroom in #8388 (they previously rendered a real, editable detail form
 // with no Save affordance — edits vanished on reload). lite gained a dedicated
-// sub-object with the compressToolResults toggle. Other structural engines
-// (llmlingua, relevance) still have no dedicated sub-object — their page
-// keeps the detail form + preview but has nothing extra to persist yet.
+// sub-object with the compressToolResults toggle. relevance persists
+// scorer/bm25K1/bm25B. Only llmlingua still has no dedicated sub-object — its
+// page keeps the detail form + preview but has nothing extra to persist yet.
 const SETTINGS_SUBOBJECT: Record<string, string> = {
   lite: "lite",
   aggressive: "aggressive",
@@ -35,6 +35,7 @@ const SETTINGS_SUBOBJECT: Record<string, string> = {
   "session-dedup": "sessionDedup",
   ccr: "ccr",
   "tool-schema": "toolSchema",
+  relevance: "relevance",
 };
 
 interface CompressionSettings {
@@ -232,9 +233,8 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
     setPreviewError(null);
     setPreview(null);
     try {
-      // Pass the form's current detail (e.g. headroom.minRows) so preview honors
-      // unsaved edits and the persisted sub-object after save (#8056).
-      // tool-schema forwards its own detail keys the same way (unsaved form edits).
+      // Pass the form's current detail so preview honors unsaved edits and the
+      // persisted sub-object after save (#8056 headroom.minRows; tool-schema + relevance detail).
       const detailConfig =
         engineId === "headroom"
           ? {
@@ -255,6 +255,29 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
                     : {}),
                   ...(typeof configState.dropVendorExtensions === "boolean"
                     ? { dropVendorExtensions: configState.dropVendorExtensions }
+                    : {}),
+                },
+              }
+          : engineId === "relevance"
+            ? {
+                relevance: {
+                  ...(typeof configState.scorer === "string"
+                    ? { scorer: configState.scorer }
+                    : {}),
+                  ...(typeof configState.bm25K1 === "number"
+                    ? { bm25K1: configState.bm25K1 }
+                    : {}),
+                  ...(typeof configState.bm25B === "number"
+                    ? { bm25B: configState.bm25B }
+                    : {}),
+                  ...(typeof configState.overlapThreshold === "number"
+                    ? { overlapThreshold: configState.overlapThreshold }
+                    : {}),
+                  ...(typeof configState.budgetPercent === "number"
+                    ? { budgetPercent: configState.budgetPercent }
+                    : {}),
+                  ...(typeof configState.boilerplateWeight === "number"
+                    ? { boilerplateWeight: configState.boilerplateWeight }
                     : {}),
                 },
               }

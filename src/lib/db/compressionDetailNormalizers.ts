@@ -9,10 +9,12 @@
 // in compression.ts), extended to the two engines #8056 left uncovered.
 import {
   DEFAULT_CCR_CONFIG,
+  DEFAULT_RELEVANCE_CONFIG,
   DEFAULT_SESSION_DEDUP_CONFIG,
   DEFAULT_TOOL_SCHEMA_CONFIG,
   type CcrConfig,
   type CompressionConfig,
+  type RelevanceConfig,
   type SessionDedupConfig,
   type ToolSchemaConfig,
 } from "@omniroute/open-sse/services/compression/types.ts";
@@ -24,6 +26,11 @@ function toRecord(value: unknown): Record<string, unknown> {
 function boundedInt(value: unknown, fallback: number, min: number, max: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, Math.floor(value)));
+}
+
+function boundedNumber(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, value));
 }
 
 /** Matches SESSION_DEDUP_SCHEMA bounds (engines/session-dedup/index.ts). */
@@ -84,22 +91,55 @@ export function normalizeToolSchemaConfig(value: unknown): ToolSchemaConfig {
 /** Default sub-objects spread into getCompressionSettings' seed config. */
 export function buildDetailConfigDefaults(): Pick<
   CompressionConfig,
-  "sessionDedup" | "ccr" | "toolSchema"
+  "sessionDedup" | "ccr" | "toolSchema" | "relevance"
 > {
   return {
     sessionDedup: normalizeSessionDedupConfig(undefined),
     ccr: normalizeCcrConfig(undefined),
     toolSchema: normalizeToolSchemaConfig(undefined),
+    relevance: normalizeRelevanceConfig(undefined),
   };
 }
 
-/** Applies a stored sessionDedup/ccr/toolSchema row onto config during row scan. */
+/** Applies a stored sessionDedup/ccr/toolSchema/relevance row onto config during row scan. */
 export function applyDetailConfigUpdate(
   config: CompressionConfig,
-  key: "sessionDedup" | "ccr" | "toolSchema",
+  key: "sessionDedup" | "ccr" | "toolSchema" | "relevance",
   parsed: unknown
 ): void {
   if (key === "sessionDedup") config.sessionDedup = normalizeSessionDedupConfig(parsed);
   else if (key === "toolSchema") config.toolSchema = normalizeToolSchemaConfig(parsed);
-  else config.ccr = normalizeCcrConfig(parsed);
+  else if (key === "ccr") config.ccr = normalizeCcrConfig(parsed);
+  else config.relevance = normalizeRelevanceConfig(parsed);
+}
+
+/** Matches RELEVANCE_SCHEMA bounds (engines/relevance/configSchema.ts).
+ *  scorer falls back to "jaccard" so legacy/unknown values keep the old behavior. */
+export function normalizeRelevanceConfig(value: unknown): RelevanceConfig {
+  const record = toRecord(value);
+  return {
+    ...DEFAULT_RELEVANCE_CONFIG,
+    enabled: typeof record.enabled === "boolean" ? record.enabled : DEFAULT_RELEVANCE_CONFIG.enabled,
+    overlapThreshold: boundedNumber(
+      record.overlapThreshold,
+      DEFAULT_RELEVANCE_CONFIG.overlapThreshold!,
+      0,
+      1
+    ),
+    budgetPercent: boundedNumber(
+      record.budgetPercent,
+      DEFAULT_RELEVANCE_CONFIG.budgetPercent!,
+      0.1,
+      1
+    ),
+    boilerplateWeight: boundedNumber(
+      record.boilerplateWeight,
+      DEFAULT_RELEVANCE_CONFIG.boilerplateWeight!,
+      0,
+      1
+    ),
+    scorer: record.scorer === "bm25" ? "bm25" : "jaccard",
+    bm25K1: boundedNumber(record.bm25K1, DEFAULT_RELEVANCE_CONFIG.bm25K1!, 0.1, 3),
+    bm25B: boundedNumber(record.bm25B, DEFAULT_RELEVANCE_CONFIG.bm25B!, 0, 1),
+  };
 }

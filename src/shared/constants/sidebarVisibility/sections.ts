@@ -153,6 +153,15 @@ export const COMPRESSION_CONTEXT_GROUP: SidebarItemGroup = {
       icon: "build",
     },
     {
+      id: "context-relevance",
+      href: "/dashboard/context/relevance",
+      i18nKey: "contextRelevance",
+      labelFallback: "Relevance",
+      subtitleKey: "contextRelevanceSubtitle",
+      subtitleFallback: "Extractive scoring",
+      icon: "target",
+    },
+    {
       id: "context-llmlingua",
       href: "/dashboard/context/llmlingua",
       i18nKey: "contextLlmlingua",

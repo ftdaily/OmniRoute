@@ -15,6 +15,7 @@ const CONTEXT_TAB_ROUTES: Record<string, string> = {
   ccr: "/dashboard/context/ccr",
   "tool-schema": "/dashboard/context/tool-schema",
   toolSchema: "/dashboard/context/tool-schema",
+  relevance: "/dashboard/context/relevance",
   llmlingua: "/dashboard/context/llmlingua",
   lite: "/dashboard/context/lite",
   aggressive: "/dashboard/context/aggressive",

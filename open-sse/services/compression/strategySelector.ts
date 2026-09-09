@@ -820,17 +820,11 @@ function buildStepOptions(
     ...(step.config ?? {}),
     ...(step.intensity ? { intensity: step.intensity } : {}),
   };
-  // Selecting an engine in an explicit stacked pipeline is itself the enablement
-  // signal. Preserve an explicit per-step opt-out, but do not let a persisted
-  // global/detail `enabled: false` (standalone default) turn a selected stacked
-  // step into a no-op: explicit step `false` wins, everything else runs.
-  if (step.engine === "codex-responses" || step.engine === "tool-schema") {
-    if (step.config?.enabled === false) {
-      stepConfig.enabled = false;
-    } else {
-      stepConfig.enabled = true;
-    }
-  }
+  // Selecting any engine in an explicit stacked pipeline is itself the
+  // enablement signal. Preserve only an explicit per-step opt-out: a persisted
+  // global/detail `enabled: false` is a standalone default, not permission to
+  // silently turn a selected pipeline step into a no-op.
+  stepConfig.enabled = step.config?.enabled !== false;
   return {
     ...options,
     compressionComboId: options?.compressionComboId ?? options?.config?.compressionComboId,

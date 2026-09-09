@@ -6,9 +6,9 @@ lastUpdated: 2026-08-08
 
 # OmniRoute MCP Server Documentation
 
-> Model Context Protocol server with 110 tools across routing, cache, compression, memory, skills, proxy, pool, Radar, and context source operations.
+> Model Context Protocol server with 117 tools across routing, cache, compression, memory, skills, proxy, pool, Radar, and context source operations.
 >
-> Source of truth: `open-sse/mcp-server/server.ts` computes **110 unique tools** with `countUniqueMcpTools()`: 45 canonical definitions (including the six CCR lifecycle tools, the agent-skills trio, `omniroute_radar_catalog`, and `omniroute_x_search`), plus memory (3), skills (4), GitHub skills (3), pool (6), gamification (8), plugins (8), Notion (6), Obsidian (22), local corpus (3), and two RTK-only compression tools.
+> Source of truth: `open-sse/mcp-server/server.ts` computes **117 unique tools** with `countUniqueMcpTools()`: 45 canonical definitions (including the six CCR lifecycle tools, the agent-skills trio, `omniroute_radar_catalog`, and `omniroute_x_search`), plus memory (3), skills (4), GitHub skills (3), pool (6), gamification (8), plugins (8), Notion (6), Obsidian (22), local corpus (3), two RTK-only compression tools, and seven compression-control tools (list/get/update engines, list rules, list language packs, preview, compare).
 
 ## Installation
 
@@ -106,7 +106,7 @@ Cursor, Cline, and compatible MCP client setup.
 | `omniroute_cache_stats` | `read:cache`  | Semantic cache, prompt-cache, and idempotency stats |
 | `omniroute_cache_flush` | `write:cache` | Flush cache globally or by signature/model          |
 
-## Compression Tools (13)
+## Compression Tools (20)
 
 | Tool                                | Scopes              | Description                                                                                                              |
 | :---------------------------------- | :------------------ | :----------------------------------------------------------------------------------------------------------------------- |
@@ -123,6 +123,13 @@ Cursor, Cline, and compatible MCP client setup.
 | `omniroute_ccr_stats`               | `read:compression`  | Report caller-scoped memory usage, lifecycle counters, and store limits                                                  |
 | `omniroute_rtk_discover`            | `read:compression`  | Discover recurring noise in opt-in RTK output samples                                                                    |
 | `omniroute_rtk_learn`               | `read:compression`  | Generate a reviewable RTK filter draft from opt-in samples                                                               |
+| `omniroute_list_compression_engines` | `read:compression` | List all registered compression engines with config schemas and runtime enabled/config state                              |
+| `omniroute_get_compression_engine`  | `read:compression`  | Get a single compression engine's metadata, config schema, and runtime enabled/config state                               |
+| `omniroute_update_compression_engine` | `write:compression` | Update a compression engine at runtime (registry enabled flag and/or validated config)                                   |
+| `omniroute_list_compression_rules`  | `read:compression`  | List caveman rule metadata, optionally filtered by intensity                                                             |
+| `omniroute_list_compression_language_packs` | `read:compression` | List supported compression languages and installed caveman rule packs                                           |
+| `omniroute_compression_preview`     | `read:compression`  | Dry-run compression on text (Studio play view): token counts, savings, techniques, compressed text                       |
+| `omniroute_compression_compare`     | `read:compression`  | A/B-compare compression engines on text (Studio compare view), best-first summary table                                   |
 
 CCR entries are in-memory only and disappear on restart. Each block is limited to 2 MiB, each
 principal to 16 MiB, and the global store to 64 MiB. Entries default to a 24-hour TTL (maximum
@@ -227,7 +234,7 @@ See [AGENT-SKILLS.md](./AGENT-SKILLS.md) for the full catalog and how external a
 
 ## Related Frameworks (v3.8.0)
 
-The MCP tool inventory above (110 unique tools, computed by `countUniqueMcpTools()`) is intentionally
+The MCP tool inventory above (117 unique tools, computed by `countUniqueMcpTools()`) is intentionally
 scoped to runtime routing/cache/compression/memory/skills/proxy/context-source operations. Two adjacent
 frameworks ship alongside the MCP server in v3.8.0 and are documented separately:
 
@@ -380,7 +387,7 @@ MCP tool, prompt, and resource registries can compress descriptions at registrat
 
 Description compression shrinks each tool's metadata; **tool-cardinality reduction** goes one step further by reducing _how many_ tools are announced at all. Advertising fewer tools in the `tools/list` manifest cuts the per-request token cost the client's model pays for the tool catalog ("layer 5" compression). The implementation is a pure, stateless filter in `open-sse/mcp-server/toolCardinality.ts` (`reduceToolManifest`), wired into the registration loop in `createMcpServer()` (`open-sse/mcp-server/server.ts`).
 
-**Opt-in, off by default.** The filter only runs when at least one of two environment variables is set; with neither set, all 110 tools are announced unchanged.
+**Opt-in, off by default.** The filter only runs when at least one of two environment variables is set; with neither set, all 117 tools are announced unchanged.
 
 | Variable         | Mode                                                                                    |
 | :--------------- | :-------------------------------------------------------------------------------------- |
@@ -418,7 +425,7 @@ The heartbeat snapshot contains:
   "transport": "stdio",
   "scopesEnforced": false,
   "allowedScopes": [],
-  "toolCount": 110
+  "toolCount": 117
 }
 ```
 

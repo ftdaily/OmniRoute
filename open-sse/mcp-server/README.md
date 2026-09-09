@@ -1,6 +1,6 @@
 # OmniRoute MCP Server
 
-> **Model Context Protocol server** that exposes OmniRoute's gateway intelligence as **110 tools** for AI agents.
+> **Model Context Protocol server** that exposes OmniRoute's gateway intelligence as **117 tools** for AI agents.
 >
 > **Source of truth for the full tool catalog and REST surface:** [`docs/frameworks/MCP-SERVER.md`](../../docs/frameworks/MCP-SERVER.md). This README focuses on architecture, configuration, and integration examples; the catalog below is a summary subset.
 
@@ -163,6 +163,13 @@ omniroute --mcp
 | 31  | `omniroute_ccr_list`                | `read:compression`  | List paginated caller-owned CCR metadata                                     |
 | 32  | `omniroute_ccr_delete`              | `write:compression` | Delete a caller-owned CCR block                                              |
 | 33  | `omniroute_ccr_stats`               | `read:compression`  | Report caller usage, bounded-store limits, and lifecycle counters            |
+| 34  | `omniroute_list_compression_engines` | `read:compression` | List registered compression engines with config schemas and runtime state    |
+| 35  | `omniroute_get_compression_engine`  | `read:compression`  | Get one engine's metadata, config schema, and runtime state                  |
+| 36  | `omniroute_update_compression_engine` | `write:compression` | Update an engine at runtime (enabled flag and/or validated config)         |
+| 37  | `omniroute_list_compression_rules`  | `read:compression`  | List caveman rule metadata, optionally filtered by intensity                 |
+| 38  | `omniroute_list_compression_language_packs` | `read:compression` | List compression languages and installed caveman rule packs        |
+| 39  | `omniroute_compression_preview`     | `read:compression`  | Dry-run compression on text: token counts, savings, compressed text          |
+| 40  | `omniroute_compression_compare`     | `read:compression`  | A/B-compare engines on text, best-first summary table                        |
 
 CCR storage is bounded and in-memory only: 2 MiB per block, 16 MiB per principal, 64 MiB global,
 with a 24-hour default TTL. Full MCP retrieval is capped at 256 KiB; larger blocks use ranged or

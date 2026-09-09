@@ -45,8 +45,13 @@ describe("shouldSkipEngineForContentType", () => {
 
   it("skips non-applicable engines at high confidence", () => {
     assert.equal(shouldSkipEngineForContentType("caveman", "json", 0.9, ON), true);
-    assert.equal(shouldSkipEngineForContentType("rtk", "json", 0.9, ON), true);
+    // rtk applies to json (structuredTable renderer) — must NOT skip.
+    assert.equal(shouldSkipEngineForContentType("rtk", "json", 0.9, ON), false);
+    assert.equal(shouldSkipEngineForContentType("rtk", "text", 0.9, ON), true);
     assert.equal(shouldSkipEngineForContentType("ionizer", "json", 0.9, ON), false);
+    // headroom applies to fenced-JSON code bodies; ionizer does not (no unwrap).
+    assert.equal(shouldSkipEngineForContentType("headroom", "code", 0.9, ON), false);
+    assert.equal(shouldSkipEngineForContentType("ionizer", "code", 0.9, ON), true);
   });
 
   it("honors a custom confidenceThreshold", () => {

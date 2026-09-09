@@ -51,19 +51,63 @@ describe("detectContentType", () => {
 });
 
 describe("contentTypeApplies", () => {
-  it("rtk applies to log/diff/search but not json/code", () => {
+  it("rtk applies to log/diff/search/json/code (structuredTable + code-fence paths)", () => {
     assert.equal(contentTypeApplies("log", "rtk"), true);
     assert.equal(contentTypeApplies("diff", "rtk"), true);
     assert.equal(contentTypeApplies("search", "rtk"), true);
-    assert.equal(contentTypeApplies("json", "rtk"), false);
+    assert.equal(contentTypeApplies("json", "rtk"), true);
+    assert.equal(contentTypeApplies("code", "rtk"), true);
+    assert.equal(contentTypeApplies("text", "rtk"), false);
   });
 
-  it("ionizer/headroom apply to json only; caveman/llmlingua to text only", () => {
+  it("ionizer stays json-only (whole-string JSON.parse; fenced code is a no-op inside)", () => {
     assert.equal(contentTypeApplies("json", "ionizer"), true);
     assert.equal(contentTypeApplies("text", "ionizer"), false);
+    assert.equal(contentTypeApplies("code", "ionizer"), false);
+  });
+
+  it("headroom applies to json + code (scans ```json fenced blocks)", () => {
     assert.equal(contentTypeApplies("json", "headroom"), true);
+    assert.equal(contentTypeApplies("code", "headroom"), true);
+    assert.equal(contentTypeApplies("text", "headroom"), false);
+  });
+
+  it("caveman/llmlingua apply to text only", () => {
     assert.equal(contentTypeApplies("text", "caveman"), true);
     assert.equal(contentTypeApplies("json", "caveman"), false);
+    assert.equal(contentTypeApplies("text", "llmlingua"), true);
+    assert.equal(contentTypeApplies("json", "llmlingua"), false);
+  });
+
+  it("codex-responses applies to code/diff/log/search (SEARCH_LINE_RE + BUILD_RE)", () => {
+    assert.equal(contentTypeApplies("code", "codex-responses"), true);
+    assert.equal(contentTypeApplies("diff", "codex-responses"), true);
+    assert.equal(contentTypeApplies("log", "codex-responses"), true);
+    assert.equal(contentTypeApplies("search", "codex-responses"), true);
+    assert.equal(contentTypeApplies("json", "codex-responses"), false);
+  });
+
+  it("type-agnostic engines apply everywhere (explicit ALL, not implicit fail-open)", () => {
+    for (const engine of [
+      "relevance",
+      "llm",
+      "read-lifecycle",
+      "omniglyph",
+      "session-dedup",
+      "ccr",
+      "lite",
+      "ultra",
+      "aggressive",
+    ]) {
+      for (const type of ["code", "json", "log", "diff", "search", "text"] as const) {
+        assert.equal(contentTypeApplies(type, engine), true, `${engine}/${type}`);
+      }
+    }
+  });
+
+  it("tool-schema stays unmapped (reads body.tools, classifier-blind) → fail-open", () => {
+    assert.equal(contentTypeApplies("json", "tool-schema"), true);
+    assert.equal(contentTypeApplies("text", "tool-schema"), true);
   });
 
   it("unknown engines fail open", () => {

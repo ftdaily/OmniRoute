@@ -122,19 +122,45 @@ const ALL_TYPES: ContentType[] = ["code", "json", "log", "diff", "search", "text
  * Engine applicability map: which content types an engine is good at.
  * General-purpose engines apply to everything; unknown engine ids fail open
  * (return true) so newly registered engines are never gated by accident.
+ *
+ * Deliberate omissions (fail-open, do NOT "fix" by adding):
+ * - tool-schema: reads body.tools/body.functions, never message text — the
+ *   classifier only sees messages, so any skip would be decided on invisible
+ *   input. Fail-open is the safe behavior.
+ * - ionizer excludes "code": runIonizerPass requires whole-string JSON.parse
+ *   (sample.ts), so fenced ```json blocks are a no-op inside the engine.
+ *   Adding "code" would run the engine for zero effect; the miss is accepted
+ *   until the engine learns fence-unwrap.
  */
 const ENGINE_CONTENT_TYPES: Record<string, ContentType[]> = {
-  rtk: ["log", "diff", "search"],
+  // RTK renders structured JSON arrays (structuredTable: aws/kubectl) and
+  // fenced code blocks (applyToCodeBlocks), not just log/diff/search.
+  rtk: ["log", "diff", "search", "json", "code"],
   ionizer: ["json"],
-  headroom: ["json"],
+  // Headroom scans string contents AND ```json fenced blocks (which classify
+  // as "code"), so both types must apply. Lossless — zero fidelity risk.
+  headroom: ["json", "code"],
   caveman: ["text"],
   llmlingua: ["text"],
-  "codex-responses": ["code", "diff", "log"],
+  // codex-responses matchers cover grep-shape lines (SEARCH_LINE_RE) and
+  // build output (BUILD_RE) alongside code/diff/log.
+  "codex-responses": ["code", "diff", "log", "search"],
   "session-dedup": ALL_TYPES,
   ccr: ALL_TYPES,
   lite: ALL_TYPES,
   ultra: ALL_TYPES,
   aggressive: ALL_TYPES,
+  // Type-agnostic by design (sentence scoring vs last user query; own
+  // force-preserve guard). Listed explicitly so the intent survives any
+  // future fail-closed change — not relying on implicit unknown-id fail-open.
+  relevance: ALL_TYPES,
+  // Opt-in LLM prose tier with code-block protection; content type irrelevant.
+  llm: ALL_TYPES,
+  // Collapses superseded Read tool-results by call-id linkage; orthogonal to
+  // message text type.
+  "read-lifecycle": ALL_TYPES,
+  // Text→image transport, vision-gated; content type irrelevant.
+  omniglyph: ALL_TYPES,
 };
 
 export function contentTypeApplies(contentType: ContentType, engine: string): boolean {

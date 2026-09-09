@@ -155,17 +155,17 @@ export async function handleUpdateCompressionEngine(
       `Engine "${args.engineId}" has no persistable config store — detail config is not persisted for this engine. Only "enabled" can be updated.`
     );
   }
-  // HIGH-1: llmlingua modelPath is a local-filesystem path handed to the ONNX
+  // HIGH-1: llmlingua/ultra modelPath is a local-filesystem path handed to the ONNX
   // worker (configureTransformersEnv → env.localModelPath). Never accept it over
   // MCP — dashboard/REST keep their existing behavior; the MCP writer rejects it
   // explicitly so a traversal/absolute path can never persist via this tool.
   if (
-    args.engineId === "llmlingua" &&
+    (args.engineId === "llmlingua" || args.engineId === "ultra") &&
     args.config !== undefined &&
     (args.config as Record<string, unknown>).modelPath !== undefined
   ) {
     throw new Error(
-      'Engine "llmlingua" modelPath is not writable via MCP (local filesystem path). Set it via the dashboard or REST settings API.'
+      `Engine "${args.engineId}" modelPath is not writable via MCP (local filesystem path). Set it via the authenticated dashboard/settings API.`
     );
   }
   if (subKey && args.config !== undefined) {

@@ -219,9 +219,7 @@ describe("compression studio handlers", () => {
     // asserted here, not savings.)
     const big = "lorem ipsum dolor sit amet ".repeat(60);
     const result = await handleCompressionPreview({ text: big, engineId: "ccr" });
-    const { estimateCompressionTokens } = await import(
-      "../../services/compression/stats.ts"
-    );
+    const { estimateCompressionTokens } = await import("../../services/compression/stats.ts");
     expect(estimateCompressionTokens(result.compressedText)).toBe(result.compressedTokens);
     expect(result.compressedText).toContain("user:");
   });
@@ -331,16 +329,21 @@ describe("compression engine update persistence (BLOCKER)", () => {
 
   it("persists EVERY catalog engine detail or rejects it explicitly (no silent drops)", async () => {
     const { getCompressionSettings } = await import("../../../src/lib/db/compression.ts");
-    const { ENGINE_IDS } = await import(
-      "../../services/compression/engineCatalog.ts"
-    );
+    const { ENGINE_IDS } = await import("../../services/compression/engineCatalog.ts");
     // One representative detail field per engine with a canonical sub-object.
     // Engines whose config surface is toggle-only are covered by the restart test.
-    const detailCases: Array<{ engineId: string; config: Record<string, unknown>; check: (s: never) => unknown; expected: unknown }> = [
+    const detailCases: Array<{
+      engineId: string;
+      config: Record<string, unknown>;
+      check: (s: never) => unknown;
+      expected: unknown;
+    }> = [
       {
         engineId: "relevance",
         config: { overlapThreshold: 0.42 },
-        check: (s) => (s as { relevanceConfig?: { overlapThreshold?: number } }).relevanceConfig?.overlapThreshold,
+        check: (s) =>
+          (s as { relevanceConfig?: { overlapThreshold?: number } }).relevanceConfig
+            ?.overlapThreshold,
         expected: 0.42,
       },
       {
@@ -352,25 +355,29 @@ describe("compression engine update persistence (BLOCKER)", () => {
       {
         engineId: "rtk",
         config: { maxLinesPerResult: 4321 },
-        check: (s) => (s as { rtkConfig?: { maxLinesPerResult?: number } }).rtkConfig?.maxLinesPerResult,
+        check: (s) =>
+          (s as { rtkConfig?: { maxLinesPerResult?: number } }).rtkConfig?.maxLinesPerResult,
         expected: 4321,
       },
       {
         engineId: "caveman",
         config: { minMessageLength: 4321 },
-        check: (s) => (s as { cavemanConfig?: { minMessageLength?: number } }).cavemanConfig?.minMessageLength,
+        check: (s) =>
+          (s as { cavemanConfig?: { minMessageLength?: number } }).cavemanConfig?.minMessageLength,
         expected: 4321,
       },
       {
         engineId: "aggressive",
         config: { maxTokensPerMessage: 4321 },
-        check: (s) => (s as { aggressive?: { maxTokensPerMessage?: number } }).aggressive?.maxTokensPerMessage,
+        check: (s) =>
+          (s as { aggressive?: { maxTokensPerMessage?: number } }).aggressive?.maxTokensPerMessage,
         expected: 4321,
       },
       {
         engineId: "ultra",
         config: { maxTokensPerMessage: 4321 },
-        check: (s) => (s as { ultra?: { maxTokensPerMessage?: number } }).ultra?.maxTokensPerMessage,
+        check: (s) =>
+          (s as { ultra?: { maxTokensPerMessage?: number } }).ultra?.maxTokensPerMessage,
         expected: 4321,
       },
       {
@@ -389,7 +396,10 @@ describe("compression engine update persistence (BLOCKER)", () => {
     const before = await getCompressionSettings();
     for (const c of detailCases) {
       if (!ENGINE_IDS.includes(c.engineId)) continue;
-      const result = await handleUpdateCompressionEngine({ engineId: c.engineId, config: c.config });
+      const result = await handleUpdateCompressionEngine({
+        engineId: c.engineId,
+        config: c.config,
+      });
       expect(result.success).toBe(true);
       const reread = await getCompressionSettings();
       expect(
@@ -399,14 +409,59 @@ describe("compression engine update persistence (BLOCKER)", () => {
     }
     // Restore originals.
     const b = before as unknown as Record<string, Record<string, unknown> | undefined>;
-    await handleUpdateCompressionEngine({ engineId: "relevance", config: { overlapThreshold: (b["relevanceConfig"] as Record<string, unknown> | undefined)?.["overlapThreshold"] ?? 0.1 } });
-    await handleUpdateCompressionEngine({ engineId: "llmlingua", config: { minTokens: (b["llmlingua"] as Record<string, unknown> | undefined)?.["minTokens"] ?? 2000 } });
-    await handleUpdateCompressionEngine({ engineId: "rtk", config: { maxLinesPerResult: (b["rtkConfig"] as Record<string, unknown> | undefined)?.["maxLinesPerResult"] ?? 40 } });
-    await handleUpdateCompressionEngine({ engineId: "caveman", config: { minMessageLength: (b["cavemanConfig"] as Record<string, unknown> | undefined)?.["minMessageLength"] ?? 50 } });
-    await handleUpdateCompressionEngine({ engineId: "aggressive", config: { maxTokensPerMessage: (b["aggressive"] as Record<string, unknown> | undefined)?.["maxTokensPerMessage"] ?? 4000 } });
-    await handleUpdateCompressionEngine({ engineId: "ultra", config: { maxTokensPerMessage: (b["ultra"] as Record<string, unknown> | undefined)?.["maxTokensPerMessage"] ?? 4000 } });
-    await handleUpdateCompressionEngine({ engineId: "omniglyph", config: { profile: (b["omniglyph"] as Record<string, unknown> | undefined)?.["profile"] ?? "aggressive" } });
-    await handleUpdateCompressionEngine({ engineId: "headroom", config: { minRows: (b["headroom"] as Record<string, unknown> | undefined)?.["minRows"] ?? 8 } });
+    await handleUpdateCompressionEngine({
+      engineId: "relevance",
+      config: {
+        overlapThreshold:
+          (b["relevanceConfig"] as Record<string, unknown> | undefined)?.["overlapThreshold"] ??
+          0.1,
+      },
+    });
+    await handleUpdateCompressionEngine({
+      engineId: "llmlingua",
+      config: {
+        minTokens: (b["llmlingua"] as Record<string, unknown> | undefined)?.["minTokens"] ?? 2000,
+      },
+    });
+    await handleUpdateCompressionEngine({
+      engineId: "rtk",
+      config: {
+        maxLinesPerResult:
+          (b["rtkConfig"] as Record<string, unknown> | undefined)?.["maxLinesPerResult"] ?? 40,
+      },
+    });
+    await handleUpdateCompressionEngine({
+      engineId: "caveman",
+      config: {
+        minMessageLength:
+          (b["cavemanConfig"] as Record<string, unknown> | undefined)?.["minMessageLength"] ?? 50,
+      },
+    });
+    await handleUpdateCompressionEngine({
+      engineId: "aggressive",
+      config: {
+        maxTokensPerMessage:
+          (b["aggressive"] as Record<string, unknown> | undefined)?.["maxTokensPerMessage"] ?? 4000,
+      },
+    });
+    await handleUpdateCompressionEngine({
+      engineId: "ultra",
+      config: {
+        maxTokensPerMessage:
+          (b["ultra"] as Record<string, unknown> | undefined)?.["maxTokensPerMessage"] ?? 4000,
+      },
+    });
+    await handleUpdateCompressionEngine({
+      engineId: "omniglyph",
+      config: {
+        profile:
+          (b["omniglyph"] as Record<string, unknown> | undefined)?.["profile"] ?? "aggressive",
+      },
+    });
+    await handleUpdateCompressionEngine({
+      engineId: "headroom",
+      config: { minRows: (b["headroom"] as Record<string, unknown> | undefined)?.["minRows"] ?? 8 },
+    });
   });
 
   it("rejects detail config for read-lifecycle (no persistable sub-object)", async () => {
@@ -422,18 +477,22 @@ describe("compression engine update persistence (BLOCKER)", () => {
     await handleUpdateCompressionEngine({ engineId: "read-lifecycle", enabled: false });
   });
 
-  it("rejects llmlingua modelPath over MCP (traversal + absolute, HIGH-1)", async () => {
-    // modelPath is a local-filesystem path handed to the ONNX worker
-    // (configureTransformersEnv → env.localModelPath). The MCP writer must
-    // never persist it; dashboard/REST behavior is untouched.
-    await expect(
-      handleUpdateCompressionEngine({ engineId: "llmlingua", config: { modelPath: "../../etc/x" } })
-    ).rejects.toThrow(/not writable via MCP/i);
-    await expect(
-      handleUpdateCompressionEngine({ engineId: "llmlingua", config: { modelPath: "/etc/passwd" } })
-    ).rejects.toThrow(/not writable via MCP/i);
-    // Other llmlingua fields still persist.
-    const r = await handleUpdateCompressionEngine({ engineId: "llmlingua", config: { minTokens: 4321 } });
+  it("rejects local modelPath over MCP for llmlingua and ultra", async () => {
+    // modelPath is handed to the ONNX worker as env.localModelPath. MCP must
+    // never persist a caller-selected filesystem root; dashboard/REST behavior is unchanged.
+    for (const engineId of ["llmlingua", "ultra"]) {
+      await expect(
+        handleUpdateCompressionEngine({ engineId, config: { modelPath: "../../etc/x" } })
+      ).rejects.toThrow(/not writable via MCP/i);
+      await expect(
+        handleUpdateCompressionEngine({ engineId, config: { modelPath: "/etc/passwd" } })
+      ).rejects.toThrow(/not writable via MCP/i);
+    }
+    // Other fields still persist.
+    const r = await handleUpdateCompressionEngine({
+      engineId: "llmlingua",
+      config: { minTokens: 4321 },
+    });
     expect(r.success).toBe(true);
     const { getCompressionSettings } = await import("../../../src/lib/db/compression.ts");
     const s = await getCompressionSettings();

@@ -187,6 +187,17 @@ function buildToolSchemaTools(): Array<Record<string, unknown>> {
           required: ["query"],
         },
       },
+function buildRelevanceMessages(): Array<{ role: string; content: string }> {
+  return [
+    {
+      role: "user",
+      content:
+        "How do I configure the PostgreSQL database connection host and port. " +
+        "The database connection requires a host parameter and a port number. " +
+        "The port defaults to 5432 for PostgreSQL. " +
+        "The sky is blue on a clear day and grass is green in spring. " +
+        "Water is wet and fire is hot and unrelated trivia fills space. " +
+        "Connection requires host and port settings for PostgreSQL.",
     },
   ];
 }
@@ -200,6 +211,19 @@ test("POST /api/compression/preview with engineId=tool-schema + detail trims too
       tools: buildToolSchemaTools(),
       config: {
         toolSchema: { maxDescriptionChars: 50, dropExamples: true, dropVendorExtensions: true },
+test("POST /api/compression/preview with engineId=relevance + bm25 detail trims output", async () => {
+  const request = await makeManagementSessionRequest("http://localhost/api/compression/preview", {
+    method: "POST",
+    body: {
+      engineId: "relevance",
+      messages: buildRelevanceMessages(),
+      config: {
+        relevance: {
+          scorer: "bm25",
+          overlapThreshold: 0.05,
+          budgetPercent: 0.5,
+          boilerplateWeight: 0.5,
+        },
       },
     },
   });
@@ -241,6 +265,32 @@ test("POST /api/compression/preview with pipeline incl. tool-schema + detail tri
       tools: buildToolSchemaTools(),
       config: {
         toolSchema: { maxDescriptionChars: 50, dropExamples: true, dropVendorExtensions: true },
+    compressed: string;
+    original: string;
+    tokensSaved: number;
+    techniquesUsed: string[];
+  };
+  assert.ok(body.compressed.length < body.original.length, "relevance detail should trim output");
+  assert.ok(body.tokensSaved > 0, `tokensSaved should be > 0, got: ${body.tokensSaved}`);
+  assert.ok(
+    body.techniquesUsed.includes("relevance-extract"),
+    `techniquesUsed should include relevance-extract, got: ${body.techniquesUsed}`
+  );
+});
+
+test("POST /api/compression/preview with pipeline incl. relevance + bm25 detail trims output", async () => {
+  const request = await makeManagementSessionRequest("http://localhost/api/compression/preview", {
+    method: "POST",
+    body: {
+      pipeline: ["relevance"],
+      messages: buildRelevanceMessages(),
+      config: {
+        relevance: {
+          scorer: "bm25",
+          overlapThreshold: 0.05,
+          budgetPercent: 0.5,
+          boilerplateWeight: 0.5,
+        },
       },
     },
   });
@@ -253,4 +303,9 @@ test("POST /api/compression/preview with pipeline incl. tool-schema + detail tri
   };
   const desc = String(body.tools?.[0]?.function?.description ?? "");
   assert.ok(desc.length <= 50, `pipeline detail should trim descriptions, got length ${desc.length}`);
+  const body = (await response.json()) as { compressed: string; original: string };
+  assert.ok(
+    body.compressed.length < body.original.length,
+    "pipeline relevance detail should trim output"
+  );
 });

@@ -12,6 +12,7 @@ const ENGINE_IDS = [
   "context-session-dedup",
   "context-ccr",
   "context-tool-schema",
+  "context-relevance",
   "context-llmlingua",
 ] as const;
 
@@ -62,6 +63,11 @@ describe("COMPRESSION_CONTEXT_GROUP contains all 5 engine items", () => {
     assert.ok(item, "context-tool-schema item not found");
     assert.equal(item.href, "/dashboard/context/tool-schema");
     assert.equal(item.labelFallback, "Tool Schema");
+  it('relevance has href "/dashboard/context/relevance" and labelFallback "Relevance"', () => {
+    const item = itemMap.get("context-relevance");
+    assert.ok(item, "context-relevance item not found");
+    assert.equal(item.href, "/dashboard/context/relevance");
+    assert.equal(item.labelFallback, "Relevance");
   });
 
   it('llmlingua has href "/dashboard/context/llmlingua" and labelFallback "LLMLingua"', () => {

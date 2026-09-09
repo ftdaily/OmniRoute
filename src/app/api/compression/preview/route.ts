@@ -178,6 +178,42 @@ function resolveToolSchemaDetail(config: unknown): {
   };
 }
 
+/**
+ * Resolve the optional relevance detail (scorer/bm25K1/bm25B + thresholds) from
+ * a synthesized compression config. Mirrors resolveHeadroomDetail: the EngineConfigPage
+ * detail form persists to settings.relevance, and the stacked runner merges it via
+ * resolveStepDetailConfig — but the preview route builds single-engine/pipeline steps
+ * directly, so it must thread the detail into buildStep the same way.
+ */
+function resolveRelevanceDetail(config: unknown): {
+  relevanceDetail: CompressionConfig["relevance"] | undefined;
+  relevanceStepDetail: Record<string, unknown> | undefined;
+} {
+  const relevanceDetail =
+    config && typeof config === "object" && config !== null
+      ? (config as CompressionConfig).relevance
+      : undefined;
+  if (!relevanceDetail || typeof relevanceDetail !== "object") {
+    return { relevanceDetail: undefined, relevanceStepDetail: undefined };
+  }
+  const stepDetail: Record<string, unknown> = {};
+  for (const key of [
+    "scorer",
+    "bm25K1",
+    "bm25B",
+    "overlapThreshold",
+    "budgetPercent",
+    "boilerplateWeight",
+  ] as const) {
+    const v = (relevanceDetail as Record<string, unknown>)[key];
+    if (v !== undefined) stepDetail[key] = v;
+  }
+  return {
+    relevanceDetail,
+    relevanceStepDetail: Object.keys(stepDetail).length > 0 ? stepDetail : undefined,
+  };
+}
+
 async function dispatchCompression(
   requestBody: Record<string, unknown>,
   opts: {
@@ -198,9 +234,9 @@ async function dispatchCompression(
   // badge shows what WOULD be stabilized in production (real caching gains show in telemetry only).
   // When the client/settings carry a headroom detail sub-object, thread it so
   // buildStepOptions can merge minRows into the headroom engine stepConfig (#8056).
-  // Same for the tool-schema detail sub-object (trim knobs, not `enabled`).
   const { headroomDetail, headroomStepDetail } = resolveHeadroomDetail(opts.config);
   const { toolSchemaDetail, toolSchemaStepDetail } = resolveToolSchemaDetail(opts.config);
+  const { relevanceDetail, relevanceStepDetail } = resolveRelevanceDetail(opts.config);
 
   if (opts.engineId) {
     const q = quantumExtras(opts.quantumLock);
@@ -214,11 +250,14 @@ async function dispatchCompression(
               ? headroomStepDetail
               : opts.engineId === "tool-schema"
                 ? toolSchemaStepDetail
-                : undefined
+                : opts.engineId === "relevance"
+                  ? relevanceStepDetail
+                  : undefined
           ),
         ],
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
         ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
+        ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...q.configPatch,
@@ -238,11 +277,14 @@ async function dispatchCompression(
               ? headroomStepDetail
               : engine === "tool-schema"
                 ? toolSchemaStepDetail
-                : undefined
+                : engine === "relevance"
+                  ? relevanceStepDetail
+                  : undefined
           )
         ),
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
         ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
+        ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...q.configPatch,
@@ -281,8 +323,20 @@ export async function POST(req: Request) {
     );
   }
 
-  const { messages, tools, functions, mode, engineId: rawEngineId, pipeline, config, fidelityGate, fuzzyDedup, riskGate, quantumLock, heatmap: heatmapMode } =
-    parsed.data;
+  const {
+    messages,
+    tools,
+    functions,
+    mode,
+    engineId: rawEngineId,
+    pipeline,
+    config,
+    fidelityGate,
+    fuzzyDedup,
+    riskGate,
+    quantumLock,
+    heatmap: heatmapMode,
+  } = parsed.data;
   // Alias: `mode: "caveman"` is a synonym for `engineId: "caveman"` (single-engine stacked run).
   // The caveman engine is not a top-level CompressionMode, but it IS a registered engine.
   const engineId = mode === "caveman" && !rawEngineId ? "caveman" : rawEngineId;

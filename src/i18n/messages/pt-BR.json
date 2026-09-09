@@ -8730,7 +8730,9 @@
     "encoderWinner": "vencedor: {winner}",
     "encoder": "encoder",
     "bytes": "bytes",
-    "tokensCl100k": "tokens (cl100k)"
+    "tokensCl100k": "tokens (cl100k)",
+    "routeContentType": "Rotear por tipo de conteúdo (ignorar motores que não se aplicam)",
+    "contentTypeNoEngine": "O roteador ignoraria todos os motores ativos para conteúdo {contentType} — adicione um motor que o trate ou desative o roteamento"
   },
   "omniglyph": {
     "preview": "Visualização",

@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePreviewCompression, type Lane, type PreviewBatch } from "@/hooks/usePreviewCompression";
+import { detectContentType, pipelineFullyGated } from "@omniroute/open-sse/services/compression/contentTypeRouter";
 import { WaterfallInspector } from "./WaterfallInspector";
 import { DiffPane } from "./DiffPane";
 import { EncoderComparisonTable } from "./EncoderComparisonTable";
@@ -78,6 +79,16 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
       ...(heatmapMode ? { heatmap: heatmapMode } : {}),
     });
   const activeDiff = resolveActiveDiff(batch, selectedLane);
+  // Client-side pre-flight: when the router is on and the pasted text classifies
+  // confidently into a type none of the active engines handles, the run would
+  // skip every engine — warn instead of producing a confusing no-op.
+  const fullyGated = useMemo(() => {
+    if (!contentTypeRouter) return null;
+    const detected = detectContentType(text);
+    if (detected.confidence < 0.7) return null;
+    const engines = orderByStack(active, laneEngines);
+    return pipelineFullyGated(detected.contentType, engines) ? detected.contentType : null;
+  }, [contentTypeRouter, text, active, laneEngines]);
   return (
     <div className="flex h-full gap-3">
       <div className="w-[260px] shrink-0">
@@ -103,6 +114,11 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
         />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-auto">
+        {fullyGated ? (
+          <div data-testid="content-type-warning" className="text-xs text-amber-700">
+            {t("contentTypeNoEngine", { contentType: fullyGated })}
+          </div>
+        ) : null}
         {batch?.combined && (
           <section data-testid="play-combined">
             <header className="text-xs font-semibold">

@@ -143,6 +143,20 @@ export function contentTypeApplies(contentType: ContentType, engine: string): bo
   return list.includes(contentType);
 }
 
+/**
+ * True when NONE of `engines` applies to `contentType` — i.e. the gate would
+ * skip the entire pipeline. The Studio calls this client-side (before the
+ * run) to warn instead of producing an all-skipped no-op.
+ */
+export function pipelineFullyGated(
+  contentType: ContentType,
+  engines: readonly string[]
+): boolean {
+  return (
+    engines.length > 0 && engines.every((e) => !contentTypeApplies(contentType, e))
+  );
+}
+
 /** Resolve the effective router config (explicit option wins over config); enabled-gated. */
 export function resolveContentTypeRouter(options?: {
   contentTypeRouter?: ContentTypeRouterConfig;

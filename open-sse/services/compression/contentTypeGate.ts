@@ -32,11 +32,6 @@ export function contentTypeOfBody(body: Record<string, unknown>): ContentTypeRes
   return detectContentType(bodyTextOf(body));
 }
 
-export interface ContentTypeSkipConfig extends ContentTypeRouterConfig {
-  /** Override for the confidence threshold (falls back to config then default). */
-  threshold?: number;
-}
-
 /**
  * True when `engine` should be skipped for this content type.
  * Returns false when the gate is off/absent or confidence is below threshold.
@@ -45,22 +40,10 @@ export function shouldSkipEngineForContentType(
   engine: string,
   contentType: ContentType,
   confidence: number,
-  cfg?: ContentTypeSkipConfig
+  cfg?: ContentTypeRouterConfig
 ): boolean {
   if (!cfg?.enabled) return false;
-  const threshold = cfg.threshold ?? cfg.confidenceThreshold ?? DEFAULT_CONTENT_TYPE_THRESHOLD;
+  const threshold = cfg.confidenceThreshold ?? DEFAULT_CONTENT_TYPE_THRESHOLD;
   if (confidence < threshold) return false;
   return !contentTypeApplies(contentType, engine);
-}
-
-/** Small telemetry helper: the classified type + engine applicability for one engine. */
-export function contentTypeStatsOf(
-  result: ContentTypeResult,
-  engine: string
-): { type: ContentType; confidence: number; applies: boolean } {
-  return {
-    type: result.contentType,
-    confidence: result.confidence,
-    applies: contentTypeApplies(result.contentType, engine),
-  };
 }

@@ -8734,7 +8734,8 @@
     "encoder": "encoder",
     "bytes": "bytes",
     "tokensCl100k": "tokens (cl100k)",
-    "routeContentType": "Route by content type (skip engines that do not apply)"
+    "routeContentType": "Route by content type (skip engines that do not apply)",
+    "contentTypeNoEngine": "Router would skip every active engine for {contentType} content — add an engine that handles it or turn routing off"
   },
   "omniglyph": {
     "preview": "Preview",

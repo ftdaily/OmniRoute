@@ -1,4 +1,5 @@
 import { applyLiteCompression } from "../lite.ts";
+import { LITE_PASS_IDS, MAX_TOOL_TOKENS, MIN_TOOL_TOKENS, type LitePasses } from "../litePasses.ts";
 import { cavemanCompress } from "../caveman.ts";
 import { compressAggressive } from "../aggressive.ts";
 import { ultraCompressHeuristic } from "../ultra.ts";
@@ -229,6 +230,33 @@ const LITE_SCHEMA: EngineConfigField[] = [
       "Truncates tool results over 2,000 characters during Lite compression. Emergency overflow protection may still trim content when the context exceeds the model budget.",
     defaultValue: true,
   },
+  {
+    key: "repeatedLinesEnabled",
+    type: "boolean",
+    label: "Collapse repeated lines (RLE)",
+    description:
+      "Collapses runs of identical consecutive lines to the first line plus a [repeated Nx] marker. Skips blank lines and fenced code blocks.",
+    defaultValue: true,
+  },
+  {
+    key: "repeatedLineThreshold",
+    type: "number",
+    label: "Repeated-line threshold",
+    description: "Minimum run length before lines collapse (2–100).",
+    defaultValue: 3,
+    min: 2,
+    max: 100,
+  },
+  {
+    key: "maxToolTokens",
+    type: "number",
+    label: "Max tool tokens",
+    description:
+      "Token-aware tool-result budget (tokens ≈ chars/4). 0 / empty = legacy 2,000-character cut.",
+    defaultValue: 0,
+    min: 0,
+    max: MAX_TOOL_TOKENS,
+  },
 ];
 
 function validateLiteConfig(config: Record<string, unknown>): EngineValidationResult {
@@ -240,6 +268,28 @@ function validateLiteConfig(config: Record<string, unknown>): EngineValidationRe
     errors.push("preserveSystemPrompt must be a boolean");
   }
   validateBoolean(config, "compressToolResults", errors);
+  validateBoolean(config, "repeatedLinesEnabled", errors);
+  validateNumberRange(config, "repeatedLineThreshold", 2, 100, errors);
+  if (
+    config.maxToolTokens !== undefined &&
+    config.maxToolTokens !== 0 &&
+    config.maxToolTokens !== ""
+  ) {
+    validateNumberRange(config, "maxToolTokens", MIN_TOOL_TOKENS, MAX_TOOL_TOKENS, errors);
+  }
+  if (config.passes !== undefined) {
+    if (!isRecord(config.passes)) {
+      errors.push("passes must be an object");
+    } else {
+      for (const [key, value] of Object.entries(config.passes as Record<string, unknown>)) {
+        if (!LITE_PASS_IDS.includes(key as (typeof LITE_PASS_IDS)[number])) {
+          errors.push(`unknown lite pass: ${key}`);
+        } else if (value !== undefined && typeof value !== "boolean") {
+          errors.push(`passes.${key} must be a boolean`);
+        }
+      }
+    }
+  }
   return { valid: errors.length === 0, errors };
 }
 
@@ -266,7 +316,44 @@ export const liteEngine: CompressionEngine = {
     // Only an explicit boolean counts as a step override — anything else falls through
     // to global config.lite, then the default (keeps the type `boolean`, and a malformed
     // step value can no longer leak through the `??` chain as `{}`).
-    const stepCompressToolResults = options?.stepConfig?.compressToolResults;
+    const step = options?.stepConfig ?? {};
+    const globalLite: Record<string, unknown> =
+      options?.config?.lite && typeof options.config.lite === "object"
+        ? (options.config.lite as unknown as Record<string, unknown>)
+        : {};
+    const pickBoolean = (key: string): boolean | undefined => {
+      const v = step[key] ?? globalLite[key];
+      return typeof v === "boolean" ? v : undefined;
+    };
+    const pickNumber = (key: string): number | undefined => {
+      const v = step[key] ?? globalLite[key];
+      return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+    };
+    const passes: LitePasses = {};
+    for (const id of LITE_PASS_IDS) {
+      const stepPasses = step.passes as LitePasses | undefined;
+      const globalPasses = globalLite.passes as LitePasses | undefined;
+      const fromPasses = stepPasses?.[id] ?? globalPasses?.[id];
+      if (typeof fromPasses === "boolean") {
+        passes[id] = fromPasses;
+        continue;
+      }
+      // Named boolean aliases map onto passes (step wins, then global).
+      if (id === "repeated-lines") {
+        const named = pickBoolean("repeatedLinesEnabled");
+        if (named !== undefined) passes[id] = named;
+      }
+      if (id === "tool-truncate") {
+        const legacy = pickBoolean("compressToolResults");
+        if (legacy === false) passes[id] = false;
+      }
+    }
+    const repeatedLineThreshold = pickNumber("repeatedLineThreshold");
+    const rawMaxTokens = step.maxToolTokens ?? globalLite.maxToolTokens;
+    const maxToolTokens =
+      typeof rawMaxTokens === "number" && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
+        ? rawMaxTokens
+        : undefined;
     const result = applyLiteCompression(adapter.body, {
       ...options,
       preserveSystemPrompt: options?.config?.preserveSystemPrompt !== false,
@@ -274,9 +361,10 @@ export const liteEngine: CompressionEngine = {
       // (step wins) into stepConfig, so consume that single effective value instead of
       // AND-ing root and step values — an explicit step `true` must override a global `false`.
       compressToolResults:
-        typeof stepCompressToolResults === "boolean"
-          ? stepCompressToolResults
-          : (options?.config?.lite?.compressToolResults ?? true),
+        pickBoolean("compressToolResults") ?? options?.config?.lite?.compressToolResults ?? true,
+      passes,
+      ...(repeatedLineThreshold !== undefined ? { repeatedLineThreshold } : {}),
+      ...(maxToolTokens !== undefined ? { maxToolTokens } : {}),
     });
     return adapter.adapted ? { ...result, body: adapter.restore(result.body) } : result;
   },

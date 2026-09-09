@@ -42,7 +42,11 @@ import {
   normalizePreserveSystemPromptMode,
 } from "@omniroute/open-sse/services/compression/preserveSystemPromptMode.ts";
 import { maybePrewarmUltraSlmOnConfig } from "@omniroute/open-sse/services/compression/ultra.ts";
-import { applyDetailConfigUpdate, buildDetailConfigDefaults } from "./compressionDetailNormalizers";
+import {
+  applyDetailConfigUpdate,
+  buildDetailConfigDefaults,
+  normalizeLiteSubobject,
+} from "./compressionDetailNormalizers";
 
 const NAMESPACE = "compression";
 const COMPRESSION_MODES = new Set<CompressionMode>([
@@ -746,7 +750,7 @@ export async function getCompressionSettings(): Promise<CompressionConfig> {
         config.ultra = normalizeUltraConfig(parsed);
         break;
       case "lite":
-        config.lite = { compressToolResults: toRecord(parsed).compressToolResults !== false };
+        config.lite = normalizeLiteSubobject(parsed);
         break;
       case "headroom":
       case "headroomConfig":
@@ -932,7 +936,10 @@ let proactiveRatioCache: { value: number; readAt: number } | null = null;
 
 export function getProactiveCompressionRatio(): number {
   const now = Date.now();
-  if (proactiveRatioCache && now - proactiveRatioCache.readAt < PROACTIVE_COMPRESSION_CACHE_TTL_MS) {
+  if (
+    proactiveRatioCache &&
+    now - proactiveRatioCache.readAt < PROACTIVE_COMPRESSION_CACHE_TTL_MS
+  ) {
     return proactiveRatioCache.value;
   }
   let ratio = PROACTIVE_COMPRESSION_DEFAULT_RATIO;

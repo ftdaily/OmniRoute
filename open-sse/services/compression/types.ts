@@ -219,9 +219,36 @@ export interface OmniglyphConfig {
 }
 
 /** Lite detail settings for proactive request-time transformations. */
+export type LitePassId =
+  | "whitespace"
+  | "system-dedup"
+  | "tool-truncate"
+  | "redundant-remove"
+  | "image-placeholder"
+  | "repeated-lines";
+
+export const LITE_PASS_IDS: readonly LitePassId[] = [
+  "whitespace",
+  "system-dedup",
+  "tool-truncate",
+  "redundant-remove",
+  "image-placeholder",
+  "repeated-lines",
+] as const;
+
+export type LitePasses = Partial<Record<LitePassId, boolean>>;
+
 export interface LiteConfig {
   /** Truncate tool-result strings over 2,000 characters before provider dispatch. */
   compressToolResults: boolean;
+  /** Per-pass switches; every pass defaults to enabled when the key is absent. */
+  passes?: LitePasses;
+  /** Named alias for the repeated-lines pass (RLE collapse on/off). */
+  repeatedLinesEnabled?: boolean;
+  /** RLE run threshold for the repeated-lines pass (clamped 2..100). */
+  repeatedLineThreshold?: number;
+  /** Token-aware tool-truncate budget (tokens ≈ chars/4); unset = legacy 2000 chars. */
+  maxToolTokens?: number;
 }
 
 export interface CompressionPipelineStep {

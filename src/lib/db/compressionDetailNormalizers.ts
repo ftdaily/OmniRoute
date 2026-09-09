@@ -12,8 +12,11 @@ import {
   DEFAULT_RELEVANCE_CONFIG,
   DEFAULT_SESSION_DEDUP_CONFIG,
   DEFAULT_TOOL_SCHEMA_CONFIG,
+  LITE_PASS_IDS,
   type CcrConfig,
   type CompressionConfig,
+  type LiteConfig,
+  type LitePasses,
   type RelevanceConfig,
   type SessionDedupConfig,
   type ToolSchemaConfig,
@@ -31,6 +34,11 @@ function boundedInt(value: unknown, fallback: number, min: number, max: number):
 function boundedNumber(value: unknown, fallback: number, min: number, max: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, value));
+}
+
+function boundedDescChars(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(2000, Math.max(10, Math.floor(value)));
 }
 
 /** Matches SESSION_DEDUP_SCHEMA bounds (engines/session-dedup/index.ts). */
@@ -63,9 +71,60 @@ export function normalizeCcrConfig(value: unknown): CcrConfig {
   };
 }
 
-function boundedDescChars(value: unknown, fallback: number): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
-  return Math.min(2000, Math.max(10, Math.floor(value)));
+/** Matches LITE_SCHEMA bounds (engines/cavemanAdapter.ts liteEngine). */
+export function normalizeLiteSubobject(value: unknown): LiteConfig {
+  const record = toRecord(value);
+  const passesRaw = toRecord(record.passes);
+  const passes: LitePasses = {};
+  for (const id of LITE_PASS_IDS) {
+    const v = passesRaw[id];
+    if (typeof v === "boolean") passes[id] = v;
+  }
+  const rawMaxTokens = record.maxToolTokens;
+  return {
+    compressToolResults: record.compressToolResults !== false,
+    ...(Object.keys(passes).length > 0 ? { passes } : {}),
+    ...(typeof record.repeatedLinesEnabled === "boolean"
+      ? { repeatedLinesEnabled: record.repeatedLinesEnabled }
+      : {}),
+    ...(typeof record.repeatedLineThreshold === "number" &&
+    Number.isFinite(record.repeatedLineThreshold)
+      ? {
+          repeatedLineThreshold: Math.min(
+            100,
+            Math.max(2, Math.floor(record.repeatedLineThreshold))
+          ),
+        }
+      : {}),
+    ...(typeof rawMaxTokens === "number" && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
+      ? { maxToolTokens: Math.min(32768, Math.max(16, Math.floor(rawMaxTokens))) }
+      : {}),
+  };
+}
+
+/** Default sub-objects spread into getCompressionSettings' seed config. */
+export function buildDetailConfigDefaults(): Pick<
+  CompressionConfig,
+  "sessionDedup" | "ccr" | "toolSchema" | "relevance"
+> {
+  return {
+    sessionDedup: normalizeSessionDedupConfig(undefined),
+    ccr: normalizeCcrConfig(undefined),
+    toolSchema: normalizeToolSchemaConfig(undefined),
+    relevance: normalizeRelevanceConfig(undefined),
+  };
+}
+
+/** Applies a stored sessionDedup/ccr row onto config during getCompressionSettings' row scan. */
+export function applyDetailConfigUpdate(
+  config: CompressionConfig,
+  key: "sessionDedup" | "ccr" | "toolSchema" | "relevance",
+  parsed: unknown
+): void {
+  if (key === "sessionDedup") config.sessionDedup = normalizeSessionDedupConfig(parsed);
+  else if (key === "toolSchema") config.toolSchema = normalizeToolSchemaConfig(parsed);
+  else if (key === "ccr") config.ccr = normalizeCcrConfig(parsed);
+  else config.relevance = normalizeRelevanceConfig(parsed);
 }
 
 /** Matches TOOL_SCHEMA_SCHEMA bounds (engines/tool-schema/index.ts). */
@@ -88,38 +147,14 @@ export function normalizeToolSchemaConfig(value: unknown): ToolSchemaConfig {
   };
 }
 
-/** Default sub-objects spread into getCompressionSettings' seed config. */
-export function buildDetailConfigDefaults(): Pick<
-  CompressionConfig,
-  "sessionDedup" | "ccr" | "toolSchema" | "relevance"
-> {
-  return {
-    sessionDedup: normalizeSessionDedupConfig(undefined),
-    ccr: normalizeCcrConfig(undefined),
-    toolSchema: normalizeToolSchemaConfig(undefined),
-    relevance: normalizeRelevanceConfig(undefined),
-  };
-}
-
-/** Applies a stored sessionDedup/ccr/toolSchema/relevance row onto config during row scan. */
-export function applyDetailConfigUpdate(
-  config: CompressionConfig,
-  key: "sessionDedup" | "ccr" | "toolSchema" | "relevance",
-  parsed: unknown
-): void {
-  if (key === "sessionDedup") config.sessionDedup = normalizeSessionDedupConfig(parsed);
-  else if (key === "toolSchema") config.toolSchema = normalizeToolSchemaConfig(parsed);
-  else if (key === "ccr") config.ccr = normalizeCcrConfig(parsed);
-  else config.relevance = normalizeRelevanceConfig(parsed);
-}
-
 /** Matches RELEVANCE_SCHEMA bounds (engines/relevance/configSchema.ts).
  *  scorer falls back to "jaccard" so legacy/unknown values keep the old behavior. */
 export function normalizeRelevanceConfig(value: unknown): RelevanceConfig {
   const record = toRecord(value);
   return {
     ...DEFAULT_RELEVANCE_CONFIG,
-    enabled: typeof record.enabled === "boolean" ? record.enabled : DEFAULT_RELEVANCE_CONFIG.enabled,
+    enabled:
+      typeof record.enabled === "boolean" ? record.enabled : DEFAULT_RELEVANCE_CONFIG.enabled,
     overlapThreshold: boundedNumber(
       record.overlapThreshold,
       DEFAULT_RELEVANCE_CONFIG.overlapThreshold!,

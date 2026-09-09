@@ -206,10 +206,9 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
     // Strip the `enabled` key — engine on/off is the panel's responsibility.
     const { enabled: _ignored, ...formDetail } = configState;
     void _ignored;
-    const detail =
-      engineId === "lite"
-        ? { compressToolResults: formDetail.compressToolResults !== false }
-        : formDetail;
+    // The schema IS the sub-object (lite/aggressive/ultra): persist verbatim so
+    // new lite pass switches (passes.*) round-trip instead of being dropped.
+    const detail = formDetail;
     setSaving(true);
     setSaveError(null);
     try {
@@ -285,7 +284,9 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
             ? { aggressive: { ...configState } }
             : engineId === "ultra"
               ? { ultra: { ...configState } }
-              : undefined;
+              : engineId === "lite"
+                ? { lite: { ...configState } }
+                : undefined;
       const res = await fetch("/api/compression/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

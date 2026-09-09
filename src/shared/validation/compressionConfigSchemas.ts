@@ -209,6 +209,27 @@ export const relevanceConfigSchema = z
 
 const noConfigSchema = z.object({}).strict();
 
+const liteStepPassesSchema = z
+  .object({
+    whitespace: z.boolean().optional(),
+    "system-dedup": z.boolean().optional(),
+    "tool-truncate": z.boolean().optional(),
+    "redundant-remove": z.boolean().optional(),
+    "image-placeholder": z.boolean().optional(),
+    "repeated-lines": z.boolean().optional(),
+  })
+  .strict();
+
+const liteStepConfigSchema = z
+  .object({
+    compressToolResults: z.boolean().optional(),
+    passes: liteStepPassesSchema.optional(),
+    repeatedLinesEnabled: z.boolean().optional(),
+    repeatedLineThreshold: z.number().int().min(2).max(100).optional(),
+    maxToolTokens: z.number().int().min(0).max(32768).optional(),
+  })
+  .strict();
+
 // Structural engines (session-dedup / ccr / headroom / relevance / llmlingua) do not
 // expose a fixed intensity enum in ENGINE_CATALOG — accept optional free-form intensity
 // and a loose config bag so GET→PUT round-trips of stackedPipeline succeed (#6747).
@@ -227,7 +248,7 @@ export const stackedPipelineStepSchema = z.discriminatedUnion("engine", [
     .object({
       engine: z.literal("lite"),
       intensity: z.literal("lite").optional(),
-      config: noConfigSchema.optional(),
+      config: liteStepConfigSchema.optional(),
     })
     .strict(),
   z
@@ -345,11 +366,9 @@ export const STACKED_PIPELINE_ENGINE_INTENSITIES: Record<string, readonly string
   "tool-schema": [],
 };
 
-export const liteConfigSchema = z
-  .object({
-    compressToolResults: z.boolean().optional(),
-  })
-  .strict();
+export const litePassesSchema = liteStepPassesSchema;
+
+export const liteConfigSchema = liteStepConfigSchema;
 
 export const engineToggleSchema = z.object({
   enabled: z.boolean(),

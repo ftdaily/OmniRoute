@@ -225,6 +225,25 @@ function resolveRelevanceDetail(config: unknown): {
   };
 }
 
+/**
+ * Resolve the optional lite detail (passes / thresholds / token budget) from a
+ * synthesized compression config. Mirrors resolveHeadroomDetail: the studio sends
+ * `{ lite: {...} }` so unsaved per-engine edits are honored in preview, and
+ * buildStepOptions merges the persisted global into the lite stepConfig.
+ */
+function resolveLiteDetail(config: unknown): {
+  liteDetail: CompressionConfig["lite"] | undefined;
+  liteStepDetail: Record<string, unknown> | undefined;
+} {
+  const liteDetail =
+    config && typeof config === "object" && config !== null
+      ? (config as CompressionConfig).lite
+      : undefined;
+  const liteStepDetail =
+    liteDetail && typeof liteDetail === "object" ? { ...(liteDetail as object) } : undefined;
+  return { liteDetail, liteStepDetail };
+}
+
 async function dispatchCompression(
   requestBody: Record<string, unknown>,
   opts: {
@@ -249,6 +268,7 @@ async function dispatchCompression(
   const { headroomDetail, headroomStepDetail } = resolveHeadroomDetail(opts.config);
   const { toolSchemaDetail, toolSchemaStepDetail } = resolveToolSchemaDetail(opts.config);
   const { relevanceDetail, relevanceStepDetail } = resolveRelevanceDetail(opts.config);
+  const { liteDetail, liteStepDetail } = resolveLiteDetail(opts.config);
 
   if (opts.engineId) {
     const q = quantumExtras(opts.quantumLock);
@@ -264,12 +284,15 @@ async function dispatchCompression(
                 ? toolSchemaStepDetail
                 : opts.engineId === "relevance"
                   ? relevanceStepDetail
-                  : undefined
+                  : opts.engineId === "lite"
+                    ? liteStepDetail
+                    : undefined
           ),
         ],
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
         ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
         ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
+        ...(liteDetail ? { lite: liteDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...(opts.contentTypeRouter ? { contentTypeRouter: opts.contentTypeRouter } : {}),
@@ -292,12 +315,15 @@ async function dispatchCompression(
                 ? toolSchemaStepDetail
                 : engine === "relevance"
                   ? relevanceStepDetail
-                  : undefined
+                  : engine === "lite"
+                    ? liteStepDetail
+                    : undefined
           )
         ),
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
         ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
         ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
+        ...(liteDetail ? { lite: liteDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...(opts.contentTypeRouter ? { contentTypeRouter: opts.contentTypeRouter } : {}),

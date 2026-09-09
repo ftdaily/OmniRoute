@@ -1,6 +1,12 @@
 import { isVisionModelId } from "@/shared/constants/visionModels";
 import type { CompressionResult, CompressionMode } from "./types.ts";
 import { createCompressionStats } from "./stats.ts";
+import {
+  collapseRepeatedLines,
+  isLitePassEnabled,
+  toolCharBudget,
+  type LitePasses,
+} from "./litePasses.ts";
 
 interface Message {
   role: string;
@@ -18,6 +24,12 @@ interface LiteCompressionOptions {
   supportsVision?: boolean | null;
   preserveSystemPrompt?: boolean;
   compressToolResults?: boolean;
+  /** Per-pass switches; every pass defaults to enabled. Legacy callers omit it. */
+  passes?: LitePasses;
+  /** RLE run threshold for the repeated-lines pass (clamped 2..100). */
+  repeatedLineThreshold?: number;
+  /** Token-aware tool-truncate budget (tokens ≈ chars/4); unset = legacy 2000 chars. */
+  maxToolTokens?: number;
 }
 
 function normalizeMessageWhitespace(content: string): string {
@@ -41,6 +53,7 @@ export function collapseWhitespace(
   body: ChatBody;
   applied: boolean;
 } {
+  if (!isLitePassEnabled(options.passes, "whitespace")) return { body, applied: false };
   if (!body.messages) return { body, applied: false };
   let applied = false;
   const messages = body.messages.map((msg) => {
@@ -60,6 +73,7 @@ export function dedupSystemPrompt(
   body: ChatBody;
   applied: boolean;
 } {
+  if (!isLitePassEnabled(options.passes, "system-dedup")) return { body, applied: false };
   if (!body.messages) return { body, applied: false };
   if (options.preserveSystemPrompt === true) return { body, applied: false };
   const seen = new Set<string>();
@@ -118,12 +132,15 @@ function backOffToWordBoundary(content: string, cutIndex: number): number {
   return cutIndex;
 }
 
-export function compressToolResults(body: ChatBody): {
+export function compressToolResults(
+  body: ChatBody,
+  options: { maxToolTokens?: number } = {}
+): {
   body: ChatBody;
   applied: boolean;
 } {
   if (!body.messages) return { body, applied: false };
-  const MAX_TOOL_LENGTH = 2000;
+  const MAX_TOOL_LENGTH = toolCharBudget(options.maxToolTokens) ?? 2000;
   let applied = false;
   const messages = body.messages.map((msg) => {
     if (msg.role !== "tool" || typeof msg.content !== "string") return msg;
@@ -145,6 +162,7 @@ export function removeRedundantContent(
   body: ChatBody;
   applied: boolean;
 } {
+  if (!isLitePassEnabled(options.passes, "redundant-remove")) return { body, applied: false };
   if (!body.messages) return { body, applied: false };
   let applied = false;
   const messages: Message[] = [];
@@ -176,6 +194,11 @@ export function replaceImageUrls(
   options?: LiteCompressionOptions | string
 ): { body: ChatBody; applied: boolean } {
   if (!body.messages) return { body, applied: false };
+  if (typeof options === "object" && options !== null) {
+    if (!isLitePassEnabled(options.passes, "image-placeholder")) {
+      return { body, applied: false };
+    }
+  }
   const supportsVision =
     typeof options === "object" && options !== null
       ? options.supportsVision
@@ -211,6 +234,23 @@ export function replaceImageUrls(
   return { body: { ...body, messages }, applied };
 }
 
+export function collapseRepeatedLineRuns(
+  body: ChatBody,
+  options: LiteCompressionOptions = {}
+): { body: ChatBody; applied: boolean } {
+  if (!isLitePassEnabled(options.passes, "repeated-lines")) return { body, applied: false };
+  if (!body.messages) return { body, applied: false };
+  let applied = false;
+  const messages = body.messages.map((msg) => {
+    if (options.preserveSystemPrompt === true && msg.role === "system") return msg;
+    if (typeof msg.content !== "string") return msg;
+    const collapsed = collapseRepeatedLines(msg.content, options.repeatedLineThreshold);
+    if (collapsed.applied) applied = true;
+    return collapsed.applied ? { ...msg, content: collapsed.text } : msg;
+  });
+  return { body: { ...body, messages }, applied };
+}
+
 export function applyLiteCompression(
   body: Record<string, unknown>,
   options?: LiteCompressionOptions
@@ -219,27 +259,44 @@ export function applyLiteCompression(
   let current = body as ChatBody;
   const techniquesApplied: string[] = [];
 
-  const r1 = collapseWhitespace(current, options);
-  current = r1.body;
-  if (r1.applied) techniquesApplied.push("whitespace");
+  if (isLitePassEnabled(options?.passes, "whitespace")) {
+    const r1 = collapseWhitespace(current, options);
+    current = r1.body;
+    if (r1.applied) techniquesApplied.push("whitespace");
+  }
 
-  const r2 = dedupSystemPrompt(current, options);
-  current = r2.body;
-  if (r2.applied) techniquesApplied.push("system-dedup");
+  if (isLitePassEnabled(options?.passes, "system-dedup")) {
+    const r2 = dedupSystemPrompt(current, options);
+    current = r2.body;
+    if (r2.applied) techniquesApplied.push("system-dedup");
+  }
 
-  if (options?.compressToolResults !== false) {
-    const r3 = compressToolResults(current);
+  if (
+    options?.compressToolResults !== false &&
+    isLitePassEnabled(options?.passes, "tool-truncate")
+  ) {
+    const r3 = compressToolResults(current, { maxToolTokens: options?.maxToolTokens });
     current = r3.body;
     if (r3.applied) techniquesApplied.push("tool-compress");
   }
 
-  const r4 = removeRedundantContent(current, options);
-  current = r4.body;
-  if (r4.applied) techniquesApplied.push("redundant-remove");
+  if (isLitePassEnabled(options?.passes, "redundant-remove")) {
+    const r4 = removeRedundantContent(current, options);
+    current = r4.body;
+    if (r4.applied) techniquesApplied.push("redundant-remove");
+  }
 
-  const r5 = replaceImageUrls(current, options);
-  current = r5.body;
-  if (r5.applied) techniquesApplied.push("image-placeholder");
+  if (isLitePassEnabled(options?.passes, "repeated-lines")) {
+    const r5 = collapseRepeatedLineRuns(current, options);
+    current = r5.body;
+    if (r5.applied) techniquesApplied.push("repeated-lines");
+  }
+
+  if (isLitePassEnabled(options?.passes, "image-placeholder")) {
+    const r6 = replaceImageUrls(current, options);
+    current = r6.body;
+    if (r6.applied) techniquesApplied.push("image-placeholder");
+  }
 
   const compressed = techniquesApplied.length > 0;
   const stats = compressed

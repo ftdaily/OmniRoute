@@ -135,6 +135,18 @@ describe("removeRedundantContent", () => {
     const result = removeRedundantContent(body);
     assert.equal(result.applied, false);
   });
+
+  it("keeps identical tool outputs paired to different calls", () => {
+    const body = {
+      messages: [
+        { role: "tool", tool_call_id: "call_a", content: '{"error":"not connected"}' },
+        { role: "tool", tool_call_id: "call_b", content: '{"error":"not connected"}' },
+      ],
+    };
+    const result = removeRedundantContent(body);
+    assert.equal(result.applied, false);
+    assert.equal(result.body.messages!.length, 2);
+  });
 });
 
 describe("replaceImageUrls", () => {

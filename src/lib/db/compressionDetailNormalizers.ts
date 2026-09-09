@@ -42,6 +42,11 @@ function boundedNumber(value: unknown, fallback: number, min: number, max: numbe
   return Math.min(max, Math.max(min, value));
 }
 
+function boundedRate(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, value));
+}
+
 function boundedDescChars(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(2000, Math.max(10, Math.floor(value)));
@@ -109,40 +114,6 @@ export function normalizeLiteSubobject(value: unknown): LiteConfig {
   };
 }
 
-/** Default sub-objects spread into getCompressionSettings' seed config. */
-export function buildDetailConfigDefaults(): Pick<
-  CompressionConfig,
-  "sessionDedup" | "ccr" | "toolSchema" | "relevance"
-> {
-  return {
-    sessionDedup: normalizeSessionDedupConfig(undefined),
-    ccr: normalizeCcrConfig(undefined),
-    toolSchema: normalizeToolSchemaConfig(undefined),
-    relevance: normalizeRelevanceConfig(undefined),
-  };
-}
-
-/** Matches RELEVANCE_SCHEMA bounds (engines/relevance/configSchema.ts). */
-export function normalizeRelevanceConfig(value: unknown): RelevanceConfig {
-  const record = toRecord(value);
-  return {
-    ...DEFAULT_RELEVANCE_CONFIG,
-    overlapThreshold: boundedRate(
-      record.overlapThreshold,
-      DEFAULT_RELEVANCE_CONFIG.overlapThreshold,
-      0,
-      1
-    ),
-    budgetPercent: boundedRate(record.budgetPercent, DEFAULT_RELEVANCE_CONFIG.budgetPercent, 0, 1),
-    boilerplateWeight: boundedRate(
-      record.boilerplateWeight,
-      DEFAULT_RELEVANCE_CONFIG.boilerplateWeight,
-      0,
-      1
-    ),
-  };
-}
-
 /** Matches LLMLINGUA_SCHEMA bounds (engines/llmlingua/index.ts). */
 export function normalizeLlmlinguaConfig(value: unknown): LlmlinguaConfig {
   const record = toRecord(value);
@@ -195,7 +166,14 @@ export function normalizeLlmCompressorConfig(value: unknown): LlmCompressorConfi
 /** Default sub-objects spread into getCompressionSettings' seed config. */
 export function buildDetailConfigDefaults(): Pick<
   CompressionConfig,
-  "sessionDedup" | "ccr" | "toolSchema" | "relevance" | "relevanceConfig" | "llmlingua" | "ionizer" | "llm"
+  | "sessionDedup"
+  | "ccr"
+  | "toolSchema"
+  | "relevance"
+  | "relevanceConfig"
+  | "llmlingua"
+  | "ionizer"
+  | "llm"
 > {
   return {
     sessionDedup: normalizeSessionDedupConfig(undefined),

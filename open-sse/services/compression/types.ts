@@ -736,18 +736,6 @@ export const DEFAULT_CCR_CONFIG: CcrConfig = {
   retrievalRampFactor: 2,
 };
 
-// ─── Relevance detail settings ───────────────────────────────────────────────
-// Persisted under compression settings key `relevanceConfig`. Engine apply reads
-// via resolveRelevanceConfig(stepConfig); the stacked runner merges this
-// sub-object into stepConfig so MCP/dashboard values take effect.
-
-export const DEFAULT_RELEVANCE_CONFIG: RelevanceConfig = {
-  enabled: false,
-  overlapThreshold: 0.1,
-  budgetPercent: 0.5,
-  boilerplateWeight: 0.5,
-};
-
 // ─── LLMLingua detail settings ───────────────────────────────────────────────
 // Persisted under compression settings key `llmlingua`. Engine apply reads
 // model/minTokens/compressionRate/modelPath from stepConfig.

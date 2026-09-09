@@ -42,6 +42,39 @@ test("extensibility: one entry added to the catalog is enumerated with no other 
   assert.equal(ids.length, OUTPUT_STYLE_IDS.length + 1);
 });
 
+test("less-code full/ultra carry the upstream output-cap and debt-marker clauses", () => {
+  // Gaps backported from DietrichGebert/ponytail skills/ponytail/SKILL.md:
+  // the "Output" cap (code first + ≤3 short lines; an explanation longer than
+  // the code gets deleted) and the `ponytail:` debt-marker convention
+  // (`ponytail: <ceiling>, <upgrade path>`).
+  const less = outputStyleMeta("less-code");
+  assert.ok(
+    /three short lines|≤3 lines/i.test(less.levels.full),
+    "less-code.full carries the output cap"
+  );
+  assert.ok(
+    /≤3 lines|delete it/i.test(less.levels.ultra),
+    "less-code.ultra carries the output cap"
+  );
+  assert.ok(
+    less.levels.full.includes("ponytail:"),
+    "less-code.full carries the debt-marker convention"
+  );
+  assert.ok(
+    less.levels.ultra.includes("ponytail:"),
+    "less-code.ultra carries the debt-marker convention"
+  );
+});
+
+test("less-code lite stays a one-liner (no cap/marker clauses)", () => {
+  const lite = outputStyleMeta("less-code").levels.lite;
+  assert.ok(!lite.includes("ponytail:"), "lite keeps no debt-marker clause");
+  assert.ok(
+    !/three short lines|≤3 lines/i.test(lite),
+    "lite keeps no output-cap clause"
+  );
+});
+
 test("every level instruction is deterministic (no Date/Math.random tokens)", () => {
   for (const id of OUTPUT_STYLE_IDS) {
     const meta = outputStyleMeta(id);

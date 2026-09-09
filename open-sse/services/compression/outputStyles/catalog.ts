@@ -57,8 +57,8 @@ export const OUTPUT_STYLE_CATALOG: Record<string, OutputStyle> = {
     // Ported from 9router ponytail (ponytailPrompt.js); attribution preserved.
     levels: {
       lite: `Write the smallest change that satisfies the request. Skip speculative abstractions. ${SHARED_BOUNDARIES}`,
-      full: `Act like a lazy senior dev applying YAGNI. Smallest working change only. No unrequested abstractions, no premature generalization, no extra layers, no defensive scaffolding the request did not ask for. Reuse existing code over adding new code. ${SHARED_BOUNDARIES}`,
-      ultra: `Minimal diff discipline. Touch the fewest lines that make it work. Zero new files, classes, or config unless strictly required. Inline over abstract. No "while we're here" extras. ${SHARED_BOUNDARIES}`,
+      full: `Act like a lazy senior dev applying YAGNI. Smallest working change only. No unrequested abstractions, no premature generalization, no extra layers, no defensive scaffolding the request did not ask for. Reuse existing code over adding new code. Code first, then at most three short lines; if the explanation outgrows the code, delete it. Mark deliberate shortcuts with a \`ponytail:\` comment naming the ceiling and upgrade path. ${SHARED_BOUNDARIES}`,
+      ultra: `Minimal diff discipline. Touch the fewest lines that make it work. Zero new files, classes, or config unless strictly required. Inline over abstract. No "while we're here" extras. Code + ≤3 lines; longer explanation than code → delete it. Mark deliberate shortcuts \`ponytail: <ceiling>, <upgrade>\`. ${SHARED_BOUNDARIES}`,
     },
     i18n: {
       "pt-BR": {

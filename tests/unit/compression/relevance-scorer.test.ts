@@ -51,7 +51,10 @@ test("empty query returns array of zeros with same length as sentences", () => {
   const sentences = ["First sentence.", "Second sentence.", "Third sentence."];
   const scores = scoreSentences(sentences, "", DEFAULT_CFG);
   assert.equal(scores.length, 3);
-  assert.ok(scores.every((s) => s === 0), `all scores should be 0, got: ${scores}`);
+  assert.ok(
+    scores.every((s) => s === 0),
+    `all scores should be 0, got: ${scores}`
+  );
 });
 
 test("empty sentences array returns empty array", () => {
@@ -93,7 +96,10 @@ test("bm25 ranks the relevant sentence first and stays in 0..1", () => {
   const scores = scoreSentences(sentences, query, { ...DEFAULT_CFG, scorer: "bm25" });
   assert.equal(scores.length, 2);
   assert.ok(scores[1] > scores[0], `expected bm25 scores[1]=${scores[1]} > scores[0]=${scores[0]}`);
-  assert.ok(scores.every((s) => s >= 0 && s <= 1), `bm25 scores must be normalized, got ${scores}`);
+  assert.ok(
+    scores.every((s) => s >= 0 && s <= 1),
+    `bm25 scores must be normalized, got ${scores}`
+  );
 });
 
 test("bm25 empty query returns zeros", () => {

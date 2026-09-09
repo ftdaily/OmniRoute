@@ -2,7 +2,10 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePreviewCompression, type Lane, type PreviewBatch } from "@/hooks/usePreviewCompression";
-import { detectContentType, pipelineFullyGated } from "@omniroute/open-sse/services/compression/contentTypeRouter";
+import {
+  detectContentType,
+  pipelineFullyGated,
+} from "@omniroute/open-sse/services/compression/contentTypeRouter";
 import { WaterfallInspector } from "./WaterfallInspector";
 import { DiffPane } from "./DiffPane";
 import { EncoderComparisonTable } from "./EncoderComparisonTable";

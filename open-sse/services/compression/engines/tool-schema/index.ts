@@ -41,9 +41,7 @@ function truncateDesc(value: string, max: number): string {
 
 /** Annotation-only keys: safe to drop without changing tool selection or validation. */
 function isAnnotationKey(key: string): boolean {
-  return (
-    key.startsWith("x-") || key === "examples" || key === "title" || key === "$comment"
-  );
+  return key.startsWith("x-") || key === "examples" || key === "title" || key === "$comment";
 }
 
 interface TrimOptions {
@@ -102,7 +100,7 @@ function trimToolEntry(entry: unknown, opts: TrimOptions): { next: unknown; chan
   const before = JSON.stringify(entry).length;
   let next: unknown;
   if (split.schemaKeys[0] === "function") {
-    const fn = (split.rest["function"] as Record<string, unknown>);
+    const fn = split.rest["function"] as Record<string, unknown>;
     const trimmedFn: Record<string, unknown> = { ...fn };
     if (typeof trimmedFn["description"] === "string") {
       trimmedFn["description"] = truncateDesc(
@@ -148,7 +146,7 @@ function trimToolEntry(entry: unknown, opts: TrimOptions): { next: unknown; chan
 
 function mergeConfig(options?: CompressionEngineApplyOptions): TrimOptions & { enabled: boolean } {
   const step = options?.stepConfig ?? {};
-  const cfg = (options?.config as Record<string, unknown> | undefined)?.["toolSchema"];
+  const cfg = (options?.config as unknown as Record<string, unknown> | undefined)?.["toolSchema"];
   const source = isRecord(cfg) ? { ...cfg, ...step } : step;
   const hasExplicitEnabled =
     (isRecord(cfg) && "enabled" in (cfg as Record<string, unknown>)) || "enabled" in step;

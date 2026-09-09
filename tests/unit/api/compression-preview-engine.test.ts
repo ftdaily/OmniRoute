@@ -187,6 +187,10 @@ function buildToolSchemaTools(): Array<Record<string, unknown>> {
           required: ["query"],
         },
       },
+    },
+  ];
+}
+
 function buildRelevanceMessages(): Array<{ role: string; content: string }> {
   return [
     {
@@ -211,19 +215,6 @@ test("POST /api/compression/preview with engineId=tool-schema + detail trims too
       tools: buildToolSchemaTools(),
       config: {
         toolSchema: { maxDescriptionChars: 50, dropExamples: true, dropVendorExtensions: true },
-test("POST /api/compression/preview with engineId=relevance + bm25 detail trims output", async () => {
-  const request = await makeManagementSessionRequest("http://localhost/api/compression/preview", {
-    method: "POST",
-    body: {
-      engineId: "relevance",
-      messages: buildRelevanceMessages(),
-      config: {
-        relevance: {
-          scorer: "bm25",
-          overlapThreshold: 0.05,
-          budgetPercent: 0.5,
-          boilerplateWeight: 0.5,
-        },
       },
     },
   });
@@ -232,7 +223,12 @@ test("POST /api/compression/preview with engineId=relevance + bm25 detail trims 
   assert.equal(response.status, 200, `Expected 200, got ${response.status}`);
 
   const body = (await response.json()) as {
-    tools?: Array<{ function?: { description?: string; parameters?: { properties?: { query?: Record<string, unknown> } } } }>;
+    tools?: Array<{
+      function?: {
+        description?: string;
+        parameters?: { properties?: { query?: Record<string, unknown> } };
+      };
+    }>;
     techniquesUsed: string[];
   };
   assert.ok(Array.isArray(body.tools), "response should echo trimmed tools");
@@ -256,15 +252,27 @@ test("POST /api/compression/preview with engineId=relevance + bm25 detail trims 
   );
 });
 
-test("POST /api/compression/preview with pipeline incl. tool-schema + detail trims tool defs", async () => {
+test("POST /api/compression/preview with engineId=relevance + bm25 detail trims output", async () => {
   const request = await makeManagementSessionRequest("http://localhost/api/compression/preview", {
     method: "POST",
     body: {
-      pipeline: ["tool-schema"],
-      messages: [{ role: "user", content: "go" }],
-      tools: buildToolSchemaTools(),
+      engineId: "relevance",
+      messages: buildRelevanceMessages(),
       config: {
-        toolSchema: { maxDescriptionChars: 50, dropExamples: true, dropVendorExtensions: true },
+        relevance: {
+          scorer: "bm25",
+          overlapThreshold: 0.05,
+          budgetPercent: 0.5,
+          boilerplateWeight: 0.5,
+        },
+      },
+    },
+  });
+
+  const response = await previewRoute.POST(request);
+  assert.equal(response.status, 200, `Expected 200, got ${response.status}`);
+
+  const body = (await response.json()) as {
     compressed: string;
     original: string;
     tokensSaved: number;
@@ -275,6 +283,32 @@ test("POST /api/compression/preview with pipeline incl. tool-schema + detail tri
   assert.ok(
     body.techniquesUsed.includes("relevance-extract"),
     `techniquesUsed should include relevance-extract, got: ${body.techniquesUsed}`
+  );
+});
+
+test("POST /api/compression/preview with pipeline incl. tool-schema + detail trims tool defs", async () => {
+  const request = await makeManagementSessionRequest("http://localhost/api/compression/preview", {
+    method: "POST",
+    body: {
+      pipeline: ["tool-schema"],
+      messages: [{ role: "user", content: "go" }],
+      tools: buildToolSchemaTools(),
+      config: {
+        toolSchema: { maxDescriptionChars: 50, dropExamples: true, dropVendorExtensions: true },
+      },
+    },
+  });
+
+  const response = await previewRoute.POST(request);
+  assert.equal(response.status, 200, `Expected 200, got ${response.status}`);
+
+  const body = (await response.json()) as {
+    tools?: Array<{ function?: { description?: string } }>;
+  };
+  const desc = String(body.tools?.[0]?.function?.description ?? "");
+  assert.ok(
+    desc.length <= 50,
+    `pipeline detail should trim descriptions, got length ${desc.length}`
   );
 });
 
@@ -298,11 +332,6 @@ test("POST /api/compression/preview with pipeline incl. relevance + bm25 detail 
   const response = await previewRoute.POST(request);
   assert.equal(response.status, 200, `Expected 200, got ${response.status}`);
 
-  const body = (await response.json()) as {
-    tools?: Array<{ function?: { description?: string } }>;
-  };
-  const desc = String(body.tools?.[0]?.function?.description ?? "");
-  assert.ok(desc.length <= 50, `pipeline detail should trim descriptions, got length ${desc.length}`);
   const body = (await response.json()) as { compressed: string; original: string };
   assert.ok(
     body.compressed.length < body.original.length,

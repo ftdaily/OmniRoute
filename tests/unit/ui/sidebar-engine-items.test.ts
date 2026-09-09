@@ -63,6 +63,8 @@ describe("COMPRESSION_CONTEXT_GROUP contains all 5 engine items", () => {
     assert.ok(item, "context-tool-schema item not found");
     assert.equal(item.href, "/dashboard/context/tool-schema");
     assert.equal(item.labelFallback, "Tool Schema");
+  });
+
   it('relevance has href "/dashboard/context/relevance" and labelFallback "Relevance"', () => {
     const item = itemMap.get("context-relevance");
     assert.ok(item, "context-relevance item not found");
@@ -96,11 +98,7 @@ describe("COMPRESSION_CONTEXT_GROUP contains all 5 engine items", () => {
     const ids = itemIds as string[];
     assert.equal(ids[0], "context-settings", "Settings must be first");
     assert.equal(ids[1], "context-combos", "Combos must be second");
-    assert.equal(
-      ids[ids.length - 1],
-      "compression-exclusions",
-      "Exclusions must be last"
-    );
+    assert.equal(ids[ids.length - 1], "compression-exclusions", "Exclusions must be last");
     assert.equal(
       ids[ids.length - 2],
       "compression-studio",

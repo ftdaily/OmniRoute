@@ -1003,7 +1003,15 @@ function runStackedCompression(
       acc.validationWarnings.add(`${step.engine}: skipped (pipeline circuit-breaker open)`);
       continue;
     }
-    if (gatedType && shouldSkipEngineForContentType(step.engine, gatedType.contentType, gatedType.confidence, contentTypeGate)) {
+    if (
+      gatedType &&
+      shouldSkipEngineForContentType(
+        step.engine,
+        gatedType.contentType,
+        gatedType.confidence,
+        contentTypeGate
+      )
+    ) {
       acc.validationWarnings.add(`${step.engine}: skipped (content-type ${gatedType.contentType})`);
       continue;
     }
@@ -1120,7 +1128,15 @@ async function runStackedCompressionAsync(
       acc.validationWarnings.add(`${step.engine}: skipped (pipeline circuit-breaker open)`);
       continue;
     }
-    if (gatedType && shouldSkipEngineForContentType(step.engine, gatedType.contentType, gatedType.confidence, contentTypeGate)) {
+    if (
+      gatedType &&
+      shouldSkipEngineForContentType(
+        step.engine,
+        gatedType.contentType,
+        gatedType.confidence,
+        contentTypeGate
+      )
+    ) {
       acc.validationWarnings.add(`${step.engine}: skipped (content-type ${gatedType.contentType})`);
       continue;
     }

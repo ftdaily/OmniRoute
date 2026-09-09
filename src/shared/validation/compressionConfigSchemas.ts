@@ -445,7 +445,10 @@ export const compressionSettingsUpdateSchema = z
     contextEditing: contextEditingConfigSchema.optional(),
     omniglyph: omniglyphConfigSchema.optional(),
     liveZone: z.object({ enabled: z.boolean() }).strict().optional(),
-    contentTypeRouter: z.object({ enabled: z.boolean(), confidenceThreshold: z.number().min(0).max(1).optional() }).strict().optional(),
+    contentTypeRouter: z
+      .object({ enabled: z.boolean(), confidenceThreshold: z.number().min(0).max(1).optional() })
+      .strict()
+      .optional(),
     engines: z.record(z.string(), engineToggleSchema).optional(),
     enginesExplicit: z.boolean().optional(),
     activeComboId: z.string().nullable().optional(),

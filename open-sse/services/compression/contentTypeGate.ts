@@ -7,8 +7,16 @@
  * returns "do not skip" so legacy runs are byte-identical.
  */
 
-import { detectContentType, contentTypeApplies, DEFAULT_CONTENT_TYPE_THRESHOLD } from "./contentTypeRouter.ts";
-import type { ContentType, ContentTypeResult, ContentTypeRouterConfig } from "./contentTypeRouter.ts";
+import {
+  detectContentType,
+  contentTypeApplies,
+  DEFAULT_CONTENT_TYPE_THRESHOLD,
+} from "./contentTypeRouter.ts";
+import type {
+  ContentType,
+  ContentTypeResult,
+  ContentTypeRouterConfig,
+} from "./contentTypeRouter.ts";
 import { extractTextContent, type ChatMessageLike } from "./messageContent.ts";
 
 /** Max chars scanned for classification — bounds regex/parse cost on huge bodies. */

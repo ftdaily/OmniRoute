@@ -1,18 +1,61 @@
 "use client";
 import { useCallback, useState } from "react";
-import { previewToRunModel, type CompressionRunModel, type PreviewResponse } from "@/app/(dashboard)/dashboard/compression/studio/compressionFlowModel";
-export interface PreviewMessage { role: string; content: unknown; }
-export interface Lane { engine: string; run: CompressionRunModel | null; error: string | null; }
-export interface PreviewBatch { lanes: Lane[]; combined: CompressionRunModel | null; diff: PreviewResponse["diff"] | null; riskGate: PreviewResponse["riskGate"] | null; contentType: PreviewResponse["contentType"] | null; heatmap: PreviewResponse["heatmap"] | null; }
-export interface RunPreviewArgs { messages: PreviewMessage[]; laneEngines: string[]; activeEngines: string[]; language?: string; fidelityGate?: boolean; fuzzyDedup?: boolean; riskGate?: boolean; quantumLock?: boolean; contentTypeRouter?: boolean; heatmap?: "ultra" | "universal"; }
+import {
+  previewToRunModel,
+  type CompressionRunModel,
+  type PreviewResponse,
+} from "@/app/(dashboard)/dashboard/compression/studio/compressionFlowModel";
+export interface PreviewMessage {
+  role: string;
+  content: unknown;
+}
+export interface Lane {
+  engine: string;
+  run: CompressionRunModel | null;
+  error: string | null;
+}
+export interface PreviewBatch {
+  lanes: Lane[];
+  combined: CompressionRunModel | null;
+  diff: PreviewResponse["diff"] | null;
+  riskGate: PreviewResponse["riskGate"] | null;
+  contentType: PreviewResponse["contentType"] | null;
+  heatmap: PreviewResponse["heatmap"] | null;
+}
+export interface RunPreviewArgs {
+  messages: PreviewMessage[];
+  laneEngines: string[];
+  activeEngines: string[];
+  language?: string;
+  fidelityGate?: boolean;
+  fuzzyDedup?: boolean;
+  riskGate?: boolean;
+  quantumLock?: boolean;
+  contentTypeRouter?: boolean;
+  heatmap?: "ultra" | "universal";
+}
 async function postPreview(payload: Record<string, unknown>): Promise<PreviewResponse> {
-  const res = await fetch("/api/compression/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const res = await fetch("/api/compression/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? "Preview failed");
   return data as PreviewResponse;
 }
 export async function runPreviewBatch(args: RunPreviewArgs): Promise<PreviewBatch> {
-  const { messages, laneEngines, activeEngines, fidelityGate, fuzzyDedup, riskGate, quantumLock, contentTypeRouter, heatmap } = args;
+  const {
+    messages,
+    laneEngines,
+    activeEngines,
+    fidelityGate,
+    fuzzyDedup,
+    riskGate,
+    quantumLock,
+    contentTypeRouter,
+    heatmap,
+  } = args;
   const extra = {
     ...(fidelityGate ? { fidelityGate: { enabled: true } } : {}),
     ...(fuzzyDedup ? { fuzzyDedup: { enabled: true } } : {}),
@@ -23,8 +66,12 @@ export async function runPreviewBatch(args: RunPreviewArgs): Promise<PreviewBatc
   };
   const lanes: Lane[] = await Promise.all(
     laneEngines.map(async (engine): Promise<Lane> => {
-      try { const res = await postPreview({ messages, engineId: engine, ...extra }); return { engine, run: previewToRunModel(res, engine), error: null }; }
-      catch (e) { return { engine, run: null, error: e instanceof Error ? e.message : "error" }; }
+      try {
+        const res = await postPreview({ messages, engineId: engine, ...extra });
+        return { engine, run: previewToRunModel(res, engine), error: null };
+      } catch (e) {
+        return { engine, run: null, error: e instanceof Error ? e.message : "error" };
+      }
     })
   );
   let combined: CompressionRunModel | null = null;
@@ -33,14 +80,29 @@ export async function runPreviewBatch(args: RunPreviewArgs): Promise<PreviewBatc
   let contentType: PreviewResponse["contentType"] | null = null;
   let heatmapResult: PreviewResponse["heatmap"] | null = null;
   if (activeEngines.length > 0) {
-    try { const res = await postPreview({ messages, pipeline: activeEngines, ...extra }); combined = previewToRunModel(res, activeEngines.join(" → ")); diff = res.diff; riskGateStats = res.riskGate ?? null; contentType = res.contentType ?? null; heatmapResult = res.heatmap ?? null; }
-    catch { combined = null; }
+    try {
+      const res = await postPreview({ messages, pipeline: activeEngines, ...extra });
+      combined = previewToRunModel(res, activeEngines.join(" → "));
+      diff = res.diff;
+      riskGateStats = res.riskGate ?? null;
+      contentType = res.contentType ?? null;
+      heatmapResult = res.heatmap ?? null;
+    } catch {
+      combined = null;
+    }
   }
   return { lanes, combined, diff, riskGate: riskGateStats, contentType, heatmap: heatmapResult };
 }
 export function usePreviewCompression() {
   const [batch, setBatch] = useState<PreviewBatch | null>(null);
   const [loading, setLoading] = useState(false);
-  const run = useCallback(async (args: RunPreviewArgs) => { setLoading(true); try { setBatch(await runPreviewBatch(args)); } finally { setLoading(false); } }, []);
+  const run = useCallback(async (args: RunPreviewArgs) => {
+    setLoading(true);
+    try {
+      setBatch(await runPreviewBatch(args));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   return { batch, loading, run };
 }

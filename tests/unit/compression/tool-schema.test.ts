@@ -131,18 +131,14 @@ describe("tool-schema engine", () => {
 
 describe("tool-schema stacked wiring", () => {
   it("registers as a builtin engine with catalog + schema parity", async () => {
-    const { registerBuiltinCompressionEngines } = await import(
-      "../../../open-sse/services/compression/engines/index.ts"
-    );
-    const { listCompressionEngines } = await import(
-      "../../../open-sse/services/compression/engines/registry.ts"
-    );
-    const { ENGINE_IDS, engineMeta } = await import(
-      "../../../open-sse/services/compression/engineCatalog.ts"
-    );
-    const { stackedPipelineStepSchema, STACKED_PIPELINE_ENGINE_INTENSITIES } = await import(
-      "../../../src/shared/validation/compressionConfigSchemas.ts"
-    );
+    const { registerBuiltinCompressionEngines } =
+      await import("../../../open-sse/services/compression/engines/index.ts");
+    const { listCompressionEngines } =
+      await import("../../../open-sse/services/compression/engines/registry.ts");
+    const { ENGINE_IDS, engineMeta } =
+      await import("../../../open-sse/services/compression/engineCatalog.ts");
+    const { stackedPipelineStepSchema, STACKED_PIPELINE_ENGINE_INTENSITIES } =
+      await import("../../../src/shared/validation/compressionConfigSchemas.ts");
     registerBuiltinCompressionEngines();
     const ids = listCompressionEngines().map((e) => e.id);
     assert.ok(ids.includes("tool-schema"), "engine registered");
@@ -153,9 +149,8 @@ describe("tool-schema stacked wiring", () => {
   });
 
   it("derives into a stacked plan when toggled on", async () => {
-    const { deriveDefaultPlan } = await import(
-      "../../../open-sse/services/compression/deriveDefaultPlan.ts"
-    );
+    const { deriveDefaultPlan } =
+      await import("../../../open-sse/services/compression/deriveDefaultPlan.ts");
     const plan = deriveDefaultPlan(
       { "tool-schema": { enabled: true }, lite: { enabled: true } } as never,
       true
@@ -166,12 +161,10 @@ describe("tool-schema stacked wiring", () => {
   });
 
   it("stacked run compresses tools via the pipeline path", async () => {
-    const { applyStackedCompression } = await import(
-      "../../../open-sse/services/compression/strategySelector.ts"
-    );
-    const { DEFAULT_COMPRESSION_CONFIG } = await import(
-      "../../../open-sse/services/compression/types.ts"
-    );
+    const { applyStackedCompression } =
+      await import("../../../open-sse/services/compression/strategySelector.ts");
+    const { DEFAULT_COMPRESSION_CONFIG } =
+      await import("../../../open-sse/services/compression/types.ts");
     const body = {
       messages: [{ role: "user", content: "go" }],
       tools: [
@@ -200,12 +193,10 @@ describe("tool-schema stacked wiring", () => {
   });
 
   it("stacked run honors explicit per-step opt-out {enabled:false}", async () => {
-    const { applyStackedCompression } = await import(
-      "../../../open-sse/services/compression/strategySelector.ts"
-    );
-    const { DEFAULT_COMPRESSION_CONFIG } = await import(
-      "../../../open-sse/services/compression/types.ts"
-    );
+    const { applyStackedCompression } =
+      await import("../../../open-sse/services/compression/strategySelector.ts");
+    const { DEFAULT_COMPRESSION_CONFIG } =
+      await import("../../../open-sse/services/compression/types.ts");
     const body = {
       messages: [{ role: "user", content: "go" }],
       tools: [
@@ -247,7 +238,12 @@ describe("tool-schema stacked wiring", () => {
     };
     const body = {
       messages: [{ role: "user", content: "go" }],
-      tools: [{ type: "function", function: { name: "t", description: "d".repeat(300), parameters: schema } }],
+      tools: [
+        {
+          type: "function",
+          function: { name: "t", description: "d".repeat(300), parameters: schema },
+        },
+      ],
     };
     const result = toolSchemaEngine.apply(body, { stepConfig: { enabled: true } });
     assert.equal(result.compressed, true);

@@ -23,9 +23,7 @@ import {
   getCompressionSettings,
   updateCompressionSettings,
 } from "../../../src/lib/db/compression.ts";
-import {
-  registerBuiltinCompressionEngines,
-} from "../../services/compression/engines/index.ts";
+import { registerBuiltinCompressionEngines } from "../../services/compression/engines/index.ts";
 import {
   getCompressionEngine,
   getEngineEntry,
@@ -65,12 +63,20 @@ function engineShape(entry: ReturnType<typeof listEngines>[number]) {
   };
 }
 
-export async function handleListCompressionEngines(_args: z.infer<typeof listCompressionEnginesInput>) {
+export async function handleListCompressionEngines(
+  _args: z.infer<typeof listCompressionEnginesInput>
+) {
   const start = Date.now();
   registerBuiltinCompressionEngines();
   const engines = listEngines().map(engineShape);
   const result = { engines };
-  await logToolCall("omniroute_list_compression_engines", _args, { count: engines.length }, Date.now() - start, true);
+  await logToolCall(
+    "omniroute_list_compression_engines",
+    _args,
+    { count: engines.length },
+    Date.now() - start,
+    true
+  );
   return result;
 }
 
@@ -84,14 +90,26 @@ export async function handleGetCompressionEngine(args: z.infer<typeof getCompres
   const entry = getEngineEntry(args.engineId);
   if (!entry) throw new Error(`Unknown compression engine: "${args.engineId}"`);
   const result = engineShape(entry);
-  await logToolCall("omniroute_get_compression_engine", args, { id: result.id }, Date.now() - start, true);
+  await logToolCall(
+    "omniroute_get_compression_engine",
+    args,
+    { id: result.id },
+    Date.now() - start,
+    true
+  );
   return result;
 }
 
 export const updateCompressionEngineInput = z.object({
   engineId: z.string().min(1).describe("Engine id to update"),
-  enabled: z.boolean().optional().describe("Flip the registry enabled flag (respected by stacked dispatch)"),
-  config: z.record(z.string(), z.unknown()).optional().describe("Partial engine config; validated by the engine"),
+  enabled: z
+    .boolean()
+    .optional()
+    .describe("Flip the registry enabled flag (respected by stacked dispatch)"),
+  config: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe("Partial engine config; validated by the engine"),
 });
 
 export async function handleUpdateCompressionEngine(
@@ -110,7 +128,9 @@ export async function handleUpdateCompressionEngine(
       ...args.config,
     });
     if (!dryValidation.valid) {
-      throw new Error(`Invalid config for engine "${args.engineId}": ${dryValidation.errors.join("; ")}`);
+      throw new Error(
+        `Invalid config for engine "${args.engineId}": ${dryValidation.errors.join("; ")}`
+      );
     }
   }
   // Canonical persistence path: the SQLite compression settings service owns all
@@ -150,7 +170,9 @@ export async function handleUpdateCompressionEngine(
   if (persistedDetail !== undefined) {
     const validation = updateEngineConfig(args.engineId, persistedDetail);
     if (!validation.valid) {
-      throw new Error(`Invalid config for engine "${args.engineId}": ${validation.errors.join("; ")}`);
+      throw new Error(
+        `Invalid config for engine "${args.engineId}": ${validation.errors.join("; ")}`
+      );
     }
   }
   // Read back the exact persisted state — the response reports SQLite truth, not
@@ -164,10 +186,18 @@ export async function handleUpdateCompressionEngine(
     config: entry?.config ?? {},
     persisted: {
       engines: reread.engines?.[args.engineId] ?? null,
-      ...(subKey ? { [subKey]: (reread as unknown as Record<string, unknown>)[subKey] ?? null } : {}),
+      ...(subKey
+        ? { [subKey]: (reread as unknown as Record<string, unknown>)[subKey] ?? null }
+        : {}),
     },
   };
-  await logToolCall("omniroute_update_compression_engine", args, { engineId: args.engineId }, Date.now() - start, true);
+  await logToolCall(
+    "omniroute_update_compression_engine",
+    args,
+    { engineId: args.engineId },
+    Date.now() - start,
+    true
+  );
   return result;
 }
 
@@ -185,7 +215,10 @@ const ENGINE_SETTINGS_SUBOBJECT: Record<string, string> = {
 // ── rules / language packs ─────────────────────────────────────────────────
 
 export const listCompressionRulesInput = z.object({
-  intensity: z.enum(["lite", "full", "ultra"]).optional().describe("Only rules active at this intensity"),
+  intensity: z
+    .enum(["lite", "full", "ultra"])
+    .optional()
+    .describe("Only rules active at this intensity"),
 });
 
 export async function handleListCompressionRules(args: z.infer<typeof listCompressionRulesInput>) {
@@ -231,8 +264,17 @@ const PREVIEW_INTENSITIES = ["lite", "full", "ultra", "minimal", "standard", "ag
 
 export const compressionPreviewInput = z.object({
   text: z.string().min(1).max(500_000).describe("Text to dry-run compression on"),
-  engineId: z.string().min(1).optional().describe("Single engine id (runs as a one-step stacked pipeline)"),
-  pipeline: z.array(z.string().min(1)).min(1).max(16).optional().describe("Ordered engine ids for a stacked run"),
+  engineId: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Single engine id (runs as a one-step stacked pipeline)"),
+  pipeline: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(16)
+    .optional()
+    .describe("Ordered engine ids for a stacked run"),
   intensity: z.enum(PREVIEW_INTENSITIES).optional().describe("Step intensity override"),
 });
 
@@ -283,10 +325,7 @@ export async function handleCompressionPreview(args: z.infer<typeof compressionP
     result = await applyCompressionAsync(body as Record<string, unknown>, "stacked");
   }
   const originalTokens = estimateCompressionTokens(args.text);
-  const compressedText = extractCompressedText(
-    result.body as Record<string, unknown>,
-    args.text
-  );
+  const compressedText = extractCompressedText(result.body as Record<string, unknown>, args.text);
   const compressedTokens = estimateCompressionTokens(compressedText);
   const tokensSaved = Math.max(0, originalTokens - compressedTokens);
   const output = {

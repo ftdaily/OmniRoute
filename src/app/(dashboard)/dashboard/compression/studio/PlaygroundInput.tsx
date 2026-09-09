@@ -133,7 +133,11 @@ export function PlaygroundInput({
       >
         {t("quantumLock")}
       </ToggleOption>
-      <ToggleOption testId="content-type-toggle" checked={contentTypeRouter} onChange={onToggleContentType}>
+      <ToggleOption
+        testId="content-type-toggle"
+        checked={contentTypeRouter}
+        onChange={onToggleContentType}
+      >
         {t("routeContentType")}
       </ToggleOption>
       <ToggleOption

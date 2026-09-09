@@ -40,10 +40,7 @@ describe("shouldSkipEngineForContentType", () => {
 
   it("never skips below the confidence threshold", () => {
     assert.equal(shouldSkipEngineForContentType("caveman", "json", 0.5, ON), false);
-    assert.equal(
-      shouldSkipEngineForContentType("caveman", "json", 0.69, ON),
-      false
-    );
+    assert.equal(shouldSkipEngineForContentType("caveman", "json", 0.69, ON), false);
   });
 
   it("skips non-applicable engines at high confidence", () => {
@@ -59,10 +56,7 @@ describe("shouldSkipEngineForContentType", () => {
   });
 
   it("unknown engines fail open", () => {
-    assert.equal(
-      shouldSkipEngineForContentType("some-future-engine", "json", 0.95, ON),
-      false
-    );
+    assert.equal(shouldSkipEngineForContentType("some-future-engine", "json", 0.95, ON), false);
   });
 });
 
@@ -90,9 +84,7 @@ describe("gate-off byte-identical", () => {
       contentTypeRouter: { enabled: true },
     });
     assert.ok(
-      (res.stats?.validationWarnings ?? []).some((w) =>
-        w.includes("skipped (content-type json)")
-      ),
+      (res.stats?.validationWarnings ?? []).some((w) => w.includes("skipped (content-type json)")),
       "expected a content-type skip warning"
     );
   });

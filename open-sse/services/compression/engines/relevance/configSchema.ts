@@ -100,12 +100,25 @@ export function validateRelevanceConfig(config: Record<string, unknown>): Engine
 
 export function resolveRelevanceConfig(stepConfig: Record<string, unknown>): RelevanceConfig {
   return {
-    enabled: typeof stepConfig.enabled === "boolean" ? stepConfig.enabled : DEFAULT_RELEVANCE_CONFIG.enabled,
-    overlapThreshold: typeof stepConfig.overlapThreshold === "number" ? stepConfig.overlapThreshold : DEFAULT_RELEVANCE_CONFIG.overlapThreshold!,
-    budgetPercent: typeof stepConfig.budgetPercent === "number" ? stepConfig.budgetPercent : DEFAULT_RELEVANCE_CONFIG.budgetPercent!,
-    boilerplateWeight: typeof stepConfig.boilerplateWeight === "number" ? stepConfig.boilerplateWeight : DEFAULT_RELEVANCE_CONFIG.boilerplateWeight!,
+    enabled:
+      typeof stepConfig.enabled === "boolean"
+        ? stepConfig.enabled
+        : DEFAULT_RELEVANCE_CONFIG.enabled,
+    overlapThreshold:
+      typeof stepConfig.overlapThreshold === "number"
+        ? stepConfig.overlapThreshold
+        : DEFAULT_RELEVANCE_CONFIG.overlapThreshold!,
+    budgetPercent:
+      typeof stepConfig.budgetPercent === "number"
+        ? stepConfig.budgetPercent
+        : DEFAULT_RELEVANCE_CONFIG.budgetPercent!,
+    boilerplateWeight:
+      typeof stepConfig.boilerplateWeight === "number"
+        ? stepConfig.boilerplateWeight
+        : DEFAULT_RELEVANCE_CONFIG.boilerplateWeight!,
     scorer: stepConfig.scorer === "bm25" ? "bm25" : "jaccard",
-    bm25K1: typeof stepConfig.bm25K1 === "number" ? stepConfig.bm25K1 : DEFAULT_RELEVANCE_CONFIG.bm25K1,
+    bm25K1:
+      typeof stepConfig.bm25K1 === "number" ? stepConfig.bm25K1 : DEFAULT_RELEVANCE_CONFIG.bm25K1,
     bm25B: typeof stepConfig.bm25B === "number" ? stepConfig.bm25B : DEFAULT_RELEVANCE_CONFIG.bm25B,
   };
 }

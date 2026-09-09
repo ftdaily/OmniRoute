@@ -164,9 +164,9 @@ describe("compression engine handlers", () => {
   });
 
   it("rejects unknown engine ids and invalid configs on update", async () => {
-    await expect(
-      handleUpdateCompressionEngine({ engineId: "nope", config: {} })
-    ).rejects.toThrow(/Unknown compression engine/);
+    await expect(handleUpdateCompressionEngine({ engineId: "nope", config: {} })).rejects.toThrow(
+      /Unknown compression engine/
+    );
     await expect(
       handleUpdateCompressionEngine({ engineId: "lite", config: { compressToolResults: "yes" } })
     ).rejects.toThrow();
@@ -212,15 +212,18 @@ describe("compression studio handlers", () => {
   });
 
   it("previews a single-engine run", async () => {
-    const result = await handleCompressionPreview({ text: FILLER_TEXT.repeat(8), engineId: "lite" });
+    const result = await handleCompressionPreview({
+      text: FILLER_TEXT.repeat(8),
+      engineId: "lite",
+    });
     expect(result.mode).toBe("stacked");
     expect(result.originalTokens).toBeGreaterThan(0);
   });
 
   it("rejects unknown preview engines", async () => {
-    await expect(handleCompressionPreview({ text: "hello world", engineId: "nope" })).rejects.toThrow(
-      /Unknown compression engine/
-    );
+    await expect(
+      handleCompressionPreview({ text: "hello world", engineId: "nope" })
+    ).rejects.toThrow(/Unknown compression engine/);
   });
 
   it("compares engines best-first", async () => {
@@ -260,15 +263,12 @@ describe("compression engine update persistence (BLOCKER)", () => {
 
   it("persists the enabled toggle to the engines map (survives registry clear = restart)", async () => {
     const { getCompressionSettings } = await import("../../../src/lib/db/compression.ts");
-    const { clearCompressionEngineRegistry } = await import(
-      "../../services/compression/engines/registry.ts"
-    );
-    const { registerBuiltinCompressionEngines } = await import(
-      "../../services/compression/engines/index.ts"
-    );
-    const { applyStackedCompression } = await import(
-      "../../services/compression/strategySelector.ts"
-    );
+    const { clearCompressionEngineRegistry } =
+      await import("../../services/compression/engines/registry.ts");
+    const { registerBuiltinCompressionEngines } =
+      await import("../../services/compression/engines/index.ts");
+    const { applyStackedCompression } =
+      await import("../../services/compression/strategySelector.ts");
     const before = await getCompressionSettings();
     const targetEnabled = !(before.engines?.["session-dedup"]?.enabled ?? false);
 
@@ -307,9 +307,9 @@ describe("compression engine update persistence (BLOCKER)", () => {
   });
 
   it("carries the write:compression scope (update is a write, not a read)", () => {
-    const toolDef = (
-      compressionControlTools as Record<string, { scopes: string[] }>
-    )["omniroute_update_compression_engine"];
+    const toolDef = (compressionControlTools as Record<string, { scopes: string[] }>)[
+      "omniroute_update_compression_engine"
+    ];
     expect(toolDef.scopes).toContain("write:compression");
     expect(toolDef.scopes).not.toContain("read:compression");
   });

@@ -19,9 +19,7 @@ describe("detectContentType", () => {
   });
 
   it("classifies unified diffs as diff", () => {
-    const r = detectContentType(
-      "diff --git a/a.ts b/a.ts\n@@ -1 +1 @@\n-old\n+new\n"
-    );
+    const r = detectContentType("diff --git a/a.ts b/a.ts\n@@ -1 +1 @@\n-old\n+new\n");
     assert.equal(r.contentType, "diff");
     assert.ok(r.confidence >= 0.7);
   });
@@ -78,10 +76,7 @@ describe("resolveContentTypeRouter", () => {
   it("returns undefined unless explicitly enabled", () => {
     assert.equal(resolveContentTypeRouter(undefined), undefined);
     assert.equal(resolveContentTypeRouter({}), undefined);
-    assert.equal(
-      resolveContentTypeRouter({ contentTypeRouter: { enabled: false } }),
-      undefined
-    );
+    assert.equal(resolveContentTypeRouter({ contentTypeRouter: { enabled: false } }), undefined);
   });
 
   it("explicit option wins over config", () => {

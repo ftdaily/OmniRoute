@@ -148,13 +148,8 @@ export function contentTypeApplies(contentType: ContentType, engine: string): bo
  * skip the entire pipeline. The Studio calls this client-side (before the
  * run) to warn instead of producing an all-skipped no-op.
  */
-export function pipelineFullyGated(
-  contentType: ContentType,
-  engines: readonly string[]
-): boolean {
-  return (
-    engines.length > 0 && engines.every((e) => !contentTypeApplies(contentType, e))
-  );
+export function pipelineFullyGated(contentType: ContentType, engines: readonly string[]): boolean {
+  return engines.length > 0 && engines.every((e) => !contentTypeApplies(contentType, e));
 }
 
 /** Resolve the effective router config (explicit option wins over config); enabled-gated. */

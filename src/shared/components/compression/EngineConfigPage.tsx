@@ -257,36 +257,34 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
                     : {}),
                 },
               }
-          : engineId === "relevance"
-            ? {
-                relevance: {
-                  ...(typeof configState.scorer === "string"
-                    ? { scorer: configState.scorer }
-                    : {}),
-                  ...(typeof configState.bm25K1 === "number"
-                    ? { bm25K1: configState.bm25K1 }
-                    : {}),
-                  ...(typeof configState.bm25B === "number"
-                    ? { bm25B: configState.bm25B }
-                    : {}),
-                  ...(typeof configState.overlapThreshold === "number"
-                    ? { overlapThreshold: configState.overlapThreshold }
-                    : {}),
-                  ...(typeof configState.budgetPercent === "number"
-                    ? { budgetPercent: configState.budgetPercent }
-                    : {}),
-                  ...(typeof configState.boilerplateWeight === "number"
-                    ? { boilerplateWeight: configState.boilerplateWeight }
-                    : {}),
-                },
-              }
-            : engineId === "aggressive"
-            ? { aggressive: { ...configState } }
-            : engineId === "ultra"
-              ? { ultra: { ...configState } }
-              : engineId === "lite"
-                ? { lite: { ...configState } }
-                : undefined;
+            : engineId === "relevance"
+              ? {
+                  relevance: {
+                    ...(typeof configState.scorer === "string"
+                      ? { scorer: configState.scorer }
+                      : {}),
+                    ...(typeof configState.bm25K1 === "number"
+                      ? { bm25K1: configState.bm25K1 }
+                      : {}),
+                    ...(typeof configState.bm25B === "number" ? { bm25B: configState.bm25B } : {}),
+                    ...(typeof configState.overlapThreshold === "number"
+                      ? { overlapThreshold: configState.overlapThreshold }
+                      : {}),
+                    ...(typeof configState.budgetPercent === "number"
+                      ? { budgetPercent: configState.budgetPercent }
+                      : {}),
+                    ...(typeof configState.boilerplateWeight === "number"
+                      ? { boilerplateWeight: configState.boilerplateWeight }
+                      : {}),
+                  },
+                }
+              : engineId === "aggressive"
+                ? { aggressive: { ...configState } }
+                : engineId === "ultra"
+                  ? { ultra: { ...configState } }
+                  : engineId === "lite"
+                    ? { lite: { ...configState } }
+                    : undefined;
       const res = await fetch("/api/compression/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

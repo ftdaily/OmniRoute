@@ -639,6 +639,7 @@ export async function getCompressionSettings(): Promise<CompressionConfig> {
     contextEditing: { ...DEFAULT_CONTEXT_EDITING_CONFIG },
     omniglyph: { ...DEFAULT_OMNIGLYPH_CONFIG },
     liveZone: { enabled: false },
+    contentTypeRouter: { enabled: false },
     engines: {},
     activeComboId: null,
     exclusions: [],
@@ -769,6 +770,17 @@ export async function getCompressionSettings(): Promise<CompressionConfig> {
       case "liveZone":
         config.liveZone = { enabled: toRecord(parsed).enabled === true };
         break;
+      case "contentTypeRouter": {
+        const rec = toRecord(parsed);
+        const threshold = rec.confidenceThreshold;
+        config.contentTypeRouter = {
+          enabled: rec.enabled === true,
+          ...(typeof threshold === "number" && Number.isFinite(threshold)
+            ? { confidenceThreshold: Math.min(1, Math.max(0, threshold)) }
+            : {}),
+        };
+        break;
+      }
       case "engines":
         storedEngines = parseStoredEnginesMap(parsed);
         break;

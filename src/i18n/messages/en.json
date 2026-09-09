@@ -8733,7 +8733,8 @@
     "encoderWinner": "winner: {winner}",
     "encoder": "encoder",
     "bytes": "bytes",
-    "tokensCl100k": "tokens (cl100k)"
+    "tokensCl100k": "tokens (cl100k)",
+    "routeContentType": "Route by content type (skip engines that do not apply)"
   },
   "omniglyph": {
     "preview": "Preview",

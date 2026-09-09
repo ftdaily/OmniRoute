@@ -46,6 +46,9 @@ import {
   type CachingDetectionContext,
 } from "./cachingAware.ts";
 import { resolveCompressionPlan } from "./resolveCompressionPlan.ts";
+import type { ContentTypeRouterConfig } from "./contentTypeRouter.ts";
+import { resolveContentTypeRouter } from "./contentTypeRouter.ts";
+import { contentTypeOfBody, shouldSkipEngineForContentType } from "./contentTypeGate.ts";
 import { deriveDefaultPlan, type DerivedPlan } from "./deriveDefaultPlan.ts";
 import {
   withSource,
@@ -746,6 +749,8 @@ interface StackOptions {
   fidelityGate?: FidelityGateConfig;
   /** Risk-gate mask/restore wrapper (opt-in, default off). Read via resolveRiskGate. */
   riskGate?: RiskGateConfig;
+  /** Content-type router (opt-in, default off). Classified once per stacked run. */
+  contentTypeRouter?: ContentTypeRouterConfig;
   /** Authenticated principal id — threaded through to CCR engine for store scoping. */
   principalId?: string;
   /** F3.3: called once per engine as it completes (live per-engine streaming). */
@@ -972,6 +977,8 @@ function runStackedCompression(
   const onStep = options?.onEngineStep;
   const totalSteps = steps.length;
   let stepIdx = 0;
+  const contentTypeGate = resolveContentTypeRouter(options);
+  const gatedType = contentTypeGate ? contentTypeOfBody(body) : undefined;
 
   for (const step of steps) {
     const engine = getCompressionEngine(step.engine);
@@ -994,6 +1001,10 @@ function runStackedCompression(
     // T02: when the per-engine breaker is OPEN, skip this step (verbatim body kept — fail-open).
     if (breakerOn && !canRunEngine(step.engine, breaker)) {
       acc.validationWarnings.add(`${step.engine}: skipped (pipeline circuit-breaker open)`);
+      continue;
+    }
+    if (gatedType && shouldSkipEngineForContentType(step.engine, gatedType.contentType, gatedType.confidence, contentTypeGate)) {
+      acc.validationWarnings.add(`${step.engine}: skipped (content-type ${gatedType.contentType})`);
       continue;
     }
 
@@ -1084,6 +1095,8 @@ async function runStackedCompressionAsync(
   const onStep = options?.onEngineStep;
   const totalSteps = steps.length;
   let stepIdx = 0;
+  const contentTypeGate = resolveContentTypeRouter(options);
+  const gatedType = contentTypeGate ? contentTypeOfBody(body) : undefined;
 
   for (const step of steps) {
     const engine = getCompressionEngine(step.engine);
@@ -1105,6 +1118,10 @@ async function runStackedCompressionAsync(
     // T02: skip an engine whose breaker is OPEN (verbatim body kept — fail-open). Lockstep w/ sync.
     if (breakerOn && !canRunEngine(step.engine, breaker)) {
       acc.validationWarnings.add(`${step.engine}: skipped (pipeline circuit-breaker open)`);
+      continue;
+    }
+    if (gatedType && shouldSkipEngineForContentType(step.engine, gatedType.contentType, gatedType.confidence, contentTypeGate)) {
+      acc.validationWarnings.add(`${step.engine}: skipped (content-type ${gatedType.contentType})`);
       continue;
     }
     const stepOptions = buildStepOptions(step, options);

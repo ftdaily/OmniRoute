@@ -53,6 +53,7 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
   const [fidelityGate, setFidelityGate] = useState(false);
   const [riskGate, setRiskGate] = useState(false);
   const [quantumLock, setQuantumLock] = useState(false);
+  const [contentTypeRouter, setContentTypeRouter] = useState(false);
   const [heatmapMode, setHeatmapMode] = useState<"ultra" | "universal" | false>(false);
   const { batch, loading, run } = usePreviewCompression();
   const messages = [{ role: "user", content: text }];
@@ -73,6 +74,7 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
       fuzzyDedup,
       riskGate,
       quantumLock,
+      contentTypeRouter,
       ...(heatmapMode ? { heatmap: heatmapMode } : {}),
     });
   const activeDiff = resolveActiveDiff(batch, selectedLane);
@@ -94,6 +96,8 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
           onToggleRisk={() => setRiskGate((v) => !v)}
           quantumLock={quantumLock}
           onToggleQuantum={() => setQuantumLock((v) => !v)}
+          contentTypeRouter={contentTypeRouter}
+          onToggleContentType={() => setContentTypeRouter((v) => !v)}
           heatmap={heatmapMode}
           onToggleHeatmap={toggleHeatmap}
         />
@@ -107,6 +111,11 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
             </header>
             <WaterfallInspector run={batch.combined} />
             <RiskGateBadge stats={batch?.riskGate ?? null} />
+            {batch?.contentType ? (
+              <div data-testid="content-type-badge" className="text-xs text-slate-500">
+                {batch.contentType.type} ({Math.round(batch.contentType.confidence * 100)}%)
+              </div>
+            ) : null}
           </section>
         )}
         <section>

@@ -84,6 +84,7 @@ export interface PreviewResponse {
   encoderComparison?: EncoderComparison | null;
   riskGate?: RiskGateStats | null;
   quantumLock?: { fragments: number; categories: Record<string, number> } | null;
+  contentType?: { type: string; confidence: number } | null;
   heatmap?: PreviewHeatmap | null;
 }
 

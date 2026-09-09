@@ -13,6 +13,7 @@ import { ENGINE_IDS } from "./engineCatalog.ts";
 import type { ContextBudgetConfig } from "./adaptiveCompression/types.ts";
 import type { FidelityGateConfig } from "./fidelityGate.ts";
 import type { RiskGateConfig } from "./riskGate/riskGate.ts";
+import type { ContentTypeRouterConfig } from "./contentTypeRouter.ts";
 import type { PipelineCircuitBreakerConfig } from "./pipelineEngineBreaker.ts";
 import type { RiskGateStats } from "./riskGate/riskGateStep.ts";
 import type { QuantumLockConfig, QuantumLockStats } from "./quantumLock/quantumPatterns.ts";
@@ -274,6 +275,8 @@ export interface CompressionConfig {
   fidelityGate?: FidelityGateConfig;
   /** Opt-in risk-gate pre-pass: shields sensitive spans from compression (default disabled). */
   riskGate?: RiskGateConfig;
+  /** Opt-in content-type router: skips engines that do not apply to the classified body (default disabled). */
+  contentTypeRouter?: ContentTypeRouterConfig;
   /** T02 — opt-in per-engine circuit-breaker for the stacked pipeline (default disabled). */
   pipelineCircuitBreaker?: PipelineCircuitBreakerConfig;
   cavemanConfig?: CavemanConfig;

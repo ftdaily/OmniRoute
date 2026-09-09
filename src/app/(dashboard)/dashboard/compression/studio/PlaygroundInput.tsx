@@ -29,6 +29,8 @@ export interface PlaygroundInputProps {
   onToggleRisk: () => void;
   quantumLock: boolean;
   onToggleQuantum: () => void;
+  contentTypeRouter: boolean;
+  onToggleContentType: () => void;
   heatmap: "ultra" | "universal" | false;
   onToggleHeatmap: () => void;
 }
@@ -98,6 +100,8 @@ export function PlaygroundInput({
   onToggleRisk,
   quantumLock,
   onToggleQuantum,
+  contentTypeRouter,
+  onToggleContentType,
   heatmap,
   onToggleHeatmap,
 }: PlaygroundInputProps) {
@@ -128,6 +132,9 @@ export function PlaygroundInput({
         className="flex items-center gap-1 text-xs"
       >
         {t("quantumLock")}
+      </ToggleOption>
+      <ToggleOption testId="content-type-toggle" checked={contentTypeRouter} onChange={onToggleContentType}>
+        {t("routeContentType")}
       </ToggleOption>
       <ToggleOption
         testId="heatmap-toggle"

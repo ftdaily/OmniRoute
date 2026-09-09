@@ -21,6 +21,7 @@ import {
   reconcileSingleEngineTokens,
 } from "@omniroute/open-sse/services/compression/engineBreakdown";
 import { summarizeEncoderCandidates } from "@omniroute/open-sse/services/compression/engines/headroom/encoderComparison";
+import { contentTypeOfBody } from "@omniroute/open-sse/services/compression/contentTypeGate";
 import { DEFAULT_MIN_ROWS } from "@omniroute/open-sse/services/compression/engines/headroom/smartcrusher";
 
 export const PreviewCompressionConfigSchema = compressionPreviewConfigSchema;
@@ -62,6 +63,7 @@ export const PreviewRequestSchema = z.object({
   // context (provider: "anthropic") so the operator can SEE what would be stabilized; real
   // cache-hit gains only show in production provider telemetry.
   quantumLock: z.object({ enabled: z.boolean() }).optional(),
+  contentTypeRouter: z.object({ enabled: z.boolean() }).optional(),
   // Saliency heatmap mode. When set, the response includes a per-token heatmap.
   // "ultra" uses scoreToken (0–1); "universal" uses kept/removed from the diff.
   // Omit to skip heatmap computation (normal preview path — no extra cost).
@@ -78,6 +80,15 @@ function riskGateStatsOf(result: { stats?: { riskGate?: unknown } }): unknown {
 
 function quantumLockStatsOf(result: { stats?: { quantumLock?: unknown } | null }): unknown {
   return result.stats?.quantumLock ?? null;
+}
+
+function contentTypeStatsOfRequest(
+  requestBody: Record<string, unknown>,
+  gate?: { enabled: boolean } | undefined
+): unknown {
+  if (!gate?.enabled) return null;
+  const r = contentTypeOfBody(requestBody);
+  return { type: r.contentType, confidence: r.confidence };
 }
 
 function quantumExtras(quantumLock?: { enabled: boolean }) {
@@ -225,6 +236,7 @@ async function dispatchCompression(
     fuzzyDedup?: { enabled: boolean };
     riskGate?: { enabled: boolean };
     quantumLock?: { enabled: boolean };
+    contentTypeRouter?: { enabled: boolean };
   }
 ) {
   // resolveRiskGate reads `options.riskGate ?? options.config.riskGate`. applyCompressionAsync
@@ -260,6 +272,7 @@ async function dispatchCompression(
         ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
+        ...(opts.contentTypeRouter ? { contentTypeRouter: opts.contentTypeRouter } : {}),
         ...q.configPatch,
       } as CompressionConfig,
       ...q.applyOpts,
@@ -287,6 +300,7 @@ async function dispatchCompression(
         ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
+        ...(opts.contentTypeRouter ? { contentTypeRouter: opts.contentTypeRouter } : {}),
         ...q.configPatch,
       } as CompressionConfig,
       ...q.applyOpts,
@@ -298,6 +312,7 @@ async function dispatchCompression(
       ...(opts.config as CompressionConfig | undefined),
       ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
       ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
+      ...(opts.contentTypeRouter ? { contentTypeRouter: opts.contentTypeRouter } : {}),
       ...q.configPatch,
     } as CompressionConfig | undefined,
     ...q.applyOpts,
@@ -335,6 +350,7 @@ export async function POST(req: Request) {
     fuzzyDedup,
     riskGate,
     quantumLock,
+    contentTypeRouter,
     heatmap: heatmapMode,
   } = parsed.data;
   // Alias: `mode: "caveman"` is a synonym for `engineId: "caveman"` (single-engine stacked run).
@@ -362,6 +378,7 @@ export async function POST(req: Request) {
       fuzzyDedup,
       riskGate,
       quantumLock,
+      contentTypeRouter,
     });
     const durationMs = Date.now() - start;
 
@@ -449,6 +466,7 @@ export async function POST(req: Request) {
       })(),
       riskGate: riskGateStatsOf(result),
       quantumLock: quantumLockStatsOf(result),
+      contentType: contentTypeStatsOfRequest(requestBody, contentTypeRouter),
       durationMs,
       mode: effectiveMode,
       intensity: null,

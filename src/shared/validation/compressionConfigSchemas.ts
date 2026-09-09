@@ -181,6 +181,16 @@ export const ccrConfigSchema = z
   })
   .strict();
 
+/** Tool-schema detail settings (persisted under settings.toolSchema). */
+export const toolSchemaConfigSchema = z
+  .object({
+    // Mirrors TOOL_SCHEMA_SCHEMA bounds (engines/tool-schema/index.ts).
+    maxDescriptionChars: z.number().int().min(10).max(2000).optional(),
+    dropExamples: z.boolean().optional(),
+    dropVendorExtensions: z.boolean().optional(),
+  })
+  .strict();
+
 const noConfigSchema = z.object({}).strict();
 
 // Structural engines (session-dedup / ccr / headroom / relevance / llmlingua) do not
@@ -277,6 +287,13 @@ export const stackedPipelineStepSchema = z.discriminatedUnion("engine", [
     .strict(),
   z
     .object({
+      engine: z.literal("tool-schema"),
+      intensity: z.string().optional(),
+      config: structuralStepConfigSchema,
+    })
+    .strict(),
+  z
+    .object({
       engine: z.literal("omniglyph"),
       intensity: z.string().optional(),
       config: structuralStepConfigSchema,
@@ -309,6 +326,7 @@ export const STACKED_PIPELINE_ENGINE_INTENSITIES: Record<string, readonly string
   llmlingua: [],
   omniglyph: [],
   ultra: ["ultra"],
+  "tool-schema": [],
 };
 
 export const liteConfigSchema = z
@@ -386,6 +404,7 @@ export const compressionSettingsUpdateSchema = z
     headroom: headroomConfigSchema.optional(),
     sessionDedup: sessionDedupConfigSchema.optional(),
     ccr: ccrConfigSchema.optional(),
+    toolSchema: toolSchemaConfigSchema.optional(),
     contextBudget: contextBudgetConfigSchema.optional(),
     contextEditing: contextEditingConfigSchema.optional(),
     omniglyph: omniglyphConfigSchema.optional(),

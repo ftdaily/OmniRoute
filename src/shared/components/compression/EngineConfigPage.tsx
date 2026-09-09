@@ -34,6 +34,7 @@ const SETTINGS_SUBOBJECT: Record<string, string> = {
   headroom: "headroom",
   "session-dedup": "sessionDedup",
   ccr: "ccr",
+  "tool-schema": "toolSchema",
 };
 
 interface CompressionSettings {

@@ -121,6 +121,19 @@ export const ENGINE_CATALOG: Record<string, EngineMeta> = {
       cacheImpact: "moderate",
     },
   },
+  "tool-schema": {
+    id: "tool-schema",
+    label: "Tool Schema",
+    stackPriority: 6,
+    isSingleMode: false,
+    description: "Annotation-only tool-definition trimming.",
+    guidance: {
+      tradeoffs:
+        "Lossless to the model contract — drops only x-* extensions, examples, titles, and over-long descriptions from tool definitions; names, types, required, enums, defaults, const, and $ref are preserved verbatim. Replaces a tool only when strictly smaller. Negligible latency overhead.",
+      lossy: false,
+      cacheImpact: "none",
+    },
+  },
   caveman: {
     id: "caveman",
     label: "Caveman",

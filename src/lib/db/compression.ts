@@ -345,6 +345,7 @@ const STACKED_PIPELINE_ENGINE_IDS = new Set([
   "llmlingua",
   "relevance",
   "omniglyph",
+  "tool-schema",
 ]);
 
 export function normalizeStackedPipeline(value: unknown): CompressionPipelineStep[] {
@@ -752,6 +753,7 @@ export async function getCompressionSettings(): Promise<CompressionConfig> {
         break;
       case "sessionDedup":
       case "ccr":
+      case "toolSchema":
         applyDetailConfigUpdate(config, key, parsed);
         break;
       case "contextBudget":

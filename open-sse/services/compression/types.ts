@@ -38,6 +38,23 @@ export type CompressionMode =
 export type CavemanIntensity = "lite" | "full" | "ultra";
 export type RtkIntensity = "minimal" | "standard" | "aggressive";
 export type RtkRawOutputRetention = "never" | "failures" | "always";
+export interface ToolSchemaConfig {
+  enabled: boolean;
+  /** Descriptions longer than this are truncated. Selection fields are never touched. */
+  maxDescriptionChars: number;
+  /** Remove `examples` annotation arrays from tool schemas. */
+  dropExamples: boolean;
+  /** Remove `x-*` vendor extension keys from tool schemas. */
+  dropVendorExtensions: boolean;
+}
+
+export const DEFAULT_TOOL_SCHEMA_CONFIG: ToolSchemaConfig = {
+  enabled: false,
+  maxDescriptionChars: 120,
+  dropExamples: true,
+  dropVendorExtensions: true,
+};
+
 export type CompressionEngineId =
   | "lite"
   | "caveman"
@@ -50,7 +67,8 @@ export type CompressionEngineId =
   | "llmlingua"
   | "relevance"
   | "omniglyph"
-  | "codex-responses";
+  | "codex-responses"
+  | "tool-schema";
 
 export interface CavemanRule {
   name: string;
@@ -255,6 +273,8 @@ export interface CompressionConfig {
   sessionDedup?: SessionDedupConfig;
   /** CCR (context-cache-retrieval) detail settings (minChars / retrievalRampFactor, #8388). */
   ccr?: CcrConfig;
+  /** Tool-schema detail settings (annotation-only tool-definition trimming). */
+  toolSchema?: ToolSchemaConfig;
   /** Provider-delegated context editing (Claude/Anthropic only). */
   contextEditing?: ContextEditingConfig;
   /** Opt-in cache-aligned live-zone compression (default disabled). */

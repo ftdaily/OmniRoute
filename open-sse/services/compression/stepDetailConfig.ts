@@ -22,6 +22,8 @@ export function resolveStepDetailConfig(
       return config?.sessionDedup ?? {};
     case "ccr":
       return config?.ccr ?? {};
+    case "tool-schema":
+      return config?.toolSchema ?? {};
     default:
       return {};
   }

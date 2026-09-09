@@ -10,9 +10,11 @@
 import {
   DEFAULT_CCR_CONFIG,
   DEFAULT_SESSION_DEDUP_CONFIG,
+  DEFAULT_TOOL_SCHEMA_CONFIG,
   type CcrConfig,
   type CompressionConfig,
   type SessionDedupConfig,
+  type ToolSchemaConfig,
 } from "@omniroute/open-sse/services/compression/types.ts";
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -54,17 +56,50 @@ export function normalizeCcrConfig(value: unknown): CcrConfig {
   };
 }
 
-/** Default sub-objects spread into getCompressionSettings' seed config. */
-export function buildDetailConfigDefaults(): Pick<CompressionConfig, "sessionDedup" | "ccr"> {
-  return { sessionDedup: normalizeSessionDedupConfig(undefined), ccr: normalizeCcrConfig(undefined) };
+function boundedDescChars(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(2000, Math.max(10, Math.floor(value)));
 }
 
-/** Applies a stored sessionDedup/ccr row onto config during getCompressionSettings' row scan. */
+/** Matches TOOL_SCHEMA_SCHEMA bounds (engines/tool-schema/index.ts). */
+export function normalizeToolSchemaConfig(value: unknown): ToolSchemaConfig {
+  const record = toRecord(value);
+  return {
+    ...DEFAULT_TOOL_SCHEMA_CONFIG,
+    maxDescriptionChars: boundedDescChars(
+      record.maxDescriptionChars,
+      DEFAULT_TOOL_SCHEMA_CONFIG.maxDescriptionChars
+    ),
+    dropExamples:
+      typeof record.dropExamples === "boolean"
+        ? record.dropExamples
+        : DEFAULT_TOOL_SCHEMA_CONFIG.dropExamples,
+    dropVendorExtensions:
+      typeof record.dropVendorExtensions === "boolean"
+        ? record.dropVendorExtensions
+        : DEFAULT_TOOL_SCHEMA_CONFIG.dropVendorExtensions,
+  };
+}
+
+/** Default sub-objects spread into getCompressionSettings' seed config. */
+export function buildDetailConfigDefaults(): Pick<
+  CompressionConfig,
+  "sessionDedup" | "ccr" | "toolSchema"
+> {
+  return {
+    sessionDedup: normalizeSessionDedupConfig(undefined),
+    ccr: normalizeCcrConfig(undefined),
+    toolSchema: normalizeToolSchemaConfig(undefined),
+  };
+}
+
+/** Applies a stored sessionDedup/ccr/toolSchema row onto config during row scan. */
 export function applyDetailConfigUpdate(
   config: CompressionConfig,
-  key: "sessionDedup" | "ccr",
+  key: "sessionDedup" | "ccr" | "toolSchema",
   parsed: unknown
 ): void {
   if (key === "sessionDedup") config.sessionDedup = normalizeSessionDedupConfig(parsed);
+  else if (key === "toolSchema") config.toolSchema = normalizeToolSchemaConfig(parsed);
   else config.ccr = normalizeCcrConfig(parsed);
 }

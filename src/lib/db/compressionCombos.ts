@@ -65,6 +65,7 @@ const KNOWN_ENGINE_IDS = [
   "llmlingua",
   "relevance",
   "codex-responses",
+  "tool-schema",
 ];
 
 function normalizePipeline(value: unknown): CompressionPipelineStep[] {

@@ -84,6 +84,7 @@ structural engines (used by stacked pipelines, the playground, and tests):
 | headroom      | `headroom`      | SmartCrusher (H3 + N5): lossless tabular compaction of homogeneous JSON-array payloads into a columnar `[N rows]` form.                                                    |
 | ionizer       | `ionizer`       | Head/middle/tail row sampling for very large homogeneous blocks, storing the elided middle as a CCR content-addressed reference.                                           |
 | session-dedup | `session-dedup` | Content-addressed cross-turn deduplication (TokenMizer-inspired): elides text already seen in earlier turns of the same session.                                           |
+| tool-schema   | `tool-schema`   | Annotation-only tool-definition trimming: drops `x-*` extensions, `examples`, `title`, and over-long `description`s; preserves names, types, `required`, `enum`, `default`, `const`, `$ref`. Fail-open, strictly-smaller gate. |
 
 **CCR retrieve-protocol instruction (#8033):** the first time CCR replaces ≥1 block in a
 request, the engine prepends a single, idempotent `system` message (leading with the

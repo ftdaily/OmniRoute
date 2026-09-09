@@ -11,6 +11,7 @@ import { llmCompressorEngine } from "./llm/index.ts";
 import { readLifecycleEngine } from "./readLifecycle/index.ts";
 import { omniglyphEngine } from "./omniglyphAdapter.ts";
 import { codexResponsesEngine } from "./codexResponses/index.ts";
+import { toolSchemaEngine } from "./tool-schema/index.ts";
 
 let registered = false;
 
@@ -38,6 +39,7 @@ export function registerBuiltinCompressionEngines(): void {
     { id: "llm", engine: llmCompressorEngine },
     { id: "read-lifecycle", engine: readLifecycleEngine },
     { id: "omniglyph", engine: omniglyphEngine },
+    { id: "tool-schema", engine: toolSchemaEngine },
   ];
 
   for (const { id, engine } of engines) {

@@ -20,6 +20,10 @@
 import { z } from "zod";
 import { logToolCall } from "../audit.ts";
 import {
+  getCompressionSettings,
+  updateCompressionSettings,
+} from "../../../src/lib/db/compression.ts";
+import {
   registerBuiltinCompressionEngines,
 } from "../../services/compression/engines/index.ts";
 import {
@@ -98,28 +102,85 @@ export async function handleUpdateCompressionEngine(
   if (!getCompressionEngine(args.engineId)) {
     throw new Error(`Unknown compression engine: "${args.engineId}"`);
   }
-  let enabled = getEngineEntry(args.engineId)?.enabled ?? true;
-  if (args.enabled !== undefined) {
-    if (!setEngineEnabled(args.engineId, args.enabled)) {
-      throw new Error(`Unknown compression engine: "${args.engineId}"`);
-    }
-    enabled = args.enabled;
-  }
+  // Validate the partial config against the engine BEFORE touching SQLite, so a
+  // bad value never persists (mirrors the registry's own validate-then-write).
   if (args.config !== undefined) {
-    const validation = updateEngineConfig(args.engineId, args.config as Record<string, unknown>);
+    const dryValidation = getCompressionEngine(args.engineId)!.validateConfig({
+      ...getEngineEntry(args.engineId)?.config,
+      ...args.config,
+    });
+    if (!dryValidation.valid) {
+      throw new Error(`Invalid config for engine "${args.engineId}": ${dryValidation.errors.join("; ")}`);
+    }
+  }
+  // Canonical persistence path: the SQLite compression settings service owns all
+  // durable state (same service PUT /api/settings/compression and the dashboard
+  // panel write through). The enabled toggle persists in the `engines` map row;
+  // detail fields persist in the engine's settings sub-object row (lite/headroom/
+  // sessionDedup/ccr — see SETTINGS_SUBOBJECT in EngineConfigPage.tsx).
+  const settings = await getCompressionSettings();
+  const updates: Record<string, unknown> = {};
+  if (args.enabled !== undefined) {
+    updates["engines"] = {
+      ...settings.engines,
+      [args.engineId]: {
+        ...(settings.engines?.[args.engineId] ?? { enabled: false }),
+        enabled: args.enabled,
+      },
+    };
+  }
+  const subKey = ENGINE_SETTINGS_SUBOBJECT[args.engineId];
+  if (subKey && args.config !== undefined) {
+    const { enabled: _ignored, ...detail } = args.config as Record<string, unknown>;
+    void _ignored;
+    const stored = (settings as unknown as Record<string, unknown>)[subKey];
+    updates[subKey] = { ...((stored as Record<string, unknown> | undefined) ?? {}), ...detail };
+  }
+  const persisted = await updateCompressionSettings(updates as never);
+  // Refresh the in-memory runtime consistently: registry flag + config mirror the
+  // exact persisted rows (validated again on the merged config — a normalizer
+  // clamp still passes validation since it only narrows to in-bounds values).
+  const persistedToggle = persisted.engines?.[args.engineId];
+  if (persistedToggle !== undefined) {
+    setEngineEnabled(args.engineId, persistedToggle.enabled);
+  }
+  const persistedDetail = subKey
+    ? ((persisted as unknown as Record<string, unknown>)[subKey] as Record<string, unknown>)
+    : undefined;
+  if (persistedDetail !== undefined) {
+    const validation = updateEngineConfig(args.engineId, persistedDetail);
     if (!validation.valid) {
       throw new Error(`Invalid config for engine "${args.engineId}": ${validation.errors.join("; ")}`);
     }
   }
+  // Read back the exact persisted state — the response reports SQLite truth, not
+  // a locally-computed echo.
+  const reread = await getCompressionSettings();
+  const entry = getEngineEntry(args.engineId);
   const result = {
     success: true,
     engineId: args.engineId,
-    enabled,
-    config: getEngineEntry(args.engineId)?.config ?? {},
+    enabled: reread.engines?.[args.engineId]?.enabled ?? entry?.enabled ?? false,
+    config: entry?.config ?? {},
+    persisted: {
+      engines: reread.engines?.[args.engineId] ?? null,
+      ...(subKey ? { [subKey]: (reread as unknown as Record<string, unknown>)[subKey] ?? null } : {}),
+    },
   };
   await logToolCall("omniroute_update_compression_engine", args, { engineId: args.engineId }, Date.now() - start, true);
   return result;
 }
+
+// Engine id → SQLite settings sub-object key for detail persistence. Mirrors
+// SETTINGS_SUBOBJECT in src/shared/components/compression/EngineConfigPage.tsx
+// (the dashboard's canonical writer) — engines without a sub-object row persist
+// only their `engines`-map toggle.
+const ENGINE_SETTINGS_SUBOBJECT: Record<string, string> = {
+  lite: "lite",
+  headroom: "headroom",
+  "session-dedup": "sessionDedup",
+  ccr: "ccr",
+};
 
 // ── rules / language packs ─────────────────────────────────────────────────
 

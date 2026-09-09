@@ -236,3 +236,81 @@ describe("compression studio handlers", () => {
     }
   });
 });
+
+describe("compression engine update persistence (BLOCKER)", () => {
+  it("persists lite detail to SQLite and reads back the exact stored state", async () => {
+    const { getCompressionSettings } = await import("../../../src/lib/db/compression.ts");
+    const before = await getCompressionSettings();
+    const target = !before.lite?.compressToolResults;
+    const result = await handleUpdateCompressionEngine({
+      engineId: "lite",
+      config: { compressToolResults: target },
+    });
+    expect(result.success).toBe(true);
+    const reread = await getCompressionSettings();
+    expect(reread.lite?.compressToolResults).toBe(target);
+    expect(result.config).toMatchObject({ compressToolResults: target });
+    // Restore original so the suite leaves no residue.
+    await handleUpdateCompressionEngine({
+      engineId: "lite",
+      config: { compressToolResults: before.lite?.compressToolResults ?? true },
+      enabled: before.engines?.["lite"]?.enabled,
+    });
+  });
+
+  it("persists the enabled toggle to the engines map (survives registry clear = restart)", async () => {
+    const { getCompressionSettings } = await import("../../../src/lib/db/compression.ts");
+    const { clearCompressionEngineRegistry } = await import(
+      "../../services/compression/engines/registry.ts"
+    );
+    const { registerBuiltinCompressionEngines } = await import(
+      "../../services/compression/engines/index.ts"
+    );
+    const { applyStackedCompression } = await import(
+      "../../services/compression/strategySelector.ts"
+    );
+    const before = await getCompressionSettings();
+    const targetEnabled = !(before.engines?.["session-dedup"]?.enabled ?? false);
+
+    await handleUpdateCompressionEngine({ engineId: "session-dedup", enabled: targetEnabled });
+
+    // Simulate a process restart: drop the in-memory registry, rebuild from builtins,
+    // re-apply persisted settings — the toggle must come back from SQLite, not memory.
+    clearCompressionEngineRegistry();
+    registerBuiltinCompressionEngines();
+    const persisted = await getCompressionSettings();
+    expect(persisted.engines?.["session-dedup"]?.enabled).toBe(targetEnabled);
+
+    // And the persisted toggle must actually gate stacked dispatch (suffix blocks
+    // need ≥3 lines and ≥80 chars — build qualifying duplicate content).
+    const dupBlock = [
+      "alpha line one with enough characters to pass the gate",
+      "beta line two with enough characters to pass the gate",
+      "gamma line three with enough characters to pass the gate",
+    ].join("\n");
+    const body = {
+      messages: [
+        { role: "user", content: `intro first message\n${dupBlock}` },
+        { role: "user", content: `intro second message\n${dupBlock}` },
+      ],
+    };
+    const out = applyStackedCompression(body, [{ engine: "session-dedup" }], {
+      config: persisted,
+    } as never);
+    expect(out.compressed).toBe(targetEnabled);
+
+    // Restore original toggle.
+    await handleUpdateCompressionEngine({
+      engineId: "session-dedup",
+      enabled: before.engines?.["session-dedup"]?.enabled ?? false,
+    });
+  });
+
+  it("carries the write:compression scope (update is a write, not a read)", () => {
+    const toolDef = (
+      compressionControlTools as Record<string, { scopes: string[] }>
+    )["omniroute_update_compression_engine"];
+    expect(toolDef.scopes).toContain("write:compression");
+    expect(toolDef.scopes).not.toContain("read:compression");
+  });
+});

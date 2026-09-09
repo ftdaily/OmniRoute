@@ -1,6 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { applyCompressionAsync } from "../../../open-sse/services/compression/index.ts";
+import { registerBuiltinCompressionEngines } from "../../../open-sse/services/compression/engines/index.ts";
+import { setEngineEnabled } from "../../../open-sse/services/compression/engines/registry.ts";
 
 // Regression: explicit pipeline selection is itself the enablement signal.
 // Every explicit stacked selection forces `enabled: true` after global detail
@@ -33,6 +35,19 @@ describe("generic stacked pipeline selection overrides persisted enabled:false",
       },
     });
     assert.equal(stacked.compressed, true);
+  });
+
+  it("codex-responses runs when explicitly selected despite registry disabled", async () => {
+    registerBuiltinCompressionEngines();
+    setEngineEnabled("codex-responses", false);
+    try {
+      const stacked = await applyCompressionAsync({ input: codexInput() }, "stacked", {
+        config: { stackedPipeline: [{ engine: "codex-responses" as const }] } as never,
+      });
+      assert.equal(stacked.compressed, true);
+    } finally {
+      setEngineEnabled("codex-responses", true);
+    }
   });
 
   it("codex-responses still honors an explicit per-step enabled:false opt-out", async () => {

@@ -956,6 +956,7 @@ function runStackedCompression(
   options?: StackOptions
 ): CompressionResult {
   const steps = resolveStackSteps(pipeline, options?.config);
+  const explicitlySelected = Array.isArray(pipeline) && pipeline.length > 0;
   registerBuiltinCompressionEngines();
 
   let currentBody = body;
@@ -987,9 +988,12 @@ function runStackedCompression(
       );
       continue;
     }
-    // Respect the registry enabled flag: a step naming a disabled engine is skipped, so an
-    // operator can turn an engine off (setEngineEnabled) without editing every pipeline.
-    if (getEngineEntry(step.engine)?.enabled === false) {
+    // An explicit pipeline is itself an enablement signal; only the step's own
+    // config can opt it out. Derived/default pipelines still honor the registry kill switch.
+    if (
+      getEngineEntry(step.engine)?.enabled === false &&
+      (!explicitlySelected || step.config?.enabled === false)
+    ) {
       acc.validationWarnings.add(`${step.engine}: skipped (engine disabled in registry)`);
       continue;
     }
@@ -1082,6 +1086,7 @@ async function runStackedCompressionAsync(
   options?: StackOptions
 ): Promise<CompressionResult> {
   const steps = resolveStackSteps(pipeline, options?.config);
+  const explicitlySelected = Array.isArray(pipeline) && pipeline.length > 0;
   registerBuiltinCompressionEngines();
 
   let currentBody = body;
@@ -1113,8 +1118,12 @@ async function runStackedCompressionAsync(
       );
       continue;
     }
-    // Respect the registry enabled flag (same as the sync loop) — keep both in lockstep.
-    if (getEngineEntry(step.engine)?.enabled === false) {
+    // Explicit pipelines override the registry default; an explicit per-step
+    // enabled:false remains the local opt-out. Keep sync/async loops in lockstep.
+    if (
+      getEngineEntry(step.engine)?.enabled === false &&
+      (!explicitlySelected || step.config?.enabled === false)
+    ) {
       acc.validationWarnings.add(`${step.engine}: skipped (engine disabled in registry)`);
       continue;
     }

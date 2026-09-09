@@ -71,7 +71,8 @@ export function normalizeCcrConfig(value: unknown): CcrConfig {
   };
 }
 
-/** Matches LITE_SCHEMA bounds (engines/cavemanAdapter.ts liteEngine). */
+/** Matches LITE_SCHEMA bounds (engines/cavemanAdapter.ts liteEngine). Absent
+ *  repeatedLinesEnabled / passes.repeated-lines means OFF (legacy default). */
 export function normalizeLiteSubobject(value: unknown): LiteConfig {
   const record = toRecord(value);
   const passesRaw = toRecord(record.passes);

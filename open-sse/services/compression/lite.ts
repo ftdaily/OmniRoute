@@ -24,7 +24,7 @@ interface LiteCompressionOptions {
   supportsVision?: boolean | null;
   preserveSystemPrompt?: boolean;
   compressToolResults?: boolean;
-  /** Per-pass switches; every pass defaults to enabled. Legacy callers omit it. */
+  /** Per-pass switches; five legacy passes default ON, repeated-lines defaults OFF. Legacy callers omit it. */
   passes?: LitePasses;
   /** RLE run threshold for the repeated-lines pass (clamped 2..100). */
   repeatedLineThreshold?: number;

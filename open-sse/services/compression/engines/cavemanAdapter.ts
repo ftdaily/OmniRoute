@@ -235,8 +235,8 @@ const LITE_SCHEMA: EngineConfigField[] = [
     type: "boolean",
     label: "Collapse repeated lines (RLE)",
     description:
-      "Collapses runs of identical consecutive lines to the first line plus a [repeated Nx] marker. Skips blank lines and fenced code blocks.",
-    defaultValue: true,
+      "Collapses runs of identical consecutive lines to the first line plus a [repeated Nx] marker. Skips blank lines and fenced code blocks. Off by default — enable explicitly.",
+    defaultValue: false,
   },
   {
     key: "repeatedLineThreshold",

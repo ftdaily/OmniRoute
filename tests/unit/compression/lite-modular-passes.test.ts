@@ -63,18 +63,36 @@ describe("lite pass registry", () => {
     }
   });
 
-  it("defaults every pass to enabled; explicit false disables one pass only", () => {
+  it("defaults legacy passes to enabled and repeated-lines to disabled", () => {
     assert.equal(isLitePassEnabled(undefined, "whitespace"), true);
-    assert.equal(isLitePassEnabled({}, "repeated-lines"), true);
+    assert.equal(isLitePassEnabled({}, "repeated-lines"), false);
     assert.equal(isLitePassEnabled({ whitespace: false }, "whitespace"), false);
     assert.equal(isLitePassEnabled({ whitespace: false }, "tool-truncate"), true);
+    assert.equal(isLitePassEnabled({ "repeated-lines": true }, "repeated-lines"), true);
   });
 });
 
 describe("applyLiteCompression modular passes", () => {
-  it("collapses repeated lines by default (new pass is on, legacy fixtures unaffected)", () => {
+  it("leaves repeated lines untouched by default (opt-in pass, legacy behavior unchanged)", () => {
     const body = { messages: [{ role: "user", content: repeatedFixture }] };
     const result = applyLiteCompression(body);
+    const content = (result.body as { messages: Array<{ content: string }> }).messages[0].content;
+    assert.ok(!content.includes("[repeated"), "RLE must not run unless enabled");
+  });
+
+  it("collapses repeated lines when explicitly enabled via passes", () => {
+    const body = { messages: [{ role: "user", content: repeatedFixture }] };
+    const result = applyLiteCompression(body, { passes: { "repeated-lines": true } });
+    const content = (result.body as { messages: Array<{ content: string }> }).messages[0].content;
+    assert.ok(content.includes("[repeated 3x]"));
+  });
+
+  it("collapses repeated lines when enabled via repeatedLinesEnabled alias", () => {
+    const body = { messages: [{ role: "user", content: repeatedFixture }] };
+    const result = applyLiteCompression(body, {
+      passes: { "repeated-lines": true },
+      repeatedLineThreshold: 3,
+    });
     const content = (result.body as { messages: Array<{ content: string }> }).messages[0].content;
     assert.ok(content.includes("[repeated 3x]"));
   });
@@ -90,18 +108,26 @@ describe("applyLiteCompression modular passes", () => {
     assert.ok(!content.endsWith("   "), "trailing-space trim must still run");
   });
 
-  it("skips whitespace when disabled via passes, keeping repeated-lines active", () => {
+  it("skips whitespace when disabled via passes, with repeated-lines explicitly on", () => {
     const body = { messages: [{ role: "user", content: "a\n\n\n\nb\nb\nb\nb" }] };
-    const result = applyLiteCompression(body, { passes: { whitespace: false } });
+    const result = applyLiteCompression(body, {
+      passes: { whitespace: false, "repeated-lines": true },
+    });
     const content = (result.body as { messages: Array<{ content: string }> }).messages[0].content;
     assert.ok(content.includes("\n\n\n"), "whitespace pass must be off");
     assert.ok(content.includes("[repeated 3x]"), "repeated-lines pass must still run");
   });
 
-  it("honors a custom repeated-line threshold", () => {
+  it("honors a custom repeated-line threshold when the pass is enabled", () => {
     const body = { messages: [{ role: "user", content: "a\nb\nb\nc" }] };
-    const collapsed = applyLiteCompression(body, { repeatedLineThreshold: 2 });
-    const kept = applyLiteCompression(body, { repeatedLineThreshold: 3 });
+    const collapsed = applyLiteCompression(body, {
+      passes: { "repeated-lines": true },
+      repeatedLineThreshold: 2,
+    });
+    const kept = applyLiteCompression(body, {
+      passes: { "repeated-lines": true },
+      repeatedLineThreshold: 3,
+    });
     const textOf = (r: typeof collapsed) =>
       (r.body as { messages: Array<{ content: string }> }).messages[0].content;
     assert.ok(textOf(collapsed).includes("[repeated 1x]"));
@@ -133,11 +159,18 @@ describe("liteEngine wiring", () => {
 
   it("compress() honors passes from step config", () => {
     const off = liteEngine.compress(body, { passes: { "repeated-lines": false } });
-    const on = liteEngine.compress(body, {});
+    const legacyDefault = liteEngine.compress(body, {});
+    const on = liteEngine.compress(body, { passes: { "repeated-lines": true } });
     assert.ok(
       !String((off.body as { messages: Array<{ content: unknown }> }).messages[0].content).includes(
         "[repeated"
       )
+    );
+    assert.ok(
+      !String(
+        (legacyDefault.body as { messages: Array<{ content: unknown }> }).messages[0].content
+      ).includes("[repeated"),
+      "absent pass switch must leave legacy output untouched"
     );
     assert.ok(
       String((on.body as { messages: Array<{ content: unknown }> }).messages[0].content).includes(
@@ -163,13 +196,14 @@ describe("liteEngine wiring", () => {
 
   it("step config overrides the persisted global (step wins, #8056 pattern)", () => {
     const longRun = { messages: [{ role: "user", content: "a\nb\nb\nc" }] };
+    const enable = { compressToolResults: true, passes: { "repeated-lines": true } };
     const off = liteEngine.apply(longRun, {
-      config: { lite: { repeatedLineThreshold: 2 } },
-      stepConfig: { repeatedLineThreshold: 3 },
+      config: { lite: { ...enable, repeatedLineThreshold: 2 } },
+      stepConfig: { ...enable, repeatedLineThreshold: 3 },
     });
     const on = liteEngine.apply(longRun, {
-      config: { lite: { repeatedLineThreshold: 3 } },
-      stepConfig: { repeatedLineThreshold: 2 },
+      config: { lite: { ...enable, repeatedLineThreshold: 3 } },
+      stepConfig: { ...enable, repeatedLineThreshold: 2 },
     });
     const textOf = (r: typeof off) =>
       String((r.body as { messages: Array<{ content: unknown }> }).messages[0].content);

@@ -241,7 +241,7 @@ export type LitePasses = Partial<Record<LitePassId, boolean>>;
 export interface LiteConfig {
   /** Truncate tool-result strings over 2,000 characters before provider dispatch. */
   compressToolResults: boolean;
-  /** Per-pass switches; every pass defaults to enabled when the key is absent. */
+  /** Per-pass switches; five legacy passes default ON, repeated-lines defaults OFF when the key is absent. */
   passes?: LitePasses;
   /** Named alias for the repeated-lines pass (RLE collapse on/off). */
   repeatedLinesEnabled?: boolean;

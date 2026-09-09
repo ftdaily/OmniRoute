@@ -16,8 +16,31 @@ import type { LitePassId, LitePasses } from "./types.ts";
 export type { LitePassId, LitePasses };
 export { LITE_PASS_IDS } from "./types.ts";
 
-export function isLitePassEnabled(passes: LitePasses | undefined, id: LitePassId): boolean {
-  return passes?.[id] !== false;
+/**
+ * The five legacy passes default ON (pre-existing lite behavior).
+ * `repeated-lines` is the new RLE pass and defaults OFF, so existing
+ * behavior stays byte-identical unless the operator explicitly enables it
+ * (Studio toggle, persisted `repeatedLinesEnabled: true`, or pass switch).
+ */
+export const LITE_PASS_DEFAULTS: Record<LitePassId, boolean> = {
+  whitespace: true,
+  "system-dedup": true,
+  "tool-truncate": true,
+  "redundant-remove": true,
+  "image-placeholder": true,
+  "repeated-lines": false,
+};
+
+export function isLitePassEnabled(
+  passes: LitePasses | undefined,
+  id: LitePassId,
+  defaults: Partial<Record<LitePassId, boolean>> = LITE_PASS_DEFAULTS
+): boolean {
+  const explicit = passes?.[id];
+  if (typeof explicit === "boolean") return explicit;
+  const fallback = defaults[id];
+  if (typeof fallback === "boolean") return fallback;
+  return id !== "repeated-lines";
 }
 
 /** RLE: collapse runs of identical consecutive lines (threshold >= 2). */

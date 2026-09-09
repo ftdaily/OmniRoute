@@ -17,6 +17,7 @@ export const HIDEABLE_SIDEBAR_ITEM_IDS = [
   "context-headroom",
   "context-session-dedup",
   "context-ccr",
+  "context-tool-schema",
   "context-llmlingua",
   "context-lite",
   "context-aggressive",

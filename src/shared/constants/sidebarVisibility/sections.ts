@@ -144,6 +144,15 @@ export const COMPRESSION_CONTEXT_GROUP: SidebarItemGroup = {
       icon: "archive",
     },
     {
+      id: "context-tool-schema",
+      href: "/dashboard/context/tool-schema",
+      i18nKey: "contextToolSchema",
+      labelFallback: "Tool Schema",
+      subtitleKey: "contextToolSchemaSubtitle",
+      subtitleFallback: "Tool-definition trimming",
+      icon: "build",
+    },
+    {
       id: "context-llmlingua",
       href: "/dashboard/context/llmlingua",
       i18nKey: "contextLlmlingua",

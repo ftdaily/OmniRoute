@@ -11,10 +11,11 @@ const ENGINE_IDS = [
   "context-headroom",
   "context-session-dedup",
   "context-ccr",
+  "context-tool-schema",
   "context-llmlingua",
 ] as const;
 
-describe("HIDEABLE_SIDEBAR_ITEM_IDS includes all 4 engine items", () => {
+describe("HIDEABLE_SIDEBAR_ITEM_IDS includes all 5 engine items", () => {
   for (const id of ENGINE_IDS) {
     it(`includes "${id}"`, () => {
       assert.ok(
@@ -25,7 +26,7 @@ describe("HIDEABLE_SIDEBAR_ITEM_IDS includes all 4 engine items", () => {
   }
 });
 
-describe("COMPRESSION_CONTEXT_GROUP contains all 4 engine items", () => {
+describe("COMPRESSION_CONTEXT_GROUP contains all 5 engine items", () => {
   const itemIds = COMPRESSION_CONTEXT_GROUP.items.map((item) => item.id);
   const itemMap = new Map(COMPRESSION_CONTEXT_GROUP.items.map((item) => [item.id, item]));
 
@@ -56,6 +57,13 @@ describe("COMPRESSION_CONTEXT_GROUP contains all 4 engine items", () => {
     assert.equal(item.labelFallback, "CCR");
   });
 
+  it('tool-schema has href "/dashboard/context/tool-schema" and labelFallback "Tool Schema"', () => {
+    const item = itemMap.get("context-tool-schema");
+    assert.ok(item, "context-tool-schema item not found");
+    assert.equal(item.href, "/dashboard/context/tool-schema");
+    assert.equal(item.labelFallback, "Tool Schema");
+  });
+
   it('llmlingua has href "/dashboard/context/llmlingua" and labelFallback "LLMLingua"', () => {
     const item = itemMap.get("context-llmlingua");
     assert.ok(item, "context-llmlingua item not found");
@@ -63,7 +71,7 @@ describe("COMPRESSION_CONTEXT_GROUP contains all 4 engine items", () => {
     assert.equal(item.labelFallback, "LLMLingua");
   });
 
-  it("4 engine items appear after context-rtk and before compression-studio", () => {
+  it("5 engine items appear after context-rtk and before compression-studio", () => {
     // Unified-panel order: Settings → Combos → per-engine pages → Studio.
     const ids = itemIds as string[];
     const rtkIdx = ids.indexOf("context-rtk");

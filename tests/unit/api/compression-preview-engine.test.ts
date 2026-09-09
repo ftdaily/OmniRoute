@@ -166,3 +166,91 @@ test("POST /api/compression/preview without engineId still works (existing path 
   assert.ok(typeof body.original === "string", "should have original field");
   assert.equal(body.mode, "standard", "mode field should reflect the requested mode");
 });
+
+function buildToolSchemaTools(): Array<Record<string, unknown>> {
+  return [
+    {
+      type: "function",
+      function: {
+        name: "search_files",
+        description: "d".repeat(300),
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "q".repeat(300),
+              examples: ["foo.*bar"],
+              "x-extra": "drop me",
+            },
+          },
+          required: ["query"],
+        },
+      },
+    },
+  ];
+}
+
+test("POST /api/compression/preview with engineId=tool-schema + detail trims tool defs", async () => {
+  const request = await makeManagementSessionRequest("http://localhost/api/compression/preview", {
+    method: "POST",
+    body: {
+      engineId: "tool-schema",
+      messages: [{ role: "user", content: "go" }],
+      tools: buildToolSchemaTools(),
+      config: {
+        toolSchema: { maxDescriptionChars: 50, dropExamples: true, dropVendorExtensions: true },
+      },
+    },
+  });
+
+  const response = await previewRoute.POST(request);
+  assert.equal(response.status, 200, `Expected 200, got ${response.status}`);
+
+  const body = (await response.json()) as {
+    tools?: Array<{ function?: { description?: string; parameters?: { properties?: { query?: Record<string, unknown> } } } }>;
+    techniquesUsed: string[];
+  };
+  assert.ok(Array.isArray(body.tools), "response should echo trimmed tools");
+  const fn = body.tools?.[0]?.function;
+  assert.ok(fn, "trimmed chat tool should keep its function wrapper");
+  assert.ok(
+    String(fn?.description ?? "").length <= 50,
+    `unsaved maxDescriptionChars=50 should apply, got ${String(fn?.description ?? "").length}`
+  );
+  assert.ok(
+    !("examples" in (fn?.parameters?.properties?.query ?? {})),
+    "unsaved dropExamples=true should apply"
+  );
+  assert.ok(
+    !("x-extra" in (fn?.parameters?.properties?.query ?? {})),
+    "unsaved dropVendorExtensions=true should apply"
+  );
+  assert.ok(
+    body.techniquesUsed.includes("tool-schema-annotation-trim"),
+    `techniquesUsed should include tool-schema-annotation-trim, got: ${body.techniquesUsed}`
+  );
+});
+
+test("POST /api/compression/preview with pipeline incl. tool-schema + detail trims tool defs", async () => {
+  const request = await makeManagementSessionRequest("http://localhost/api/compression/preview", {
+    method: "POST",
+    body: {
+      pipeline: ["tool-schema"],
+      messages: [{ role: "user", content: "go" }],
+      tools: buildToolSchemaTools(),
+      config: {
+        toolSchema: { maxDescriptionChars: 50, dropExamples: true, dropVendorExtensions: true },
+      },
+    },
+  });
+
+  const response = await previewRoute.POST(request);
+  assert.equal(response.status, 200, `Expected 200, got ${response.status}`);
+
+  const body = (await response.json()) as {
+    tools?: Array<{ function?: { description?: string } }>;
+  };
+  const desc = String(body.tools?.[0]?.function?.description ?? "");
+  assert.ok(desc.length <= 50, `pipeline detail should trim descriptions, got length ${desc.length}`);
+});

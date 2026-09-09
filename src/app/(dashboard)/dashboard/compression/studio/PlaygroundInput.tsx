@@ -8,6 +8,7 @@ export const LANE_ENGINES = [
   "rtk",
   "ionizer",
   "headroom",
+  "tool-schema",
   "caveman",
   "aggressive",
   "ultra",

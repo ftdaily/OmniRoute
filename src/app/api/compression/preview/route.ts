@@ -34,6 +34,11 @@ export const PreviewRequestSchema = z.object({
       })
     )
     .min(1),
+  // tool-schema operates on body.tools / body.functions, not message text.
+  // Optional so the Studio detail page can preview unsaved trim knobs against
+  // a sample tool definition; other engines ignore it.
+  tools: z.array(z.unknown()).optional(),
+  functions: z.array(z.unknown()).optional(),
   mode: z
     .enum(["off", "lite", "standard", "aggressive", "ultra", "rtk", "stacked", "caveman"])
     .optional()
@@ -139,6 +144,40 @@ function resolveHeadroomDetail(config: unknown): {
   return { headroomDetail, headroomStepDetail };
 }
 
+/**
+ * Resolve the optional tool-schema detail (maxDescriptionChars/dropExamples/
+ * dropVendorExtensions) from a synthesized compression config. Mirrors
+ * resolveHeadroomDetail: the EngineConfigPage detail form persists to
+ * settings.toolSchema, and the stacked runner merges it via
+ * resolveStepDetailConfig — but the preview route builds single-engine/pipeline
+ * steps directly, so it must thread the detail into buildStep the same way.
+ * `enabled` is deliberately NOT forwarded here: selecting the engine in an
+ * explicit preview pipeline is itself the enablement signal (buildStepOptions
+ * forces it, mirroring codex-responses), so unsaved form values for the trim
+ * knobs apply without requiring the saved on/off toggle.
+ */
+function resolveToolSchemaDetail(config: unknown): {
+  toolSchemaDetail: CompressionConfig["toolSchema"] | undefined;
+  toolSchemaStepDetail: Record<string, unknown> | undefined;
+} {
+  const toolSchemaDetail =
+    config && typeof config === "object" && config !== null
+      ? (config as CompressionConfig).toolSchema
+      : undefined;
+  if (!toolSchemaDetail || typeof toolSchemaDetail !== "object") {
+    return { toolSchemaDetail: undefined, toolSchemaStepDetail: undefined };
+  }
+  const stepDetail: Record<string, unknown> = {};
+  for (const key of ["maxDescriptionChars", "dropExamples", "dropVendorExtensions"] as const) {
+    const v = (toolSchemaDetail as Record<string, unknown>)[key];
+    if (v !== undefined) stepDetail[key] = v;
+  }
+  return {
+    toolSchemaDetail,
+    toolSchemaStepDetail: Object.keys(stepDetail).length > 0 ? stepDetail : undefined,
+  };
+}
+
 async function dispatchCompression(
   requestBody: Record<string, unknown>,
   opts: {
@@ -159,7 +198,9 @@ async function dispatchCompression(
   // badge shows what WOULD be stabilized in production (real caching gains show in telemetry only).
   // When the client/settings carry a headroom detail sub-object, thread it so
   // buildStepOptions can merge minRows into the headroom engine stepConfig (#8056).
+  // Same for the tool-schema detail sub-object (trim knobs, not `enabled`).
   const { headroomDetail, headroomStepDetail } = resolveHeadroomDetail(opts.config);
+  const { toolSchemaDetail, toolSchemaStepDetail } = resolveToolSchemaDetail(opts.config);
 
   if (opts.engineId) {
     const q = quantumExtras(opts.quantumLock);
@@ -169,10 +210,15 @@ async function dispatchCompression(
           buildStep(
             opts.engineId,
             opts.fuzzyDedup,
-            opts.engineId === "headroom" ? headroomStepDetail : undefined
+            opts.engineId === "headroom"
+              ? headroomStepDetail
+              : opts.engineId === "tool-schema"
+                ? toolSchemaStepDetail
+                : undefined
           ),
         ],
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
+        ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...q.configPatch,
@@ -185,9 +231,18 @@ async function dispatchCompression(
     return applyCompressionAsync(requestBody, "stacked", {
       config: {
         stackedPipeline: opts.pipeline.map((engine) =>
-          buildStep(engine, opts.fuzzyDedup, engine === "headroom" ? headroomStepDetail : undefined)
+          buildStep(
+            engine,
+            opts.fuzzyDedup,
+            engine === "headroom"
+              ? headroomStepDetail
+              : engine === "tool-schema"
+                ? toolSchemaStepDetail
+                : undefined
+          )
         ),
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
+        ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...q.configPatch,
@@ -226,7 +281,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { messages, mode, engineId: rawEngineId, pipeline, config, fidelityGate, fuzzyDedup, riskGate, quantumLock, heatmap: heatmapMode } =
+  const { messages, tools, functions, mode, engineId: rawEngineId, pipeline, config, fidelityGate, fuzzyDedup, riskGate, quantumLock, heatmap: heatmapMode } =
     parsed.data;
   // Alias: `mode: "caveman"` is a synonym for `engineId: "caveman"` (single-engine stacked run).
   // The caveman engine is not a top-level CompressionMode, but it IS a registered engine.
@@ -238,7 +293,12 @@ export async function POST(req: Request) {
 
   try {
     const start = Date.now();
-    const requestBody = { messages };
+    // tool-schema reads body.tools / body.functions; message-only engines ignore them.
+    const requestBody = {
+      messages,
+      ...(tools !== undefined ? { tools } : {}),
+      ...(functions !== undefined ? { functions } : {}),
+    };
     const result = await dispatchCompression(requestBody as Record<string, unknown>, {
       engineId,
       pipeline,
@@ -319,6 +379,20 @@ export async function POST(req: Request) {
       savingsPct,
       techniquesUsed,
       engineBreakdown,
+      // tool-schema compresses body.tools / body.functions, which the message-text
+      // counters above cannot see (its savings would read as zero). Echo the trimmed
+      // definitions + a JSON-size delta so the Studio detail page shows real evidence.
+      ...(result.body.tools !== undefined ? { tools: result.body.tools } : {}),
+      ...(result.body.functions !== undefined ? { functions: result.body.functions } : {}),
+      ...(() => {
+        const beforeTools = JSON.stringify({ tools, functions }).length;
+        const afterTools = JSON.stringify({
+          tools: result.body.tools ?? tools,
+          functions: result.body.functions ?? functions,
+        }).length;
+        const toolBytesSaved = Math.max(0, beforeTools - afterTools);
+        return toolBytesSaved > 0 ? { toolBytesSaved } : {};
+      })(),
       riskGate: riskGateStatsOf(result),
       quantumLock: quantumLockStatsOf(result),
       durationMs,

@@ -234,6 +234,7 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
     try {
       // Pass the form's current detail (e.g. headroom.minRows) so preview honors
       // unsaved edits and the persisted sub-object after save (#8056).
+      // tool-schema forwards its own detail keys the same way (unsaved form edits).
       const detailConfig =
         engineId === "headroom"
           ? {
@@ -243,7 +244,21 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
                   : {}),
               },
             }
-          : engineId === "aggressive"
+          : engineId === "tool-schema"
+            ? {
+                toolSchema: {
+                  ...(typeof configState.maxDescriptionChars === "number"
+                    ? { maxDescriptionChars: configState.maxDescriptionChars }
+                    : {}),
+                  ...(typeof configState.dropExamples === "boolean"
+                    ? { dropExamples: configState.dropExamples }
+                    : {}),
+                  ...(typeof configState.dropVendorExtensions === "boolean"
+                    ? { dropVendorExtensions: configState.dropVendorExtensions }
+                    : {}),
+                },
+              }
+            : engineId === "aggressive"
             ? { aggressive: { ...configState } }
             : engineId === "ultra"
               ? { ultra: { ...configState } }

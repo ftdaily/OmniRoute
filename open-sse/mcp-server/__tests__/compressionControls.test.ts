@@ -211,6 +211,21 @@ describe("compression studio handlers", () => {
     expect(Array.isArray(result.techniquesUsed)).toBe(true);
   });
 
+  it("preview returns the same text it token-counts (all messages joined, CCR-safe)", async () => {
+    // CCR prepends a [CCR protocol] system message on first replace: the returned
+    // text must include it (identical to the token-counted text), not skip to the
+    // last non-system message. (The joined text can token-count slightly ABOVE the
+    // bare input — the protocol instruction is new bytes — so only identity is
+    // asserted here, not savings.)
+    const big = "lorem ipsum dolor sit amet ".repeat(60);
+    const result = await handleCompressionPreview({ text: big, engineId: "ccr" });
+    const { estimateCompressionTokens } = await import(
+      "../../services/compression/stats.ts"
+    );
+    expect(estimateCompressionTokens(result.compressedText)).toBe(result.compressedTokens);
+    expect(result.compressedText).toContain("user:");
+  });
+
   it("previews a single-engine run", async () => {
     const result = await handleCompressionPreview({
       text: FILLER_TEXT.repeat(8),
@@ -312,5 +327,98 @@ describe("compression engine update persistence (BLOCKER)", () => {
     ];
     expect(toolDef.scopes).toContain("write:compression");
     expect(toolDef.scopes).not.toContain("read:compression");
+  });
+
+  it("persists EVERY catalog engine detail or rejects it explicitly (no silent drops)", async () => {
+    const { getCompressionSettings } = await import("../../../src/lib/db/compression.ts");
+    const { ENGINE_IDS } = await import(
+      "../../services/compression/engineCatalog.ts"
+    );
+    // One representative detail field per engine with a canonical sub-object.
+    // Engines whose config surface is toggle-only are covered by the restart test.
+    const detailCases: Array<{ engineId: string; config: Record<string, unknown>; check: (s: never) => unknown; expected: unknown }> = [
+      {
+        engineId: "relevance",
+        config: { overlapThreshold: 0.42 },
+        check: (s) => (s as { relevanceConfig?: { overlapThreshold?: number } }).relevanceConfig?.overlapThreshold,
+        expected: 0.42,
+      },
+      {
+        engineId: "llmlingua",
+        config: { minTokens: 4321 },
+        check: (s) => (s as { llmlingua?: { minTokens?: number } }).llmlingua?.minTokens,
+        expected: 4321,
+      },
+      {
+        engineId: "rtk",
+        config: { maxLinesPerResult: 4321 },
+        check: (s) => (s as { rtkConfig?: { maxLinesPerResult?: number } }).rtkConfig?.maxLinesPerResult,
+        expected: 4321,
+      },
+      {
+        engineId: "caveman",
+        config: { minMessageLength: 4321 },
+        check: (s) => (s as { cavemanConfig?: { minMessageLength?: number } }).cavemanConfig?.minMessageLength,
+        expected: 4321,
+      },
+      {
+        engineId: "aggressive",
+        config: { maxTokensPerMessage: 4321 },
+        check: (s) => (s as { aggressive?: { maxTokensPerMessage?: number } }).aggressive?.maxTokensPerMessage,
+        expected: 4321,
+      },
+      {
+        engineId: "ultra",
+        config: { maxTokensPerMessage: 4321 },
+        check: (s) => (s as { ultra?: { maxTokensPerMessage?: number } }).ultra?.maxTokensPerMessage,
+        expected: 4321,
+      },
+      {
+        engineId: "omniglyph",
+        config: { profile: "balanced" },
+        check: (s) => (s as { omniglyph?: { profile?: string } }).omniglyph?.profile,
+        expected: "balanced",
+      },
+      {
+        engineId: "headroom",
+        config: { minRows: 7 },
+        check: (s) => (s as { headroom?: { minRows?: number } }).headroom?.minRows,
+        expected: 7,
+      },
+    ];
+    const before = await getCompressionSettings();
+    for (const c of detailCases) {
+      if (!ENGINE_IDS.includes(c.engineId)) continue;
+      const result = await handleUpdateCompressionEngine({ engineId: c.engineId, config: c.config });
+      expect(result.success).toBe(true);
+      const reread = await getCompressionSettings();
+      expect(
+        c.check(reread as never),
+        `${c.engineId} detail must persist to SQLite (or the update must reject)`
+      ).toBe(c.expected);
+    }
+    // Restore originals.
+    const b = before as unknown as Record<string, Record<string, unknown> | undefined>;
+    await handleUpdateCompressionEngine({ engineId: "relevance", config: { overlapThreshold: (b["relevanceConfig"] as Record<string, unknown> | undefined)?.["overlapThreshold"] ?? 0.1 } });
+    await handleUpdateCompressionEngine({ engineId: "llmlingua", config: { minTokens: (b["llmlingua"] as Record<string, unknown> | undefined)?.["minTokens"] ?? 2000 } });
+    await handleUpdateCompressionEngine({ engineId: "rtk", config: { maxLinesPerResult: (b["rtkConfig"] as Record<string, unknown> | undefined)?.["maxLinesPerResult"] ?? 40 } });
+    await handleUpdateCompressionEngine({ engineId: "caveman", config: { minMessageLength: (b["cavemanConfig"] as Record<string, unknown> | undefined)?.["minMessageLength"] ?? 50 } });
+    await handleUpdateCompressionEngine({ engineId: "aggressive", config: { maxTokensPerMessage: (b["aggressive"] as Record<string, unknown> | undefined)?.["maxTokensPerMessage"] ?? 4000 } });
+    await handleUpdateCompressionEngine({ engineId: "ultra", config: { maxTokensPerMessage: (b["ultra"] as Record<string, unknown> | undefined)?.["maxTokensPerMessage"] ?? 4000 } });
+    await handleUpdateCompressionEngine({ engineId: "omniglyph", config: { profile: (b["omniglyph"] as Record<string, unknown> | undefined)?.["profile"] ?? "aggressive" } });
+    await handleUpdateCompressionEngine({ engineId: "headroom", config: { minRows: (b["headroom"] as Record<string, unknown> | undefined)?.["minRows"] ?? 8 } });
+  });
+
+  it("rejects detail config for read-lifecycle (no persistable sub-object)", async () => {
+    // read-lifecycle is registered but has no canonical settings row: accepting its
+    // config with success:true would be a silent drop. caveman/rtk/aggressive/ultra/
+    // omniglyph/relevance/llmlingua/ionizer/llm all have rows now (see map above).
+    await expect(
+      handleUpdateCompressionEngine({ engineId: "read-lifecycle", config: { enabled: true } })
+    ).rejects.toThrow(/no persistable/i);
+    // Toggle-only updates still work for it.
+    const r = await handleUpdateCompressionEngine({ engineId: "read-lifecycle", enabled: true });
+    expect(r.success).toBe(true);
+    await handleUpdateCompressionEngine({ engineId: "read-lifecycle", enabled: false });
   });
 });

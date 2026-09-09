@@ -207,6 +207,33 @@ export const relevanceConfigSchema = z
   })
   .strict();
 
+/** LLMLingua detail settings (persisted under settings.llmlingua). */
+export const llmlinguaConfigSchema = z
+  .object({
+    model: z.string().trim().min(1).max(100).optional(),
+    minTokens: z.number().int().min(0).max(100000).optional(),
+    compressionRate: z.number().min(0.1).max(0.9).optional(),
+    modelPath: z.string().max(500).optional(),
+  })
+  .strict();
+
+/** Ionizer detail settings (persisted under settings.ionizer). */
+export const ionizerConfigSchema = z
+  .object({
+    threshold: z.number().int().min(2).max(1000000).optional(),
+    targetRows: z.number().int().min(1).max(100000).optional(),
+  })
+  .strict();
+
+/** LLM compressor detail settings (persisted under settings.llm). */
+export const llmCompressorConfigSchema = z
+  .object({
+    model: z.string().max(200).optional(),
+    minTokens: z.number().int().min(0).max(100000).optional(),
+    compressionRate: z.number().min(0.1).max(0.9).optional(),
+  })
+  .strict();
+
 const noConfigSchema = z.object({}).strict();
 
 const liteStepPassesSchema = z
@@ -441,6 +468,10 @@ export const compressionSettingsUpdateSchema = z
     ccr: ccrConfigSchema.optional(),
     toolSchema: toolSchemaConfigSchema.optional(),
     relevance: relevanceConfigSchema.optional(),
+    relevanceConfig: relevanceConfigSchema.optional(),
+    llmlingua: llmlinguaConfigSchema.optional(),
+    ionizer: ionizerConfigSchema.optional(),
+    llm: llmCompressorConfigSchema.optional(),
     contextBudget: contextBudgetConfigSchema.optional(),
     contextEditing: contextEditingConfigSchema.optional(),
     omniglyph: omniglyphConfigSchema.optional(),

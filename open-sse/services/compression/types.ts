@@ -69,7 +69,10 @@ export type CompressionEngineId =
   | "relevance"
   | "omniglyph"
   | "codex-responses"
-  | "tool-schema";
+  | "tool-schema"
+  | "ionizer"
+  | "llm"
+  | "read-lifecycle";
 
 export interface CavemanRule {
   name: string;
@@ -316,6 +319,14 @@ export interface CompressionConfig {
   languageConfig?: CompressionLanguageConfig;
   aggressive?: AggressiveConfig;
   ultra?: UltraConfig;
+  /** Relevance extractive-scoring detail settings. */
+  relevance?: RelevanceConfig;
+  /** LLMLingua semantic-pruning detail settings. */
+  llmlingua?: LlmlinguaConfig;
+  /** Ionizer row-sampling detail settings (non-catalog engine). */
+  ionizer?: IonizerConfig;
+  /** LLM compressor detail settings (non-catalog opt-in engine). */
+  llm?: LlmCompressorConfig;
   /** Lite proactive transformation detail settings. */
   lite?: LiteConfig;
   /** Headroom SmartCrusher detail settings (minRows gate). */
@@ -326,8 +337,6 @@ export interface CompressionConfig {
   ccr?: CcrConfig;
   /** Tool-schema detail settings (annotation-only tool-definition trimming). */
   toolSchema?: ToolSchemaConfig;
-  /** Relevance extractive-scoring detail settings (scorer/bm25K1/bm25B). */
-  relevance?: RelevanceConfig;
   /** Provider-delegated context editing (Claude/Anthropic only). */
   contextEditing?: ContextEditingConfig;
   /** Opt-in cache-aligned live-zone compression (default disabled). */
@@ -725,6 +734,70 @@ export interface CcrConfig {
 export const DEFAULT_CCR_CONFIG: CcrConfig = {
   minChars: 600,
   retrievalRampFactor: 2,
+};
+
+// ─── Relevance detail settings ───────────────────────────────────────────────
+// Persisted under compression settings key `relevanceConfig`. Engine apply reads
+// via resolveRelevanceConfig(stepConfig); the stacked runner merges this
+// sub-object into stepConfig so MCP/dashboard values take effect.
+
+export const DEFAULT_RELEVANCE_CONFIG: RelevanceConfig = {
+  enabled: false,
+  overlapThreshold: 0.1,
+  budgetPercent: 0.5,
+  boilerplateWeight: 0.5,
+};
+
+// ─── LLMLingua detail settings ───────────────────────────────────────────────
+// Persisted under compression settings key `llmlingua`. Engine apply reads
+// model/minTokens/compressionRate/modelPath from stepConfig.
+
+export interface LlmlinguaConfig {
+  enabled: boolean;
+  model: string;
+  minTokens: number;
+  compressionRate: number;
+  modelPath: string;
+}
+
+export const DEFAULT_LLMLINGUA_CONFIG: LlmlinguaConfig = {
+  enabled: false,
+  model: "tinybert",
+  minTokens: 2000,
+  compressionRate: 0.5,
+  modelPath: "",
+};
+
+// ─── Ionizer detail settings ─────────────────────────────────────────────────
+// Persisted under compression settings key `ionizer`. Non-catalog sampling engine.
+
+export interface IonizerConfig {
+  enabled: boolean;
+  threshold: number;
+  targetRows: number;
+}
+
+export const DEFAULT_IONIZER_CONFIG: IonizerConfig = {
+  enabled: false,
+  threshold: 200,
+  targetRows: 50,
+};
+
+// ─── LLM compressor detail settings ──────────────────────────────────────────
+// Persisted under compression settings key `llm`. Non-catalog opt-in engine.
+
+export interface LlmCompressorConfig {
+  enabled: boolean;
+  model: string;
+  minTokens: number;
+  compressionRate: number;
+}
+
+export const DEFAULT_LLM_COMPRESSOR_CONFIG: LlmCompressorConfig = {
+  enabled: false,
+  model: "",
+  minTokens: 2000,
+  compressionRate: 0.5,
 };
 
 export type { McpAccessibilityConfig } from "./engines/mcpAccessibility/constants.ts";

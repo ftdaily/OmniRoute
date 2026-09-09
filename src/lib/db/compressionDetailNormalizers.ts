@@ -9,14 +9,20 @@
 // in compression.ts), extended to the two engines #8056 left uncovered.
 import {
   DEFAULT_CCR_CONFIG,
+  DEFAULT_IONIZER_CONFIG,
+  DEFAULT_LLM_COMPRESSOR_CONFIG,
+  DEFAULT_LLMLINGUA_CONFIG,
   DEFAULT_RELEVANCE_CONFIG,
   DEFAULT_SESSION_DEDUP_CONFIG,
   DEFAULT_TOOL_SCHEMA_CONFIG,
   LITE_PASS_IDS,
   type CcrConfig,
   type CompressionConfig,
+  type IonizerConfig,
   type LiteConfig,
   type LitePasses,
+  type LlmCompressorConfig,
+  type LlmlinguaConfig,
   type RelevanceConfig,
   type SessionDedupConfig,
   type ToolSchemaConfig,
@@ -116,15 +122,114 @@ export function buildDetailConfigDefaults(): Pick<
   };
 }
 
-/** Applies a stored sessionDedup/ccr row onto config during getCompressionSettings' row scan. */
+/** Matches RELEVANCE_SCHEMA bounds (engines/relevance/configSchema.ts). */
+export function normalizeRelevanceConfig(value: unknown): RelevanceConfig {
+  const record = toRecord(value);
+  return {
+    ...DEFAULT_RELEVANCE_CONFIG,
+    overlapThreshold: boundedRate(
+      record.overlapThreshold,
+      DEFAULT_RELEVANCE_CONFIG.overlapThreshold,
+      0,
+      1
+    ),
+    budgetPercent: boundedRate(record.budgetPercent, DEFAULT_RELEVANCE_CONFIG.budgetPercent, 0, 1),
+    boilerplateWeight: boundedRate(
+      record.boilerplateWeight,
+      DEFAULT_RELEVANCE_CONFIG.boilerplateWeight,
+      0,
+      1
+    ),
+  };
+}
+
+/** Matches LLMLINGUA_SCHEMA bounds (engines/llmlingua/index.ts). */
+export function normalizeLlmlinguaConfig(value: unknown): LlmlinguaConfig {
+  const record = toRecord(value);
+  const model =
+    typeof record.model === "string" && record.model.trim()
+      ? record.model.trim()
+      : DEFAULT_LLMLINGUA_CONFIG.model;
+  const modelPath = typeof record.modelPath === "string" ? record.modelPath : "";
+  return {
+    ...DEFAULT_LLMLINGUA_CONFIG,
+    model,
+    minTokens: boundedInt(record.minTokens, DEFAULT_LLMLINGUA_CONFIG.minTokens, 0, 100000),
+    compressionRate: boundedRate(
+      record.compressionRate,
+      DEFAULT_LLMLINGUA_CONFIG.compressionRate,
+      0.1,
+      0.9
+    ),
+    modelPath,
+  };
+}
+
+/** Matches IONIZER_SCHEMA bounds (engines/ionizer/index.ts). */
+export function normalizeIonizerConfig(value: unknown): IonizerConfig {
+  const record = toRecord(value);
+  return {
+    ...DEFAULT_IONIZER_CONFIG,
+    threshold: boundedInt(record.threshold, DEFAULT_IONIZER_CONFIG.threshold, 2, 1000000),
+    targetRows: boundedInt(record.targetRows, DEFAULT_IONIZER_CONFIG.targetRows, 1, 100000),
+  };
+}
+
+/** Matches LLM_COMPRESSOR_SCHEMA bounds (engines/llm/index.ts). */
+export function normalizeLlmCompressorConfig(value: unknown): LlmCompressorConfig {
+  const record = toRecord(value);
+  const model = typeof record.model === "string" ? record.model : "";
+  return {
+    ...DEFAULT_LLM_COMPRESSOR_CONFIG,
+    model,
+    minTokens: boundedInt(record.minTokens, DEFAULT_LLM_COMPRESSOR_CONFIG.minTokens, 0, 100000),
+    compressionRate: boundedRate(
+      record.compressionRate,
+      DEFAULT_LLM_COMPRESSOR_CONFIG.compressionRate,
+      0.1,
+      0.9
+    ),
+  };
+}
+
+/** Default sub-objects spread into getCompressionSettings' seed config. */
+export function buildDetailConfigDefaults(): Pick<
+  CompressionConfig,
+  "sessionDedup" | "ccr" | "toolSchema" | "relevance" | "relevanceConfig" | "llmlingua" | "ionizer" | "llm"
+> {
+  return {
+    sessionDedup: normalizeSessionDedupConfig(undefined),
+    ccr: normalizeCcrConfig(undefined),
+    toolSchema: normalizeToolSchemaConfig(undefined),
+    relevance: normalizeRelevanceConfig(undefined),
+    relevanceConfig: normalizeRelevanceConfig(undefined),
+    llmlingua: normalizeLlmlinguaConfig(undefined),
+    ionizer: normalizeIonizerConfig(undefined),
+    llm: normalizeLlmCompressorConfig(undefined),
+  };
+}
+
+/** Applies a stored detail row onto config during getCompressionSettings' row scan. */
 export function applyDetailConfigUpdate(
   config: CompressionConfig,
-  key: "sessionDedup" | "ccr" | "toolSchema" | "relevance",
+  key:
+    | "sessionDedup"
+    | "ccr"
+    | "toolSchema"
+    | "relevance"
+    | "relevanceConfig"
+    | "llmlingua"
+    | "ionizer"
+    | "llm",
   parsed: unknown
 ): void {
   if (key === "sessionDedup") config.sessionDedup = normalizeSessionDedupConfig(parsed);
   else if (key === "toolSchema") config.toolSchema = normalizeToolSchemaConfig(parsed);
   else if (key === "ccr") config.ccr = normalizeCcrConfig(parsed);
+  else if (key === "relevanceConfig") config.relevanceConfig = normalizeRelevanceConfig(parsed);
+  else if (key === "llmlingua") config.llmlingua = normalizeLlmlinguaConfig(parsed);
+  else if (key === "ionizer") config.ionizer = normalizeIonizerConfig(parsed);
+  else if (key === "llm") config.llm = normalizeLlmCompressorConfig(parsed);
   else config.relevance = normalizeRelevanceConfig(parsed);
 }
 

@@ -760,6 +760,10 @@ export async function getCompressionSettings(): Promise<CompressionConfig> {
       case "ccr":
       case "toolSchema":
       case "relevance":
+      case "relevanceConfig":
+      case "llmlingua":
+      case "ionizer":
+      case "llm":
         applyDetailConfigUpdate(config, key, parsed);
         break;
       case "contextBudget":

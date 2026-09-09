@@ -1,12 +1,10 @@
-// Resolves the persisted per-engine DETAIL sub-object (settings.headroom / .sessionDedup /
-// .ccr) for a stacked-pipeline step. Extracted out of strategySelector.ts (frozen at cap by
-// file-size-baseline.json — see scripts/check/check-file-size.mjs) rather than growing that
-// file inline.
-//
-// #8056 wired settings.headroom.minRows into buildStepOptions so the dashboard value takes
-// effect even when the stacked-pipeline step itself carries no config. #8388 extends the same
-// merge to session-dedup and ccr, whose detail settings previously had nowhere to persist to
-// (see compressionDetailNormalizers.ts on the DB write side of the same gap).
+// Resolves the persisted per-engine DETAIL sub-object for a stacked-pipeline step.
+// Canonical map covers every engine with a durable settings row: lite/headroom/
+// sessionDedup/ccr (#8056/#8388) plus relevanceConfig/llmlingua/ionizer/llm and the
+// dedicated config blocks (cavemanConfig/rtkConfig/codexResponsesConfig/aggressive/
+// ultra/omniglyph). Engines read stepConfig only — buildStepOptions merges the
+// sub-object in, so without an entry here a persisted value would never take
+// effect at dispatch. stepDetailConfig.ts (frozen at cap by file-size-baseline.json).
 import type { CompressionConfig, CompressionPipelineStep } from "./types.ts";
 
 export function resolveStepDetailConfig(
@@ -25,7 +23,25 @@ export function resolveStepDetailConfig(
     case "tool-schema":
       return config?.toolSchema ?? {};
     case "relevance":
-      return config?.relevance ?? {};
+      return { ...(config?.relevanceConfig ?? {}), ...(config?.relevance ?? {}) };
+    case "llmlingua":
+      return config?.llmlingua ?? {};
+    case "ionizer":
+      return config?.ionizer ?? {};
+    case "llm":
+      return config?.llm ?? {};
+    case "caveman":
+      return config?.cavemanConfig ?? {};
+    case "rtk":
+      return config?.rtkConfig ?? {};
+    case "codex-responses":
+      return config?.codexResponsesConfig ?? {};
+    case "aggressive":
+      return config?.aggressive ?? {};
+    case "ultra":
+      return config?.ultra ?? {};
+    case "omniglyph":
+      return config?.omniglyph ?? {};
     default:
       return {};
   }

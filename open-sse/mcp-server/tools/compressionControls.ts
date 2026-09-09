@@ -150,6 +150,11 @@ export async function handleUpdateCompressionEngine(
     };
   }
   const subKey = ENGINE_SETTINGS_SUBOBJECT[args.engineId];
+  if (args.config !== undefined && !subKey) {
+    throw new Error(
+      `Engine "${args.engineId}" has no persistable config store — detail config is not persisted for this engine. Only "enabled" can be updated.`
+    );
+  }
   if (subKey && args.config !== undefined) {
     const { enabled: _ignored, ...detail } = args.config as Record<string, unknown>;
     void _ignored;
@@ -201,15 +206,27 @@ export async function handleUpdateCompressionEngine(
   return result;
 }
 
-// Engine id → SQLite settings sub-object key for detail persistence. Mirrors
-// SETTINGS_SUBOBJECT in src/shared/components/compression/EngineConfigPage.tsx
-// (the dashboard's canonical writer) — engines without a sub-object row persist
-// only their `engines`-map toggle.
+// Engine id → SQLite settings sub-object key for detail persistence. Canonical map
+// covering every engine with a durable settings row: the dashboard's
+// SETTINGS_SUBOBJECT writers (EngineConfigPage.tsx) plus the dedicated config
+// blocks the stacked runner merges via resolveStepDetailConfig. Engines with no
+// entry here have nowhere durable to store detail — passing `config` for them is
+// an explicit validation error, never a silent drop.
 const ENGINE_SETTINGS_SUBOBJECT: Record<string, string> = {
   lite: "lite",
   headroom: "headroom",
   "session-dedup": "sessionDedup",
   ccr: "ccr",
+  relevance: "relevanceConfig",
+  llmlingua: "llmlingua",
+  ionizer: "ionizer",
+  llm: "llm",
+  caveman: "cavemanConfig",
+  rtk: "rtkConfig",
+  "codex-responses": "codexResponsesConfig",
+  aggressive: "aggressive",
+  ultra: "ultra",
+  omniglyph: "omniglyph",
 };
 
 // ── rules / language packs ─────────────────────────────────────────────────
@@ -278,15 +295,24 @@ export const compressionPreviewInput = z.object({
   intensity: z.enum(PREVIEW_INTENSITIES).optional().describe("Step intensity override"),
 });
 
+function messagesToText(messages: Array<{ role?: string; content?: unknown }>): string {
+  return messages
+    .map((m) => {
+      const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+      return `${m.role ?? "unknown"}: ${content}`;
+    })
+    .join("\n");
+}
+
 function extractCompressedText(body: Record<string, unknown>, fallback: string): string {
   const messages = (body as { messages?: Array<{ role?: string; content?: unknown }> }).messages;
-  if (Array.isArray(messages)) {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (typeof m?.content === "string" && m.role !== "system") return m.content;
-    }
-    const first = messages.map((m) => m?.content).find((c) => typeof c === "string");
-    if (typeof first === "string") return first;
+  if (Array.isArray(messages) && messages.length > 0) {
+    // Same contract as GET /api/compression/preview (messagesToText): ALL messages
+    // joined role-prefixed — including a prepended [CCR protocol] system message —
+    // so returned text and token-counted text are identical. The old last-non-system
+    // variant disagreed with its own token counts whenever an engine injected a
+    // leading system message.
+    return messagesToText(messages);
   }
   return fallback;
 }

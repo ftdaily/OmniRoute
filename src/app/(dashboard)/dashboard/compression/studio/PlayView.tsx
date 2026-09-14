@@ -137,6 +137,11 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
             ) : null}
           </section>
         )}
+        {batch && !batch.combined && batch.combinedError && (
+          <section data-testid="play-combined-error" className="text-xs text-red-600">
+            {t("combinedError", { reason: batch.combinedError })}
+          </section>
+        )}
         <section>
           <header className="text-xs font-semibold">{t("eachLayer")}</header>
           <LaneList lanes={batch?.lanes ?? []} onSelect={setSelectedLane} />

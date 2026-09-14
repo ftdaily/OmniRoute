@@ -17,6 +17,7 @@ export interface Lane {
 export interface PreviewBatch {
   lanes: Lane[];
   combined: CompressionRunModel | null;
+  combinedError: string | null;
   diff: PreviewResponse["diff"] | null;
   riskGate: PreviewResponse["riskGate"] | null;
   contentType: PreviewResponse["contentType"] | null;
@@ -75,6 +76,7 @@ export async function runPreviewBatch(args: RunPreviewArgs): Promise<PreviewBatc
     })
   );
   let combined: CompressionRunModel | null = null;
+  let combinedError: string | null = null;
   let diff: PreviewResponse["diff"] | null = null;
   let riskGateStats: PreviewResponse["riskGate"] | null = null;
   let contentType: PreviewResponse["contentType"] | null = null;
@@ -87,11 +89,20 @@ export async function runPreviewBatch(args: RunPreviewArgs): Promise<PreviewBatc
       riskGateStats = res.riskGate ?? null;
       contentType = res.contentType ?? null;
       heatmapResult = res.heatmap ?? null;
-    } catch {
+    } catch (e) {
       combined = null;
+      combinedError = e instanceof Error ? e.message : "error";
     }
   }
-  return { lanes, combined, diff, riskGate: riskGateStats, contentType, heatmap: heatmapResult };
+  return {
+    lanes,
+    combined,
+    combinedError,
+    diff,
+    riskGate: riskGateStats,
+    contentType,
+    heatmap: heatmapResult,
+  };
 }
 export function usePreviewCompression() {
   const [batch, setBatch] = useState<PreviewBatch | null>(null);

@@ -20,13 +20,14 @@ import {
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-/**
- * Pinned Agent CLI build id used when no local install is found (typical
- * headless OmniRoute). Bump when refreshing Cursor CLI impersonation.
- */
-export const CURSOR_AGENT_CLI_VERSION = "2026.07.08-0c04a8a";
+// Pure constants + helpers (client-safe). Server-only functions stay below.
+export {
+  CURSOR_AGENT_CLI_VERSION,
+  VERSION_ID_RE,
+  isCursorAgentCliVersionId,
+  formatCursorAgentClientVersion,
+} from "./cursorAgentCliVersion.constants";
 
-const VERSION_ID_RE = /^\d{4}\.\d{2}\.\d{2}-[0-9a-f]+$/;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const INSTALL_URL = "https://cursor.com/install";
 const REMOTE_TIMEOUT_MS = 5_000;
@@ -41,14 +42,6 @@ let remoteRefreshScheduled = false;
 let fetchImpl: typeof fetch = fetch;
 /** Test seam: override disk cache directory. */
 let cacheDirOverride: string | null = null;
-
-export function isCursorAgentCliVersionId(value: string): boolean {
-  return VERSION_ID_RE.test(value);
-}
-
-export function formatCursorAgentClientVersion(id: string): string {
-  return `cli-${id}`;
-}
 
 /** Extract `versions/<id>` from a resolved agent binary path. */
 export function extractVersionIdFromResolvedPath(resolvedPath: string): string | null {

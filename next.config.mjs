@@ -349,6 +349,7 @@ const nextConfig = {
     // See issue #3066.
     "sqlite-vec",
     "node-machine-id",
+    "sharp",
     "keytar",
     "wreq-js",
     "zod",

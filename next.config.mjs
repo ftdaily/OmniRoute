@@ -349,6 +349,10 @@ const nextConfig = {
     // See issue #3066.
     "sqlite-vec",
     "node-machine-id",
+    // sharp transitively imports child_process via detect-libc; webpack must not
+    // try to bundle it for the client (ComboControlCenterClient imports
+    // controlCenter.ts which transitively reaches sharp through model.ts).
+    "sharp",
     "keytar",
     "wreq-js",
     "zod",

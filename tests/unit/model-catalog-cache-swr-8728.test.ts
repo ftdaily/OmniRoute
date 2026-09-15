@@ -141,3 +141,26 @@ test("a state change invalidates the cache so the next read rebuilds", async () 
   const after = await resolve(async () => payload("after"));
   assert.equal(await after.text(), "after", "a write must be reflected on the very next read");
 });
+
+test("on build timeout, last-good is returned and cached so subsequent calls hit cache immediately", async () => {
+  await resolve(async () => payload("seeded"));
+  readCache.invalidateDbCache();
+
+  const prevTimeout = process.env.CATALOG_BUILD_TIMEOUT_MS;
+  process.env.CATALOG_BUILD_TIMEOUT_MS = "20";
+  try {
+    const hangingBuild = () => new Promise<catalogCache.CatalogPayload>(() => {});
+    const timeoutRes = await resolve(hangingBuild);
+    assert.equal(await timeoutRes.text(), "seeded");
+    assert.equal(timeoutRes.headers.get("x-omniroute-catalog"), "last-good");
+
+    const immediateRes = await resolve(async () => payload("SHOULD NOT RUN"));
+    assert.equal(await immediateRes.text(), "seeded");
+  } finally {
+    if (prevTimeout !== undefined) {
+      process.env.CATALOG_BUILD_TIMEOUT_MS = prevTimeout;
+    } else {
+      delete process.env.CATALOG_BUILD_TIMEOUT_MS;
+    }
+  }
+});

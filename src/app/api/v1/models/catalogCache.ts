@@ -137,7 +137,7 @@ export type CatalogCacheOptions = {
 export const CATALOG_CACHE_TTL_MS_DEFAULT = 60_000;
 
 /** Cold-path wait bound for a coalesced catalog rebuild (#12627). Override with CATALOG_BUILD_TIMEOUT_MS. */
-export const CATALOG_BUILD_TIMEOUT_MS_DEFAULT = 8_000;
+export const CATALOG_BUILD_TIMEOUT_MS_DEFAULT = 15_000;
 
 function catalogBuildTimeoutMs(): number {
   const raw = process.env.CATALOG_BUILD_TIMEOUT_MS;
@@ -335,6 +335,10 @@ async function awaitCatalogInFlight(
     }
     const lastGood = catalogLastGood.get(cacheKey);
     if (msg === "catalog_build_timeout" && lastGood) {
+      catalogCache.set(cacheKey, {
+        ...lastGood,
+        expiresAt: Date.now() + CATALOG_STALE_WHILE_REVALIDATE_MS,
+      });
       return catalogStringResponse(
         lastGood.body,
         mergeCatalogHeaders(corsHeaders, lastGood.headers, diagnosticHeaders, {

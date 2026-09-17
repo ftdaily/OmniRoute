@@ -19,14 +19,9 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { CURSOR_AGENT_CLI_VERSION } from "./cursorAgentCliVersionPin.ts";
 
-// Pure constants + helpers (client-safe). Server-only functions stay below.
-export {
-  CURSOR_AGENT_CLI_VERSION,
-  VERSION_ID_RE,
-  isCursorAgentCliVersionId,
-  formatCursorAgentClientVersion,
-} from "./cursorAgentCliVersion.constants";
+export { CURSOR_AGENT_CLI_VERSION };
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const INSTALL_URL = "https://cursor.com/install";

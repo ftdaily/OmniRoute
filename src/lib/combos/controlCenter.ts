@@ -110,19 +110,15 @@ function toString(value: unknown): string | null {
 
 function providerFromModel(model: string | null | undefined): string | null {
   if (!model) return null;
-  // #11912: apply the same "opencode" -> "oc" combo-target alias treatment
-  // that target resolution applies before dispatch, so this label matches what
-  // actually executed upstream instead of a raw, un-aliased prefix slice.
-  // The general alias table (resolveProviderAlias) lives in open-sse/services/
-  // model.ts which transitively pulls server-only modules into the client
-  // bundle via ComboControlCenterClient; the combo's providerId field already
-  // wins when present (see providerFromModel call site), so dropping the
-  // fallback alias chain here has no behavioural effect on the rendered UI.
+  // #11912: resolve through the same "opencode" -> "oc" combo-target alias
+  // treatment (and then the general alias table) that target resolution
+  // applies before dispatch, so this label matches what actually executed
+  // upstream instead of a raw, un-aliased prefix slice.
   const normalized = resolveComboTargetModelStr(model);
   const slashIndex = normalized.indexOf("/");
   if (slashIndex <= 0) return null;
   const prefix = normalized.slice(0, slashIndex);
-  return prefix;
+  return resolveProviderAlias(prefix) || prefix;
 }
 
 function normalizeSuccessRate(value: unknown): number {

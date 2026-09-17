@@ -355,6 +355,11 @@ async function awaitCatalogInFlight(
   try {
     payload = await withTimeout(inflight.promise, catalogBuildTimeoutMs(), "catalog_build_timeout");
   } catch (err) {
+    // Message form of the timeout signal. `withTimeout` rejects with the typed
+    // CatalogBuildTimeoutError whose message is "catalog_build_timeout"; the
+    // string is captured here so the last-good guard below stays valid even if
+    // a future caller rejects with a plain Error carrying the same label.
+    const msg = err instanceof Error ? err.message : String(err);
     if (!(err instanceof CatalogBuildTimeoutError)) {
       if (catalogInFlight.get(cacheKey)?.promise === inflight.promise) {
         catalogInFlight.delete(cacheKey);

@@ -52,12 +52,25 @@ jobs:
   deploy:
     # Confused-deputy guard: a workflow_run job holds secrets, so the automatic
     # path must only ever react to runs from THIS repository (never a fork/PR ref).
+    #
+    # RB4 / IMPORTANT: workflow_run evaluates THIS FILE FROM THE REPOSITORY DEFAULT
+    # BRANCH, not from the branch that triggered the publish. If this definition
+    # lives only on a working branch it is silently inert, and the run that fires
+    # is whatever the default branch happens to hold. Keep this file on the default
+    # branch (release/v*) in step with .github/workflows/docker-publish.yml, whose
+    # `name:` the `workflows:` list below must match exactly.
+    #
+    # Branch gate: the triggering publish run fires on `mine`, on `main`, and on
+    # `release/v*` (that last one is the fork's DEFAULT branch and therefore the
+    # normal release path) — so all three families are accepted. `head_repository`
+    # remains the actual security boundary.
     if: >-
       (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
       && vars.DEPLOY_ENABLED == 'true'
       && (github.event_name == 'workflow_dispatch'
           || (github.event.workflow_run.head_repository.full_name == github.repository
-              && contains(fromJSON('["mine","main"]'), github.event.workflow_run.head_branch)))
+              && (startsWith(github.event.workflow_run.head_branch, 'release/v')
+                  || contains(fromJSON('["mine","main"]'), github.event.workflow_run.head_branch))))
     name: Deploy OmniRoute to VPS
     runs-on: ubuntu-latest
     steps:

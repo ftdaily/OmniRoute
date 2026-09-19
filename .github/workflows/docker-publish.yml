@@ -1,9 +1,10 @@
-name: Publish to Docker Hub
+name: Publish to GHCR
 
 on:
   push:
     branches:
       - main
+      - mine
       - "release/v*"
     tags:
       - "v*"
@@ -41,14 +42,14 @@ permissions:
 
 jobs:
   prepare:
-    name: Resolve Docker release metadata
+    name: Resolve release metadata
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       promote_latest: ${{ steps.version.outputs.promote_latest }}
       skip: ${{ steps.version.outputs.skip }}
     env:
-      IMAGE_NAME: diegosouzapw/omniroute
+      IMAGE_NAME: ghcr.io/ftdaily/omniroute
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -113,14 +114,14 @@ jobs:
           # and `next` channels are intentionally rebuilt on every matching push.
           SKIP="false"
           if [ "$VERSION" != "main" ] && [ "$VERSION" != "next" ]; then
-            if docker manifest inspect "diegosouzapw/omniroute:${VERSION}" >/dev/null 2>&1; then
-              echo "Image diegosouzapw/omniroute:${VERSION} already exists on Docker Hub — skipping rebuild."
+            if docker manifest inspect "${IMAGE_NAME}:${VERSION}" >/dev/null 2>&1; then
+              echo "Image ${IMAGE_NAME}:${VERSION} already exists on GHCR — skipping rebuild."
               SKIP="true"
             fi
           fi
           echo "skip=$SKIP" >> "$GITHUB_OUTPUT"
 
-          echo "Publishing diegosouzapw/omniroute:$VERSION (promote_latest=$PROMOTE, skip=$SKIP)"
+          echo "Publishing ${IMAGE_NAME}:$VERSION (promote_latest=$PROMOTE, skip=$SKIP)"
 
   build:
     name: Build Docker (${{ matrix.platform }})
@@ -155,8 +156,7 @@ jobs:
           - platform: linux/arm64
             arch: arm64
     env:
-      IMAGE_NAME: diegosouzapw/omniroute
-      GHCR_IMAGE_NAME: ghcr.io/diegosouzapw/omniroute
+      IMAGE_NAME: ghcr.io/ftdaily/omniroute
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -170,12 +170,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4.6.0
@@ -196,7 +190,6 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           tags: |
             ${{ env.IMAGE_NAME }}
-            ${{ env.GHCR_IMAGE_NAME }}
           cache-from: type=gha,scope=docker-${{ matrix.arch }}
           cache-to: type=gha,scope=docker-${{ matrix.arch }},mode=max,ignore-error=true
           no-cache: false
@@ -215,7 +208,6 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           tags: |
             ${{ env.IMAGE_NAME }}
-            ${{ env.GHCR_IMAGE_NAME }}
           cache-from: type=gha,scope=docker-web-${{ matrix.arch }}
           cache-to: type=gha,scope=docker-web-${{ matrix.arch }},mode=max,ignore-error=true
           no-cache: false
@@ -242,7 +234,6 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           tags: |
             ${{ env.IMAGE_NAME }}
-            ${{ env.GHCR_IMAGE_NAME }}
           cache-from: type=gha,scope=docker-bun-base-${{ matrix.arch }}
           cache-to: type=gha,scope=docker-bun-base-${{ matrix.arch }},mode=max,ignore-error=true
           no-cache: false
@@ -269,7 +260,6 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           tags: |
             ${{ env.IMAGE_NAME }}
-            ${{ env.GHCR_IMAGE_NAME }}
           cache-from: type=gha,scope=docker-bun-web-${{ matrix.arch }}
           cache-to: type=gha,scope=docker-bun-web-${{ matrix.arch }},mode=max,ignore-error=true
           no-cache: false
@@ -349,8 +339,7 @@ jobs:
       packages: write
       security-events: write
     env:
-      IMAGE_NAME: diegosouzapw/omniroute
-      GHCR_IMAGE_NAME: ghcr.io/diegosouzapw/omniroute
+      IMAGE_NAME: ghcr.io/ftdaily/omniroute
       VERSION: ${{ needs.prepare.outputs.version }}
       PROMOTE_LATEST: ${{ needs.prepare.outputs.promote_latest }}
     steps:
@@ -363,12 +352,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4.6.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4.6.0
@@ -411,38 +394,12 @@ jobs:
           path: /tmp/digests/bun-web
           merge-multiple: true
 
-      - name: Create Docker Hub version manifests
-        run: |
-          set -euo pipefail
-
-          create_manifest() {
-            local image="$1" suffix="$2" dir="$3" optional="${4:-}"
-            local refs=()
-            while IFS= read -r digest_file; do
-              refs+=("${image}@sha256:$(basename "$digest_file")")
-            done < <(find "$dir" -type f | sort)
-            if [ "${#refs[@]}" -eq 0 ]; then
-              if [ -n "$optional" ]; then
-                echo "::warning::No image digests in $dir — skipping optional tag ${image}:${VERSION}${suffix}" >&2
-                return 0
-              fi
-              echo "No image digests in $dir" >&2
-              exit 1
-            fi
-            docker buildx imagetools create -t "${image}:${VERSION}${suffix}" "${refs[@]}"
-          }
-
-          create_manifest "${IMAGE_NAME}" "" /tmp/digests/base
-          create_manifest "${IMAGE_NAME}" "-web" /tmp/digests/web
-          create_manifest "${IMAGE_NAME}" "-bun" /tmp/digests/bun-base optional
-          create_manifest "${IMAGE_NAME}" "-web-bun" /tmp/digests/bun-web optional
-
       - name: Create GHCR version manifests
         run: |
           set -euo pipefail
 
           create_manifest() {
-            local image="$1" suffix="$2" dir="$3" optional="${4:-}"
+            local image="$1" suffix="$2" dir="$3" optional="${4:-}" immutable="${5:-}"
             local refs=()
             while IFS= read -r digest_file; do
               refs+=("${image}@sha256:$(basename "$digest_file")")
@@ -456,12 +413,19 @@ jobs:
               exit 1
             fi
             docker buildx imagetools create -t "${image}:${VERSION}${suffix}" "${refs[@]}"
+            # Immutable per-commit multi-arch tag. Built from the SAME refs as the
+            # version tag, so it pins the whole platform set. The deploy workflow
+            # keys off exactly this tag, guaranteeing a run deploys the image
+            # built from its own commit.
+            if [ -n "$immutable" ]; then
+              docker buildx imagetools create -t "$immutable" "${refs[@]}"
+            fi
           }
 
-          create_manifest "${GHCR_IMAGE_NAME}" "" /tmp/digests/base
-          create_manifest "${GHCR_IMAGE_NAME}" "-web" /tmp/digests/web
-          create_manifest "${GHCR_IMAGE_NAME}" "-bun" /tmp/digests/bun-base optional
-          create_manifest "${GHCR_IMAGE_NAME}" "-web-bun" /tmp/digests/bun-web optional
+          create_manifest "${IMAGE_NAME}" "" /tmp/digests/base "" "${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          create_manifest "${IMAGE_NAME}" "-web" /tmp/digests/web
+          create_manifest "${IMAGE_NAME}" "-bun" /tmp/digests/bun-base optional
+          create_manifest "${IMAGE_NAME}" "-web-bun" /tmp/digests/bun-web optional
 
       - name: Smoke-test published Docker image
         if: needs.prepare.outputs.version != 'main'
@@ -484,7 +448,7 @@ jobs:
           docker logs "$container"
           exit 1
 
-      - name: Promote Docker Hub latest tags
+      - name: Promote GHCR latest tags
         if: needs.prepare.outputs.promote_latest == 'true'
         run: |
           set -euo pipefail
@@ -500,22 +464,6 @@ jobs:
             fi
           done
 
-      - name: Promote GHCR latest tags
-        if: needs.prepare.outputs.promote_latest == 'true'
-        run: |
-          set -euo pipefail
-          promote_tag() {
-            local suffix="$1"
-            docker buildx imagetools create -t "${GHCR_IMAGE_NAME}:latest${suffix}" "${GHCR_IMAGE_NAME}:${VERSION}${suffix}"
-          }
-          promote_tag ""
-          promote_tag "-web"
-          for suffix in -bun -web-bun; do
-            if docker buildx imagetools inspect "${GHCR_IMAGE_NAME}:${VERSION}${suffix}" >/dev/null 2>&1; then
-              promote_tag "$suffix"
-            fi
-          done
-
       - name: Inspect image
         if: needs.prepare.outputs.version != 'main'
         run: |
@@ -526,7 +474,7 @@ jobs:
         continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.GHCR_IMAGE_NAME }}:${{ env.VERSION }}
+          image: ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           format: cyclonedx-json
           output-file: sbom-image.cdx.json
           artifact-name: sbom-image.cdx.json
@@ -547,7 +495,7 @@ jobs:
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.GHCR_IMAGE_NAME }}:${{ env.VERSION }}
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
@@ -568,7 +516,7 @@ jobs:
         if: needs.prepare.outputs.version != 'main'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.GHCR_IMAGE_NAME }}:${{ env.VERSION }}
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           format: table
           severity: CRITICAL
           ignore-unfixed: true
@@ -584,15 +532,3 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image
-
-      - name: Update Docker Hub description
-        # Only refresh README/description when we actually promote :latest
-        # (avoids overwriting from main, next, or back-fill builds).
-        if: needs.prepare.outputs.promote_latest == 'true'
-        uses: peter-evans/dockerhub-description@v5
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: diegosouzapw/omniroute
-          short-description: "OmniRoute — Unified AI proxy. Route any LLM through one endpoint."
-          readme-filepath: ./README.md

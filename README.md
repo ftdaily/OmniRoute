@@ -746,7 +746,7 @@ of your shell history. → [CLI Integrations](docs/guides/CLI-INTEGRATIONS.md)
 <table>
   <tr><th align="left">Platform</th><th align="left">Install</th><th align="left">Highlights</th></tr>
   <tr><td align="left" nowrap>📦 <b>npm (global)</b></td><td align="left" nowrap><code>npm install -g omniroute</code></td><td align="left">One command, any OS</td></tr>
-  <tr><td align="left" nowrap>🐳 <b>Docker</b></td><td align="left" nowrap><code>docker run … diegosouzapw/omniroute</code></td><td align="left">Multi-arch <b>AMD64 + ARM64</b></td></tr>
+  <tr><td align="left" nowrap>🐳 <b>Docker</b></td><td align="left" nowrap><code>docker run … ghcr.io/ftdaily/omniroute</code></td><td align="left">Multi-arch <b>AMD64 + ARM64</b></td></tr>
   <tr><td align="left" nowrap>🖥️ <b>Desktop (Electron)</b></td><td align="left" nowrap><code>npm run electron:build</code></td><td align="left">Native window + system tray — <b>Windows / macOS / Linux</b></td></tr>
   <tr><td align="left" nowrap>🎩 <b>Menu-bar (OmniRouteTray)</b></td><td align="left" nowrap><code>brew install --cask zoispag/tap/omniroute-tray</code></td><td align="left">Supervises &amp; auto-updates the server — <b>macOS</b></td></tr>
   <tr><td align="left" nowrap>💪 <b>ARM</b></td><td align="left" nowrap>native <code>arm64</code></td><td align="left">Raspberry Pi, ARM servers, Apple Silicon</td></tr>
@@ -1051,7 +1051,7 @@ Use these only for clients that cannot attach `Authorization: Bearer ...`. Heade
 
 ```bash
 docker run -d --name omniroute --restart unless-stopped --stop-timeout 40 \
-  -p 127.0.0.1:20128:20128 -v omniroute-data:/app/data diegosouzapw/omniroute:latest
+  -p 127.0.0.1:20128:20128 -v omniroute-data:/app/data ghcr.io/ftdaily/omniroute:latest
 ```
 
 `:latest` follows the highest **published** stable SemVer. It does not track git `main`. Pin `:X.Y.Z` for GitOps. See [Docker Release Channels](docs/guides/DOCKER_GUIDE.md#release-channels).The image pins **`OMNIROUTE_MEMORY_MB=1024`**. That is enough for the dashboard and a light chat. **Coding agents** (`POST /v1/responses` from Claude Code, Codex, Grok, …) need a much larger V8 heap or the process `FATAL ERROR`s at ~12 GiB under two overlapping long contexts. Size the container above the heap (native buffers sit outside V8):
@@ -1065,16 +1065,53 @@ docker run -d --name omniroute --restart unless-stopped --stop-timeout 40 \
 ```bash
 docker run -d --name omniroute --restart unless-stopped --stop-timeout 40 \
   -e OMNIROUTE_MEMORY_MB=8192 --memory=10g \
-  -p 127.0.0.1:20128:20128 -v omniroute-data:/app/data diegosouzapw/omniroute:latest
+  -p 127.0.0.1:20128:20128 -v omniroute-data:/app/data ghcr.io/ftdaily/omniroute:latest
 ```
 
 Full table: [Docker Guide — runtime RAM](docs/guides/DOCKER_GUIDE.md#runtime-ram-for-coding-agents).
 
-> **Pre-release Docker channel:** `diegosouzapw/omniroute:next` and
-> `diegosouzapw/omniroute:next-web` follow the current default `release/v*`
-> branch. These mutable tags are intended only for testing unreleased fixes and
-> are **not supported for production**. See
+> **Pre-release Docker channel:** `:next` and `:next-web` follow the current
+> default `release/v*` branch. These mutable tags are intended only for testing
+> unreleased fixes and are **not supported for production**. On this fork they
+> are published under `ghcr.io/ftdaily/omniroute`. See
 > [Docker Release Channels](docs/guides/DOCKER_GUIDE.md#release-channels).
+
+**🏗️ Building the image from source**
+
+Build from an exact release checkout and pass the webpack override. Turbopack is
+the Dockerfile default, but webpack is the lower-memory builder and the one CI
+validates — without the override a source build needs well over 8 GiB and is
+prone to being OOM-killed during `next build`:
+
+```bash
+git switch --detach release/v3.8.51
+docker build --target runner-base \
+  --build-arg OMNIROUTE_USE_TURBOPACK=0 \
+  -t omniroute:3.8.51 .
+```
+
+Raise the builder budget with `--build-arg OMNIROUTE_BUILD_MEMORY_MB=8192` if the
+default (`6144`) is not enough. See
+[contrib/vps/README.md](contrib/vps/README.md) for the source-build vs runtime RAM
+distinction (8 GiB+ to build, 2 GiB to run).
+
+**🚀 Docker Compose deployment**
+
+For a headless Linux VPS, use the packaged bundle — loopback-only dashboard,
+Redis included, conservative memory/CPU/PID limits, persistent data:
+
+```bash
+cd contrib/vps
+cp .env.example .env && chmod 600 .env   # then fill in the secrets
+docker compose up -d
+```
+
+Keep **`REQUIRE_API_KEY=true`** (the bundle default) so the API rejects
+unauthenticated callers. Full walkthrough, memory sizing, backup and rollback:
+[contrib/vps/README.md](contrib/vps/README.md).
+
+This fork's `ghcr.io/ftdaily/omniroute` images are multi-arch
+(AMD64 + ARM64). Pin a digest for unattended deployments.
 
 **🥟 Bun**
 

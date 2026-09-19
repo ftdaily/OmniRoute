@@ -12,8 +12,13 @@ building from source, bundled provider CLIs, or the Playwright/Chromium image.
 ## Prerequisites
 
 - A supported Linux distribution with Docker Engine and Docker Compose v2.
-- At least 2 GiB of available RAM for the default limits. The host needs more
-  headroom if other workloads run beside OmniRoute.
+- **Runtime: at least 2 GiB of RAM for the container.** The host needs more
+  headroom if other workloads run beside OmniRoute. This floor comes from
+  `OMNIROUTE_MEMORY_LIMIT` in `.env.example`, not from the V8 heap.
+- **Source builds: at least 8 GiB of RAM on the building machine.** Compiling the
+  Next.js tree is a much larger job than running it — the Dockerfile defaults to
+  `OMNIROUTE_BUILD_MEMORY_MB=6144` and expects swap or more RAM on top. Do not
+  confuse the two numbers: 2 GiB runs the server, 8 GiB builds it.
 - SSH access for the loopback dashboard tunnel.
 
 ## Install
@@ -23,10 +28,26 @@ locally avoids assuming that a matching version tag has already been published
 to a container registry:
 
 ```bash
-git switch --detach release/v3.8.50
-test "$(node -p "require('./package.json').version")" = "3.8.50"
-docker build --target runner-base --tag omniroute:3.8.50-vps .
+git switch --detach release/v3.8.51
+test "$(node -p "require('./package.json').version")" = "3.8.51"
+docker build --target runner-base \
+  --build-arg OMNIROUTE_USE_TURBOPACK=0 \
+  --tag omniroute:3.8.51-vps .
 ```
+
+`--build-arg OMNIROUTE_USE_TURBOPACK=0` selects the webpack builder. Turbopack is
+the Dockerfile default, but webpack is the lower-memory path and the one CI
+validates; without the override a source build on an 8 GiB host is likely to be
+OOM-killed during `next build`.
+
+If a matching image is already published, you can skip the build entirely and
+point `.env` at the fork's registry instead:
+
+```bash
+OMNIROUTE_IMAGE=ghcr.io/ftdaily/omniroute@sha256:<digest>
+```
+
+Prefer an immutable `@sha256:` digest (or a version tag) over `latest`/`next`.
 
 Then initialize the deployment from the repository root:
 
@@ -68,6 +89,52 @@ Then open `http://127.0.0.1:20128` locally. For a public hostname, put a trusted
 reverse proxy on the same host in front of the loopback port and terminate TLS
 there. Do not change `OMNIROUTE_BIND_HOST` to `0.0.0.0` merely to make the
 dashboard reachable.
+
+## Sizing memory
+
+Two independent numbers control memory, and they are not interchangeable:
+
+| Variable                 | Controls                                                 | `.env.example` default |
+| ------------------------ | -------------------------------------------------------- | ---------------------- |
+| `OMNIROUTE_MEMORY_MB`    | V8 heap — becomes `NODE_OPTIONS=--max-old-space-size`    | `1024`                 |
+| `OMNIROUTE_MEMORY_LIMIT` | Container cgroup cap (`mem_limit`) for the whole process | `2g`                   |
+
+Rule: **keep `OMNIROUTE_MEMORY_MB` strictly below `OMNIROUTE_MEMORY_LIMIT`.**
+Native buffers, the SQLite cache, and Node's own baseline live outside the V8
+heap, so a heap sized at or above the container cap is OOM-killed rather than
+garbage-collected. The shipped pair (1024 MB heap inside a 2 GiB cap) leaves
+about a gigabyte of non-heap headroom, which is the intended shape.
+
+`compose.yaml` passes both through, so raising the heap means raising the cap in
+the same edit:
+
+```dotenv
+OMNIROUTE_MEMORY_MB=8192
+OMNIROUTE_MEMORY_LIMIT=10g
+```
+
+Coding agents (`POST /v1/responses` from Claude Code, Codex, Grok, …) need a
+much larger heap than the dashboard. See the root `README.md` table for
+per-workload numbers.
+
+## Registry credentials
+
+Pulling a published fork image requires a token that can read GitHub Container
+Registry packages:
+
+- Scope: **`read:packages`** only.
+- Form: a **fine-grained PAT** limited to this repository (a broad classic PAT
+  with repo-wide scopes is unnecessary and should be avoided).
+- Lifetime: set an expiry. A long-lived, user-bound PAT is the usual cause of a
+  silent deploy failure — when it expires or the user is removed, `docker pull`
+  starts failing with no other symptom. The deploy workflow fails loudly if the
+  token is unset, but it cannot detect a token that expired after the fact.
+- Placement: prefer holding it only on the VPS (in the deploy user's
+  `~/.docker/config.json`), or as the `GHCR_TOKEN` repository secret the deploy
+  workflow uses to log in. Rotate it on the same schedule as the expiry.
+
+Public images need no credentials at all — this section applies to private
+packages.
 
 ## Verify
 

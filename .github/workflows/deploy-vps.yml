@@ -1,22 +1,108 @@
 name: Deploy to VPS
 
+# Deploys an already-published container image to the VPS that runs the
+# contrib/vps Compose bundle. This workflow does NOT build anything and does NOT
+# install the npm package: it pulls an immutable image reference and recreates
+# one Compose service.
+#
+# Image provenance: the reference is the version tag the publish workflow
+# actually produces (":<package.json version>"), read from the triggering
+# commit. A floating tag (:latest / :next) is never deployed — the tag is
+# resolved to its @sha256: digest on the VPS, and that digest is what gets
+# written to .env. Set the repository variable OMNIROUTE_IMAGE_REPO when the
+# image lives in a namespace other than ghcr.io/ftdaily/omniroute.
+#
+# Trigger 1 — automatic: fires after "Publish to GHCR" completes.
+# Trigger 2 — manual: workflow_dispatch, optionally overriding the image ref.
+# Both are gated on vars.DEPLOY_ENABLED == 'true', so the workflow stays inert
+# until an operator opts in.
+
 on:
   workflow_run:
-    workflows: ["Publish to Docker Hub"]
+    workflows: ["Publish to GHCR"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      image_ref:
+        description: >-
+          Optional. Must be an immutable reference:
+          ghcr.io/ftdaily/omniroute@sha256:<64 hex> OR
+          ghcr.io/ftdaily/omniroute:sha-<40 hex>.
+          Anything else (including :latest / :next) is rejected.
+        required: false
+        type: string
+      deploy_dir:
+        description: "Path to the provisioned contrib/vps bundle on the VPS."
+        required: false
+        default: "omniroute/contrib/vps"
+        type: string
 
+# Least privilege: read the repo, and read the published package from GHCR.
 permissions:
   contents: read
+  packages: read
+
+concurrency:
+  # Never run two deploys at once: both would rewrite .env and recreate the
+  # same Compose service. A newer deploy is allowed to supersede an older one.
+  group: deploy-vps
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    # Confused-deputy guard: a workflow_run job holds secrets, so the automatic
+    # path must only ever react to runs from THIS repository (never a fork/PR ref).
     if: >-
       (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
       && vars.DEPLOY_ENABLED == 'true'
+      && (github.event_name == 'workflow_dispatch'
+          || (github.event.workflow_run.head_repository.full_name == github.repository
+              && contains(fromJSON('["mine","main"]'), github.event.workflow_run.head_branch)))
     name: Deploy OmniRoute to VPS
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve the immutable image reference
+        id: image
+        env:
+          # The repo that holds the published image. Override with a repository
+          # variable when the image lives elsewhere.
+          IMAGE_REPO: ${{ vars.OMNIROUTE_IMAGE_REPO || 'ghcr.io/ftdaily/omniroute' }}
+          MANUAL_REF: ${{ inputs.image_ref }}
+          # The publish workflow tags every build "${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          # in the repo it runs in. Deploying by that exact tag means a workflow_run
+          # always deploys the image built from the very commit that triggered it.
+          TRIGGER_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Accepts ONLY immutable references:
+          #   <repo>@sha256:<64 hex>      (a digest)
+          #   <repo>:sha-<40 hex>         (a commit-SHA tag)
+          validate_immutable() {
+            local ref="$1"
+            case "$ref" in
+              *@sha256:*) printf '%s' "${ref##*@sha256:}" | grep -qE '^[0-9a-f]{64}$' ;;
+              *:sha-*)    printf '%s' "${ref##*:sha-}"     | grep -qE '^[0-9a-f]{40}$' ;;
+              *) return 1 ;;
+            esac
+          }
+
+          if [ -n "${MANUAL_REF:-}" ]; then
+            if ! validate_immutable "$MANUAL_REF"; then
+              echo "::error title=Refusing non-immutable ref::'$MANUAL_REF' is not <repo>@sha256:<64hex> or <repo>:sha-<40hex>."
+              exit 1
+            fi
+            echo "ref=$MANUAL_REF" >> "$GITHUB_OUTPUT"
+            echo "Using operator-supplied immutable ref: $MANUAL_REF"
+          else
+            if ! printf '%s' "${TRIGGER_SHA:-}" | grep -qE '^[0-9a-f]{40}$'; then
+              echo "::error title=No SHA::could not determine the triggering commit SHA (got '${TRIGGER_SHA:-<empty>}')."
+              exit 1
+            fi
+            echo "ref=${IMAGE_REPO}:sha-${TRIGGER_SHA}" >> "$GITHUB_OUTPUT"
+            echo "Derived ${IMAGE_REPO}:sha-${TRIGGER_SHA} from the triggering commit"
+          fi
+
       - name: Check VPS SSH reachability from runner
         id: reach
         env:
@@ -42,9 +128,16 @@ jobs:
             echo "::warning title=Auto-deploy skipped::VPS_HOST:22 is not reachable from this GitHub runner (private LAN / firewalled). Deploy manually with the deploy-vps-local or deploy-vps-akamai skill."
           fi
 
-      - name: Deploy via SSH
+      - name: Deploy via SSH (Docker Compose)
         if: steps.reach.outputs.reachable == 'true'
         uses: appleboy/ssh-action@v1
+        env:
+          # `envs:` forwards these into the remote shell as environment
+          # variables, so no value is ever interpolated into the script text.
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+          DEPLOY_DIR: ${{ inputs.deploy_dir || 'omniroute/contrib/vps' }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_USER: ${{ github.repository_owner }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -52,38 +145,76 @@ jobs:
           port: 22
           timeout: 60s
           command_timeout: 15m
+          envs: IMAGE_REF,DEPLOY_DIR,GHCR_TOKEN,GHCR_USER
           script: |
             set -euo pipefail
 
-            echo "=== Updating OmniRoute ==="
-            npm install -g omniroute@latest
-            INSTALLED_VERSION=$(omniroute --version 2>/dev/null | tr -d '[:space:]' || echo "unknown")
-            echo "Installed CLI version: $INSTALLED_VERSION"
+            : "${IMAGE_REF:?IMAGE_REF is required}"
+            : "${DEPLOY_DIR:?DEPLOY_DIR is required}"
 
-            # Recreate the PM2 process instead of `pm2 restart`. A bare restart
-            # re-runs whatever script path was saved earlier; after the build-output
-            # reorg (app/ -> dist/, .next -> .build/next) a process pinned to the old
-            # app/server-ws.mjs path can no longer start, and the node process dies
-            # while PM2 still reports "online" — so the box never binds :20128.
-            # Always launch via the `omniroute` bin so .env is loaded and the dist/
-            # layout is resolved correctly.
-            echo "=== (Re)creating PM2 process via bin ==="
-            pm2 delete omniroute 2>/dev/null || true
-            pm2 start omniroute --name omniroute -- --port 20128
-            pm2 save
+            # The bundle is provisioned ahead of time with its own .env (secrets,
+            # bind host, memory limits). This step only swaps the image reference
+            # and recreates the service — it never rewrites secrets.
+            cd "$HOME/$DEPLOY_DIR"
+            if [ ! -f .env ]; then
+              echo "::error title=Bundle not provisioned::no .env at $PWD — provision contrib/vps first (cp .env.example .env, fill the secrets, chmod 600)."
+              exit 1
+            fi
 
-            # Health gate: fail the deploy unless the box actually reports healthy.
-            # Poll /api/monitoring/health for "status":"healthy" (a deeper signal than
-            # a static page 200 — it confirms the app booted, not just that a port is
-            # bound). Boot can take a while after a native-module/build-layout change,
-            # so poll up to ~3min before giving up.
+            echo "=== Logging in to GHCR ==="
+            if [ -n "${GHCR_TOKEN:-}" ]; then
+              printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-ftdaily}" --password-stdin >/dev/null
+            else
+              echo "::error title=Missing GHCR_TOKEN::set the GHCR_TOKEN secret (a PAT with read:packages) so the VPS can pull the image."
+              exit 1
+            fi
+
+            # ── Rollback bookkeeping ──────────────────────────────────────────
+            # Record what is running now so a failed health gate can put it back.
+            PREV_REF="$(grep -E '^OMNIROUTE_IMAGE=' .env | head -1 | cut -d= -f2- || true)"
+            echo "Previous image: ${PREV_REF:-<none>}"
+
+            echo "=== Pulling $IMAGE_REF ==="
+            docker pull "$IMAGE_REF"
+
+            # Resolve the tag to a digest. A tag is mutable; the digest is not.
+            # Everything after this point uses the digest form.
+            DIGEST_REF="$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_REF" 2>/dev/null || true)"
+            if [ -z "$DIGEST_REF" ]; then
+              echo "::error title=No digest::could not resolve $IMAGE_REF to a @sha256: digest"
+              exit 1
+            fi
+            case "$DIGEST_REF" in
+              *@sha256:*) ;;
+              *) echo "::error title=Bad digest::'$DIGEST_REF' is not an @sha256: reference"; exit 1 ;;
+            esac
+            echo "Resolved immutable reference: $DIGEST_REF"
+
+            # Rewrite only the OMNIROUTE_IMAGE line; leave every secret untouched.
+            if grep -qE '^OMNIROUTE_IMAGE=' .env; then
+              # Write through a temp file so a failure cannot truncate .env.
+              sed "s|^OMNIROUTE_IMAGE=.*|OMNIROUTE_IMAGE=${DIGEST_REF}|" .env > .env.tmp
+              mv .env.tmp .env
+            else
+              printf 'OMNIROUTE_IMAGE=%s\n' "$DIGEST_REF" >> .env
+            fi
+            chmod 600 .env
+            echo "Pinned .env to the resolved digest (no floating tag deployed)."
+
+            echo "=== Recreating the omniroute service ==="
+            docker compose config --quiet
+            docker compose up -d --no-deps omniroute
+
+            # ── Health gate ───────────────────────────────────────────────────
+            # Poll the deeper monitoring signal, not a static page 200: it
+            # confirms the app booted rather than merely binding the port.
             echo "=== Health Check (gates the deploy) ==="
             ok=0
             for i in $(seq 1 36); do
               BODY=$(curl -sf -m 5 http://localhost:20128/api/monitoring/health 2>/dev/null || true)
               if printf '%s' "$BODY" | grep -q '"status":"healthy"'; then
                 ok=1
-                echo "✅ /api/monitoring/health -> healthy (attempt $i) — version $INSTALLED_VERSION"
+                echo "✅ /api/monitoring/health -> healthy (attempt $i) — $DIGEST_REF"
                 break
               fi
               echo "… not healthy yet (attempt $i/36), retrying in 5s"
@@ -91,8 +222,16 @@ jobs:
             done
             if [ "$ok" != "1" ]; then
               echo "❌ Health check failed — /api/monitoring/health never reported healthy after ~3min"
-              echo "--- recent PM2 logs ---"
-              pm2 logs omniroute --lines 40 --nostream || true
+              echo "--- recent logs ---"
+              docker compose logs --tail=40 omniroute || true
+              if [ -n "$PREV_REF" ] && [ "$PREV_REF" != "$DIGEST_REF" ]; then
+                echo "=== Rolling back to $PREV_REF ==="
+                sed "s|^OMNIROUTE_IMAGE=.*|OMNIROUTE_IMAGE=${PREV_REF}|" .env > .env.tmp
+                mv .env.tmp .env
+                chmod 600 .env
+                docker compose up -d --no-deps omniroute || true
+              fi
               exit 1
             fi
-            echo "=== Deploy complete ==="
+
+            echo "=== Deploy complete: $DIGEST_REF ==="

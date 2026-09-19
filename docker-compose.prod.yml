@@ -2,6 +2,16 @@
 #  OmniRoute — Docker Compose (Production Snapshot)
 # ──────────────────────────────────────────────────────────────────────
 #
+#  LOCAL runner-cli stack for a workstation or a hand-managed host. It builds
+#  from this checkout and is NOT published to any container registry — there is
+#  no CI workflow that builds or pushes this file's image.
+#
+#  For a real VPS deployment use the packaged bundle instead:
+#      contrib/vps/compose.yaml   (registry/local image + Redis, hardened,
+#                                  loopback-only, documented in contrib/vps/README.md)
+#  For everyday local development use the root:
+#      docker-compose.yml
+#
 #  Isolated production instance running on port 20130.
 #  Keeps the app running while you continue developing locally.
 #

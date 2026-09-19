@@ -39,6 +39,10 @@ services:
       API_KEY_SECRET: ${API_KEY_SECRET:?Set API_KEY_SECRET in .env}
       INITIAL_PASSWORD: ${INITIAL_PASSWORD:?Set INITIAL_PASSWORD in .env}
       OMNIROUTE_WS_BRIDGE_SECRET: ${OMNIROUTE_WS_BRIDGE_SECRET:?Set OMNIROUTE_WS_BRIDGE_SECRET in .env}
+      # V8 heap. Must stay strictly below mem_limit below: non-heap memory is not
+      # capped by this value, so a heap that reaches the container cap is
+      # OOM-killed. See README "Sizing memory".
+      OMNIROUTE_MEMORY_MB: ${OMNIROUTE_MEMORY_MB:-1024}
     ports:
       - "${OMNIROUTE_BIND_HOST:-127.0.0.1}:${OMNIROUTE_PORT:-20128}:20128"
     volumes:

@@ -8,6 +8,7 @@
 # - workflow_dispatch: requested version without a leading v
 # - push tag: tag without a leading v
 # - push main: main
+# - push mine: mine
 # - push to the current default release/v* branch: next
 # - release: release tag without a leading v
 set -euo pipefail
@@ -30,12 +31,17 @@ case "$EVENT_NAME" in
         main)
           VERSION="main"
           ;;
+        mine)
+          # The fork's working branch. Publishes a moving channel tag used for
+          # smoke-testing the fork's images between release cuts.
+          VERSION="mine"
+          ;;
         release/v*)
           if [ -z "$DEFAULT_BRANCH" ] || [ "$REF_NAME" != "$DEFAULT_BRANCH" ]; then
-            echo "Refusing to publish next from non-default release branch: $REF_NAME" >&2
-            exit 1
+            VERSION="skip"
+          else
+            VERSION="next"
           fi
-          VERSION="next"
           ;;
         *)
           echo "Unsupported Docker publish branch: $REF_NAME" >&2

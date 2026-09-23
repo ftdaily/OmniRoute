@@ -10,6 +10,7 @@ import {
 } from "../services/auth";
 import { maybeReactivateAfterExplicitProbe } from "../services/explicitInactiveProbe";
 import { connectionHasExtraKeys } from "@omniroute/open-sse/services/apiKeyRotator.ts";
+import { clearRequestRejectedStreak } from "@omniroute/open-sse/services/requestRejectedStreak.ts";
 import { createBuiltinAutoCombo } from "@omniroute/open-sse/services/autoCombo/builtinCatalog.ts";
 import * as log from "../utils/logger";
 import { updateProviderCredentials } from "../services/tokenRefresh";
@@ -349,6 +350,7 @@ export async function resolveModelOrError(
     customModelTargetFormat,
     extendedContext,
     apiFormat,
+    resolvedThinkingEffort: modelInfo.resolvedThinkingEffort,
   };
 }
 
@@ -443,6 +445,7 @@ export async function executeChatWithBreaker({
   extendedContext,
   modelApiFormat,
   modelTargetFormat,
+  resolvedThinkingEffort,
   providerProfile,
   cachedSettings,
   skipUpstreamRetry = false,
@@ -496,6 +499,7 @@ export async function executeChatWithBreaker({
               extendedContext,
               apiFormat: modelApiFormat,
               targetFormat: modelTargetFormat,
+              resolvedThinkingEffort,
             },
             credentials: refreshedCredentials,
             log: handlerLog,
@@ -537,6 +541,9 @@ export async function executeChatWithBreaker({
             },
             onRequestSuccess: async () => {
               if (isShadowTraffic) return;
+              // A healthy response ends any run of per-request refusals
+              // (#12859) — only a real success does, not an elapsed cooldown.
+              if (credentials.connectionId) clearRequestRejectedStreak(credentials.connectionId);
               await clearAccountError(credentials.connectionId, credentials);
               await maybeReactivateAfterExplicitProbe({
                 connectionId: credentials.connectionId,
@@ -1074,6 +1081,8 @@ export async function safeLogEvents({
   comboName,
   clientRawRequest,
   tlsFingerprintUsed = false,
+  rotationAccount = null,
+  correlationId = null,
 }) {
   // Feed the provider's real answer back to proxy selection (never result.status: some 429s
   // are generated locally; proxyInfo carries the status captured around fetch). Must stay
@@ -1127,6 +1136,8 @@ export async function safeLogEvents({
       connectionId: credentials.connectionId,
       comboId: comboName || null,
       account: credentials.connectionId?.slice(0, 8) || null,
+      rotationAccount: rotationAccount || null,
+      correlationId: correlationId || null,
       tlsFingerprint: tlsFingerprintUsed,
       upstreamStatus: proxyInfo?.upstreamStatus ?? null,
     });

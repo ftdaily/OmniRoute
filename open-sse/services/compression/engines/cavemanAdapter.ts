@@ -1,4 +1,4 @@
-import { applyLiteCompression } from "../lite.ts";
+import { applyLiteCompression, isUsableLiteMaxToolLength } from "../lite.ts";
 import { LITE_PASS_IDS, MAX_TOOL_TOKENS, MIN_TOOL_TOKENS, type LitePasses } from "../litePasses.ts";
 import { cavemanCompress } from "../caveman.ts";
 import { compressAggressive } from "../aggressive.ts";
@@ -227,7 +227,7 @@ const LITE_SCHEMA: EngineConfigField[] = [
     type: "boolean",
     label: "Proactively truncate long tool results",
     description:
-      "Truncates tool results over 2,000 characters during Lite compression. Emergency overflow protection may still trim content when the context exceeds the model budget.",
+      "Truncates long tool results during Lite compression. The Maximum tool-result length field (or OMNIROUTE_LITE_MAX_TOOL_LENGTH when that field is unset) sets the cap. Emergency overflow protection may still trim content when the context exceeds the model budget.",
     defaultValue: true,
   },
   {
@@ -256,6 +256,16 @@ const LITE_SCHEMA: EngineConfigField[] = [
     defaultValue: 0,
     min: 0,
     max: MAX_TOOL_TOKENS,
+  },
+  {
+    key: "maxToolLength",
+    type: "number",
+    label: "Maximum tool-result length",
+    description:
+      "Character cap for proactive tool-result truncation. Default 2000. Override with OMNIROUTE_LITE_MAX_TOOL_LENGTH when this field is unset.",
+    defaultValue: 2000,
+    min: 256,
+    max: 1_000_000,
   },
 ];
 
@@ -290,6 +300,7 @@ function validateLiteConfig(config: Record<string, unknown>): EngineValidationRe
       }
     }
   }
+  validateNumberRange(config, "maxToolLength", 256, 1_000_000, errors);
   return { valid: errors.length === 0, errors };
 }
 
@@ -354,6 +365,9 @@ export const liteEngine: CompressionEngine = {
       typeof rawMaxTokens === "number" && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
         ? rawMaxTokens
         : undefined;
+    const stepCompressToolResults = options?.stepConfig?.compressToolResults;
+    const stepMaxToolLength = options?.stepConfig?.maxToolLength;
+    const configMaxToolLength = options?.config?.lite?.maxToolLength;
     const result = applyLiteCompression(adapter.body, {
       ...options,
       preserveSystemPrompt: options?.config?.preserveSystemPrompt !== false,
@@ -365,6 +379,11 @@ export const liteEngine: CompressionEngine = {
       passes,
       ...(repeatedLineThreshold !== undefined ? { repeatedLineThreshold } : {}),
       ...(maxToolTokens !== undefined ? { maxToolTokens } : {}),
+      maxToolLength: isUsableLiteMaxToolLength(stepMaxToolLength)
+        ? Math.floor(stepMaxToolLength)
+        : isUsableLiteMaxToolLength(configMaxToolLength)
+          ? Math.floor(configMaxToolLength)
+          : undefined,
     });
     return adapter.adapted ? { ...result, body: adapter.restore(result.body) } : result;
   },

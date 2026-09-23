@@ -180,6 +180,12 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
         for (const field of foundEngine?.configSchema ?? []) {
           defaults[field.key] = field.defaultValue;
         }
+        // Do not seed lite.maxToolLength from the schema default. Persisting 2000
+        // would freeze the cap in settings and hide OMNIROUTE_LITE_MAX_TOOL_LENGTH.
+        // The form still shows 2000 via field.defaultValue until the operator edits it.
+        if (engineId === "lite" && currentConfig.maxToolLength === undefined) {
+          delete defaults.maxToolLength;
+        }
         setConfigState({ ...defaults, ...currentConfig });
         setLoading(false);
       }
@@ -208,7 +214,25 @@ export function EngineConfigPage({ engineId }: { engineId: string }) {
     void _ignored;
     // The schema IS the sub-object (lite/aggressive/ultra): persist verbatim so
     // new lite pass switches (passes.*) round-trip instead of being dropped.
-    const detail = formDetail;
+    let detail: Record<string, unknown> = formDetail;
+    if (engineId === "lite") {
+      // Upstream #13915: the cap is tri-state — absent keeps the stored value,
+      // a number sets it, null clears it. Reject out-of-range before sending.
+      const raw = formDetail.maxToolLength;
+      const compressToolResults = formDetail.compressToolResults !== false;
+      if (!Object.prototype.hasOwnProperty.call(formDetail, "maxToolLength")) {
+        detail = { ...formDetail, compressToolResults };
+      } else if (typeof raw === "number" && Number.isFinite(raw)) {
+        const n = Math.floor(raw);
+        if (n < 256 || n > 1_000_000) {
+          setSaveError(t("saveFailed"));
+          return;
+        }
+        detail = { ...formDetail, compressToolResults, maxToolLength: n };
+      } else {
+        detail = { ...formDetail, compressToolResults, maxToolLength: null };
+      }
+    }
     setSaving(true);
     setSaveError(null);
     try {

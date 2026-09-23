@@ -44,9 +44,10 @@ export const OAUTH_PROVIDERS = {
     textIcon: "OF",
     website: "https://openference.com",
     hasFree: true,
-    freeNote: "Free plan: 3-day trial with open-source models — no credit card required",
+    freeNote:
+      "Free tier: includes Qwen3.8 27b and Llama 3.2 3B — see openference.com/pricing for current terms",
     authHint:
-      "Sign in with your Openference account to route requests through api.openference.com. An active plan is required for inference — OAuth may authenticate but return 402 without one.",
+      "Sign in with your Openference account to route requests through api.openference.com. Includes free-tier access to Qwen3.8 27b and Llama 3.2 3B — see openference.com/pricing for current plan terms.",
   },
   "grok-cli": {
     id: "grok-cli",
@@ -220,7 +221,7 @@ export const OAUTH_PROVIDERS = {
     textIcon: "KC",
     // Kimi official-partnership aff link (2026-07) — the "Kimi Coding Plan"
     // tracking link. Was previously unset (no header link rendered at all).
-    website: "https://www.kimi.com/code?aff=omniroute",
+    website: "https://www.kimi.ai/code?aff=omniroute",
     subscriptionRisk: true,
     riskNoticeVariant: "oauth",
     authHint:
@@ -319,5 +320,20 @@ export const OAUTH_PROVIDERS = {
     riskNoticeVariant: "oauth",
     authHint:
       "CodeBuddy International (codebuddy.ai). Sign in via the official IDE device-code flow, or paste a direct API key. Catalog: GLM / Kimi / MiniMax / DeepSeek / Hy3.",
+  },
+  "muse-code": {
+    id: "muse-code",
+    serviceKinds: ["llm"],
+    alias: "mc",
+    name: "Muse Code (Meta)",
+    icon: "auto_awesome",
+    color: "#0866FF",
+    textIcon: "MC",
+    website: "https://ai.developer.meta.com/docs/muse-code/auth",
+    subscriptionRisk: true,
+    riskNoticeVariant: "oauth",
+    passthroughModels: true,
+    authHint:
+      "Sign in with the Muse Code device flow (same as `muse login` / CLIProxyAPI `-meta-login`) to use a Muse subscription, or paste a META_API_KEY. Device login keeps the durable dca token and mints the inference key; a 401 remints that key. Wire format is OpenAI Responses (POST /responses).",
   },
 };

@@ -126,6 +126,7 @@ export type SidebarItemId = HideableSidebarItemId | AlwaysVisibleSidebarItemId;
 
 export type SidebarSectionId =
   | "home"
+  | "pinned"
   | "omni-proxy"
   | "analytics"
   | "costs"

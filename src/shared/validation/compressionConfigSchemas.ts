@@ -254,6 +254,9 @@ const liteStepConfigSchema = z
     repeatedLinesEnabled: z.boolean().optional(),
     repeatedLineThreshold: z.number().int().min(2).max(100).optional(),
     maxToolTokens: z.number().int().min(0).max(32768).optional(),
+    // Upstream #13915 character cap. `null` clears a stored cap so env/default applies;
+    // omitting the key keeps the stored value.
+    maxToolLength: z.union([z.number().int().min(256).max(1_000_000), z.null()]).optional(),
   })
   .strict();
 
@@ -395,6 +398,9 @@ export const STACKED_PIPELINE_ENGINE_INTENSITIES: Record<string, readonly string
 
 export const litePassesSchema = liteStepPassesSchema;
 
+// A single `.strict()` schema backs both call sites: it carries the fork's per-pass
+// switches (passes.*, repeatedLinesEnabled/Threshold, maxToolTokens) AND upstream's
+// maxToolLength cap, so a payload produced by either UI round-trips.
 export const liteConfigSchema = liteStepConfigSchema;
 
 export const engineToggleSchema = z.object({

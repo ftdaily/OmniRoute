@@ -110,10 +110,10 @@ jobs:
           fi
           echo "promote_latest=$PROMOTE" >> "$GITHUB_OUTPUT"
 
-          # 3) Skip immutable version tags that already exist. Floating `main`
-          # and `next` channels are intentionally rebuilt on every matching push.
+          # 3) Skip immutable version tags that already exist. Floating `main`,
+          # `mine`, and `next` channels are rebuilt on every matching push.
           SKIP="false"
-          if [ "$VERSION" != "main" ] && [ "$VERSION" != "next" ]; then
+          if [ "$VERSION" != "main" ] && [ "$VERSION" != "mine" ] && [ "$VERSION" != "next" ]; then
             if docker manifest inspect "${IMAGE_NAME}:${VERSION}" >/dev/null 2>&1; then
               echo "Image ${IMAGE_NAME}:${VERSION} already exists on GHCR — skipping rebuild."
               SKIP="true"

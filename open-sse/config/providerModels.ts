@@ -229,10 +229,26 @@ export function getModelTargetFormat(aliasOrId: string, modelId: string): string
   // executor's /codex/i routing, 9router#102). Scoped to the openai alias so other
   // providers shipping *-pro ids keep their own endpoint semantics.
   if (alias === "openai" && /-pro$/i.test(bareModelId)) return "openai-responses";
+  // Grok Build only speaks Responses: GrokCliExecutor always POSTs to /v1/responses and
+  // live discovery drops non-`responses` backends. A passthrough id that post-dates the
+  // seed (e.g. grok-4.7 before a sync) otherwise falls back to the provider's "openai"
+  // format and ships a chat-completions body, which Grok Build rejects with 400.
+  if (alias === "gc") return "openai-responses";
   // Vertex uses three protocol families: Gemini generateContent, Anthropic Messages rawPredict,
   // and OpenAI-shaped Mistral/Open-MaaS requests. Resource names retain enough publisher data to
   // route future dynamically-synced models without adding another pinned prefix here.
   if (alias === "vertex" || alias === "vp") return getVertexModelTargetFormat(bareModelId);
+  // #14575: GitHub/GHE Copilot's own executors (github.ts, ghe-copilot.ts) route ANY
+  // claude-named model to Copilot's Anthropic-native /v1/messages endpoint via an
+  // unconditional /claude/i name match, regardless of curated-catalog coverage. When
+  // Copilot ships a new Claude id before the catalog is updated (e.g. claude-opus-5.5),
+  // the curated lookup above misses and previously fell through to the provider's base
+  // "openai" format, leaving the request body OpenAI-shaped while it is dispatched to the
+  // Anthropic-native endpoint — which rejects it (tool_choice/tools shape mismatch).
+  // Mirror the routing heuristic here so body translation stays consistent with where the
+  // executor actually sends the request (same pattern as the openai "-pro" heuristic above,
+  // #5842).
+  if ((alias === "gh" || alias === "ghe-copilot") && /claude/i.test(bareModelId)) return "claude";
   // Model-level targetFormat is provider-scoped: a catalog entry declares how THIS
   // provider's endpoint serves the model — do NOT import another provider's tag.
   // #9994 scoped this for providers WITH a catalog; #10072 extends it to catalogless

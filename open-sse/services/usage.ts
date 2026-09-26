@@ -78,6 +78,8 @@ import { getXaiUsage } from "./usage/xai.ts";
 import { getXaiOauthUsage } from "./usage/xaiOauth.ts";
 import { getGrokCliUsage } from "./usage/grokCli.ts";
 import { getFirecrawlUsage } from "./usage/firecrawl.ts";
+import { getContext7Usage } from "./usage/context7.ts";
+import { getTavilyUsage } from "./usage/tavily.ts";
 import { getVolcenginePlanUsage } from "./usage/volcenginePlan.ts";
 import { getCommandCodeUsage } from "./usage/command-code.ts";
 import { getQwenTokenPlanUsage } from "./usage/qwen-token-plan.ts";
@@ -208,6 +210,8 @@ export async function getUsageForProvider(
       return await getOpencodeUsage(id || "", apiKey || "");
     case "xiaomi-mimo":
       return await getXiaomiMimoUsage(id || "");
+    case "xiaomi-mimo-token-plan":
+      return await getXiaomiMimoUsage(id || "", "xiaomi-mimo-token-plan");
     case "xai":
       return await getXaiUsage(id || "");
     case "xai-oauth":
@@ -232,6 +236,11 @@ export async function getUsageForProvider(
       return await getHyperAgentUsage(apiKey || accessToken, providerSpecificData);
     case "firecrawl":
       return await getFirecrawlUsage(id || "", apiKey, connection);
+    case "context7":
+      return await getContext7Usage(id || "", apiKey, connection);
+    case "tavily-search":
+    case "tavily":
+      return await getTavilyUsage(id || "", apiKey, connection);
     case "volcengine-agent-plan":
     case "volcengine-coding-plan":
       return await getVolcenginePlanUsage(apiKey || "", provider, providerSpecificData);
@@ -277,6 +286,8 @@ export const __testing = {
   getXaiUsage,
   getXaiOauthUsage,
   getFirecrawlUsage,
+  getContext7Usage,
+  getTavilyUsage,
   getCommandCodeUsage,
   getVertexUsage,
   getMiniMaxAuthErrorMessage,

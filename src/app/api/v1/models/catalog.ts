@@ -761,7 +761,9 @@ async function buildUnifiedModelsResponseCore(
         ? combo.context_length
         : undefined;
 
-      const baseMetadata = explicitContextLength ? { context_length: explicitContextLength } : {};
+      const baseMetadata = explicitContextLength
+        ? { context_length: explicitContextLength, max_input_tokens: explicitContextLength }
+        : {};
       if (targets.length === 0) return baseMetadata;
 
       const targetMetadata = targets.map((target) => getComboTargetCatalogMetadata(target));
@@ -769,29 +771,17 @@ async function buildUnifiedModelsResponseCore(
       const knownMetadata = targetMetadata.filter(
         (metadata): metadata is ComboTargetCatalogMetadata => metadata !== null
       );
-      // Every target unsourced (a gateway model outside the static registry, e.g. CodeBuddy CN):
-      // an operator-declared `context_length` is the only evidence there is, so advertise it as
-      // `max_input_tokens` too. Otherwise clients that size the input budget from that field fall
-      // back to a provider default (128k) even though the combo declares a larger window.
-      if (knownMetadata.length === 0) {
-        return explicitContextLength
-          ? { ...baseMetadata, max_input_tokens: explicitContextLength }
-          : baseMetadata;
-      }
+      if (knownMetadata.length === 0) return baseMetadata;
       const contextLength =
         explicitContextLength ??
         minKnownNumber(knownMetadata.map((metadata) => metadata.contextLength));
-      // An operator-declared combo `context_length` is authoritative for the combo id, so
-      // `max_input_tokens` must not disappear when a target's own input limit is unsourced
-      // (e.g. a gateway model absent from the static registry). The effective input window is
-      // still bounded by the smallest *known* target limit, matching the reduction above.
-      const knownMaxInputTokens = minKnownNumber(
+      const targetMinMaxInput = minKnownNumber(
         knownMetadata.map((metadata) => metadata.maxInputTokens)
       );
       const maxInputTokens =
         explicitContextLength === undefined
-          ? knownMaxInputTokens
-          : minKnownNumber([explicitContextLength, knownMaxInputTokens]);
+          ? targetMinMaxInput
+          : Math.min(explicitContextLength, targetMinMaxInput ?? explicitContextLength);
       const maxOutputTokens = minKnownNumber(
         knownMetadata.map((metadata) => metadata.maxOutputTokens)
       );

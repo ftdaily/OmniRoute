@@ -5,7 +5,10 @@ import { handleChat } from "@/sse/handlers/chat";
 import { generateRequestId } from "@/shared/utils/requestId";
 import { resolveIncomingCorrelationId } from "@/shared/utils/correlationPreserve.ts";
 import { errorResponse } from "@omniroute/open-sse/utils/error.ts";
-import { handleSelfHostedCompletions } from "@omniroute/open-sse/services/selfHostedEntry.ts";
+import {
+  handleSelfHostedCompletions,
+  isSelfHostedEntryConfigured,
+} from "@omniroute/open-sse/services/selfHostedEntry.ts";
 import { initTranslators } from "@omniroute/open-sse/translator/index.ts";
 import { createInjectionGuard } from "@/middleware/promptInjectionGuard";
 import { acceptHeaderForcesStream } from "@omniroute/open-sse/utils/aiSdkCompat.ts";
@@ -13,6 +16,7 @@ import {
   OPENAI_CHAT_ERROR_FRAME,
   OPENAI_KEEPALIVE_FRAME,
   OPENAI_STARTUP_FRAME,
+  withDeadlineSignal,
   withEarlyStreamKeepalive,
 } from "@omniroute/open-sse/utils/earlyStreamKeepalive";
 import { resolveKeepaliveThreshold } from "@omniroute/open-sse/utils/keepaliveThreshold";
@@ -29,6 +33,7 @@ import {
   withCompressionHeaderEcho,
 } from "@/shared/utils/compressionHeaderEcho";
 import { resolveModelAliasWithSeedFallbackOnBody } from "@/lib/modelAliasResolver";
+import { enforceApiKeyPolicy } from "@/shared/utils/apiKeyPolicy";
 import {
   assertRuntimeModelProviderAvailable,
   isRuntimeProviderRetirementError,
@@ -115,6 +120,13 @@ export async function POST(request) {
   // Reserve heavyweight capacity atomically and ingest the body with a hard byte bound
   // BEFORE JSON parsing. Missing or dishonest Content-Length values cannot bypass
   // the actual-byte limit. Capacity exhaustion is retryable rather than process-fatal.
+  // The deadline wrap comes first so every downstream consumer (admission, body
+  // parse, handleChat, lease release) observes the combined signal: a deadline
+  // abort then tears the handler down exactly like a client disconnect.
+  const { wrappedReq: deadlineReq, deadlineController: routeDeadlineController } =
+    withDeadlineSignal(request);
+  request = deadlineReq;
+  const routeDeadlineSignal = request.signal;
   const sessionId = resolveSessionId(request);
   const admissionResult = await admitChatRequest(request, {
     sessionId,
@@ -166,9 +178,28 @@ export async function POST(request) {
           // self-hosted model ids (`local/llama3`, `ollama/qwen2`, ...) never trip
           // cloud-peer 410s or alias rewrites. Config-absent requests proceed to the
           // normal cloud pipeline unchanged.
-          const selfHostedResponse = await handleSelfHostedCompletions(request, parsedBody);
-          if (selfHostedResponse) {
-            return finishAdmission(selfHostedResponse);
+          //
+          // #14485: the divert must still run the same key-policy enforcement as
+          // the normal cloud pipeline (enforceApiKeyPolicy, called deep inside
+          // handleChat() on that path) — otherwise a disabled/rate-limited/
+          // schedule-restricted OmniRoute API key reaches the self-hosted upstream
+          // unchecked. Run it ONLY when the divert is configured (it then answers
+          // every request): the cloud path already runs it once in handleChat(),
+          // and a second run would consume the rate-limit window twice, apply
+          // throttleDelayMs twice and check allowedModels before alias resolution.
+          if (isSelfHostedEntryConfigured()) {
+            const keyPolicy = await enforceApiKeyPolicy(
+              request,
+              typeof parsedBody.model === "string" ? parsedBody.model : null
+            );
+            if (keyPolicy.rejection) {
+              return finishAdmission(keyPolicy.rejection);
+            }
+
+            const selfHostedResponse = await handleSelfHostedCompletions(request, parsedBody);
+            if (selfHostedResponse) {
+              return finishAdmission(selfHostedResponse);
+            }
           }
 
           try {
@@ -271,15 +302,17 @@ export async function POST(request) {
       const handlerResponse = releaseChatAdmissionAfterHandler(
         handleChat(request, null, parsedBody, reqId),
         admission.lease,
-        { signal: request.signal }
+        { signal: routeDeadlineSignal }
       );
       const streamedResponse = await withEarlyStreamKeepalive(handlerResponse, {
-        signal: request.signal,
+        signal: routeDeadlineSignal,
         thresholdMs: resolveKeepaliveThreshold(parsedBody?.model),
         keepaliveFrame: OPENAI_KEEPALIVE_FRAME,
         startupFrame: OPENAI_STARTUP_FRAME,
         errorFrame: OPENAI_CHAT_ERROR_FRAME,
+        correlationId: reqId,
         extraHeaders: { "X-Correlation-Id": reqId },
+        deadlineController: routeDeadlineController,
       });
       return withCompressionHeaderEcho(streamedResponse, compressionRequestHeader);
     }

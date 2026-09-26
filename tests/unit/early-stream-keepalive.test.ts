@@ -7,6 +7,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
+import { NextRequest } from "next/server";
 
 import {
   __getDeadlineTokenRegistrySizeForTests,
@@ -605,6 +606,20 @@ test("client abort before the deadline emits no error frame and no deadline warn
     false,
     "client abort must not trip the deadline controller"
   );
+});
+
+test("deadline wraps a fresh NextRequest body without losing method or headers", async () => {
+  const body = JSON.stringify({ model: "codex/gpt-6-sol", stream: false });
+  const request = new NextRequest("http://localhost/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-original": "yes" },
+    body,
+  });
+  const { wrappedReq } = withDeadlineSignal(request);
+  assert.equal(wrappedReq.method, "POST");
+  assert.equal(wrappedReq.headers.get("x-original"), "yes");
+  assert.equal(await wrappedReq.text(), body);
+  assert.equal(wrappedReq.signal.aborted, false);
 });
 
 // The rebuild-fallback token map is keyed by strings, so without an explicit

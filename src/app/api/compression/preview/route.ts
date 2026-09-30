@@ -390,11 +390,24 @@ export async function POST(req: Request) {
   try {
     const start = Date.now();
     // tool-schema reads body.tools / body.functions; message-only engines ignore them.
-    const requestBody = {
-      messages,
-      ...(tools !== undefined ? { tools } : {}),
-      ...(functions !== undefined ? { functions } : {}),
-    };
+    // #14983 made fuzzy dedup run only for callers that advertise omniroute_ccr_retrieve
+    // (its marker is otherwise unresolvable). The studio is a dry run with no real caller, so
+    // with the fuzzy toggle on it simulates a CCR-capable one by appending the marker tool —
+    // while still forwarding the operator's real tools/functions for the tool-schema engine.
+    const requestBody = fuzzyDedup?.enabled
+      ? {
+          messages,
+          tools: [
+            ...(tools ?? []),
+            { type: "function", function: { name: "omniroute_ccr_retrieve" } },
+          ],
+          ...(functions !== undefined ? { functions } : {}),
+        }
+      : {
+          messages,
+          ...(tools !== undefined ? { tools } : {}),
+          ...(functions !== undefined ? { functions } : {}),
+        };
     const result = await dispatchCompression(requestBody as Record<string, unknown>, {
       engineId,
       pipeline,

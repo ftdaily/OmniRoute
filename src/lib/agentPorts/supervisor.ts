@@ -18,7 +18,7 @@ import { getDbInstance } from "@/lib/db/core";
 import { getRuntimePorts } from "@/lib/runtime/ports";
 import { getApiBridgeTimeoutConfig } from "@/shared/utils/runtimeTimeouts";
 import { getEndpoint, setEndpointStatus, listEndpoints, updateEndpoint, type AgentEndpoint } from "./store";
-import { validateName, validatePort } from "./ports";
+import { validateName, validatePort, resolveBindHost } from "./ports";
 import { timingSafeCompare } from "@/shared/utils/timingSafeCompare";
 
 // Shared timeout policy (same as the API bridge server): the agent-port proxy
@@ -431,12 +431,15 @@ export async function applyEndpointMutation(endpointId: string, mutation: Endpoi
 /** C5-public: single source of truth for status mapping — error is NEVER overwritten. */
 export function toPublicEndpoint(ep: AgentEndpoint, running: boolean): {
   id: string; name: string; port: number; apiKeyId: string; enabled: boolean;
-  status: string; statusDetail: string | null; baseUrl: string; createdAt: string; updatedAt: string;
+  status: string; statusDetail: string | null; baseUrl: string; bindHost: string; createdAt: string; updatedAt: string;
 } {
   let status: string;
   if (ep.status === "error") status = "error"; // preserve actual error + detail
   else if (running) status = "running";
   else status = ep.enabled ? "stopped" : "disabled";
+  const bindHost = resolveBindHost();
+  // UI BaseURL: 127.0.0.1 is always correct for host-local users (0.0.0.0 is a
+  // container-side bind wildcard, not a dialable client address).
   return {
     id: ep.id,
     name: ep.name,
@@ -446,9 +449,18 @@ export function toPublicEndpoint(ep: AgentEndpoint, running: boolean): {
     status,
     statusDetail: ep.statusDetail,
     baseUrl: `http://127.0.0.1:${ep.port}/v1`,
+    bindHost,
     createdAt: ep.createdAt,
     updatedAt: ep.updatedAt,
   };
+}
+
+/** Actual bind host of a RUNNING listener (registry truth), for status probes. */
+export function getListenerBindHost(endpointId: string): string | null {
+  const srv = reg().listeners.get(endpointId);
+  if (!srv) return null;
+  const addr = srv.address();
+  return addr && typeof addr === "object" ? addr.address : null;
 }
 
 export async function startAgentListener(endpointId: string): Promise<void> {
@@ -485,8 +497,9 @@ export async function startAgentListener(endpointId: string): Promise<void> {
         };
         srv.once("error", onError);
         srv.once("listening", onListening);
+        const bindHost = resolveBindHost(); // fail-closed BEFORE any bind attempt
         // ACTUAL BIND — authoritative; OS errors (EADDRINUSE/EACCES) surface here
-        srv.listen({ port: endpoint.port, host: "127.0.0.1" });
+        srv.listen({ port: endpoint.port, host: bindHost });
       });
     } catch (err) {
       const msg = err instanceof Error ? `${(err as NodeJS.ErrnoException).code ?? ""} ${err.message}`.trim() : String(err);
@@ -494,18 +507,12 @@ export async function startAgentListener(endpointId: string): Promise<void> {
       throw err;
     }
 
-    try {
-      const os = await import("node:os");
-      const nets = os.networkInterfaces();
-      const hasV6 = Object.values(nets).some((arr) => (arr ?? []).some((n) => n.family === "IPv6"));
-      await setEndpointStatus(
-        endpointId,
-        "running",
-        hasV6 ? "running (IPv4 loopback bind; IPv6 present on host)" : "running (IPv4 loopback bind)",
-      );
-    } catch {
-      await setEndpointStatus(endpointId, "running", "running");
-    }
+    const actualHost = getListenerBindHost(endpointId) ?? resolveBindHost();
+    await setEndpointStatus(
+      endpointId,
+      "running",
+      `running (bind ${actualHost}:${endpoint.port})`,
+    );
     r.activeStreams.set(endpointId, new Set());
     r.listeners.set(endpointId, srv);
   })();

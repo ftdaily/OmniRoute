@@ -36,3 +36,28 @@ export function validateName(name: unknown): string {
   }
   return trimmed;
 }
+
+/**
+ * Deployment bind host for agent listeners. Default 127.0.0.1 (loopback).
+ * ONLY "127.0.0.1" and "0.0.0.0" are allowed — bridge containers need
+ * 0.0.0.0 so a host-loopback port publish can reach them; any other value
+ * (interfaces, hostnames, garbage) fails closed at startup.
+ */
+const ALLOWED_BIND_HOSTS = new Set(["127.0.0.1", "0.0.0.0"]);
+
+/**
+ * Bind-host semantics (parent-fixed): env UNSET (undefined) or EMPTY STRING
+ * → default 127.0.0.1 (an empty env var is treated as unset). A NON-EMPTY
+ * value must be EXACTLY "127.0.0.1" or "0.0.0.0" — no trim, no padding,
+ * no hostnames, no IPv6; anything else rejects (fail closed).
+ */
+export function resolveBindHost(env: Record<string, string | undefined> = process.env): string {
+  const raw = env.AGENT_PORTS_BIND_HOST;
+  if (raw === undefined || raw === "") return "127.0.0.1";
+  if (!ALLOWED_BIND_HOSTS.has(raw)) {
+    throw new Error(
+      `AGENT_PORTS_BIND_HOST=${JSON.stringify(raw)} is not allowed: only "127.0.0.1" or "0.0.0.0" (default 127.0.0.1; unset/empty = default)`,
+    );
+  }
+  return raw;
+}

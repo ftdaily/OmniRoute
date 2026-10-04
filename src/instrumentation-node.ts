@@ -443,6 +443,16 @@ export async function registerNodejs(): Promise<void> {
 
   initGracefulShutdown();
   initApiBridgeServer();
+
+  // Agent Ports supervisor: per-agent localhost listeners (runtime only — build-phase guarded
+  // inside bootAgentPorts; DB is ready at this point in registerNodejs).
+  import("@/lib/agentPorts/supervisor")
+    .then((m) => m.bootAgentPorts())
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[STARTUP] Agent Ports boot failed (non-fatal):", msg);
+    });
+
   startSpendBatchWriter();
   registerDefaultGuardrails();
   registerBuiltinSkills(skillExecutor);

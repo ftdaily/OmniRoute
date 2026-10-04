@@ -324,6 +324,15 @@ const INTEGRATIONS_GROUP: SidebarItemGroup = {
       icon: "api",
     },
     {
+      id: "agent-ports",
+      href: "/dashboard/agent-ports",
+      i18nKey: "agentPorts",
+      labelFallback: "Agent Ports",
+      subtitleKey: "agentPortsSubtitle",
+      subtitleFallback: "Per-agent localhost ports with dedicated API keys",
+      icon: "settings_ethernet",
+    },
+    {
       id: "webhooks",
       href: "/dashboard/webhooks",
       i18nKey: "webhooks",

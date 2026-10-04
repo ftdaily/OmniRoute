@@ -61,6 +61,17 @@ export function applyClaudeEffortVariant(opts: {
     return { effectiveModel, log: null };
   }
 
+  // Antigravity (IDE `antigravity` / CLI `agy`) serves tier-embedded model ids
+  // natively: the live catalog advertises `claude-opus-5-5-{low,medium,high}` /
+  // `claude-sonnet-5-5-{low,medium,high}` as distinct upstream models answered
+  // verbatim (HTTP 200) on the wire, while the stripped bare `claude-opus-5-5`
+  // 404s (native wire capture, agy 1.2.16, 2026-10-04). Keep ids literal here
+  // too — Antigravity thinking is steered via generationConfig.thinkingConfig,
+  // not a Claude effort variant.
+  if (provider === "antigravity" || provider === "agy") {
+    return { effectiveModel, log: null };
+  }
+
   if (typeof effectiveModel === "string") {
     const { baseModel, effort } = splitClaudeEffortSuffix(effectiveModel);
     const isDirectClaudeLane = provider === "claude" || isClaudeCodeCompatibleProvider(provider);

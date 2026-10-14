@@ -268,6 +268,8 @@ export function claudeToOpenAIRequest(model, body, stream, credentials: unknown 
             name,
             description: typeof record.description === "string" ? record.description : "", // fix: never null (#276)
             parameters: normalizeToolSchema(record.input_schema),
+            // Preserve tool-level strict schema enforcement (9router#4172).
+            ...(record.strict === true ? { strict: true } : {}),
           },
         };
       })
@@ -284,10 +286,14 @@ export function claudeToOpenAIRequest(model, body, stream, credentials: unknown 
       body.tool_choice,
       useNativeResponsesWebSearch && hasClaudeServerWebSearchTool(body.tools)
     );
+    // Claude carries the single-call restriction on tool_choice (9router#4171).
+    if (body.tool_choice?.disable_parallel_tool_use === true) {
+      result.parallel_tool_calls = false;
+    }
   }
 
   // Reasoning effort: map Claude-side thinking controls to OpenAI reasoning_effort.
-  // Priority: output_config.effort (Claude Code) > thinking.budget_tokens (Claude native).
+  // Priority: output_config.effort > enabled thinking budget > explicit opt-out fallback.
   // Budget buckets match the reverse mapping in thinkingBudget.ts::setCustomBudget.
   const outputEffort = normalizeOpenAIReasoningEffort(body.output_config?.effort) || "";
   if (outputEffort) {
@@ -305,6 +311,11 @@ export function claudeToOpenAIRequest(model, body, stream, credentials: unknown 
     } else {
       result.reasoning_effort = "xhigh";
     }
+  } else if (
+    body.thinking?.type === "disabled" ||
+    normalizeOpenAIReasoningEffort(body.reasoning_effort) === "none"
+  ) {
+    result.reasoning_effort = "none";
   }
 
   return result;

@@ -34,8 +34,10 @@ const ANTHROPIC_BETA_BASE = Object.freeze([
 const CLAUDE_OAUTH_EXTRA_BETAS = Object.freeze(["fine-grained-tool-streaming-2025-05-14"]);
 
 export const ANTHROPIC_BETA_FULL = ANTHROPIC_BETA_BASE.join(",");
+// Plain API-key requests do not use the Claude Code wire protocol or OAuth.
+// Keep those identity betas in the full/OAuth sets, not in the API defaults.
 export const ANTHROPIC_BETA_API_KEY = ANTHROPIC_BETA_BASE.filter(
-  (beta) => beta !== "oauth-2025-04-20"
+  (beta) => beta !== "oauth-2025-04-20" && beta !== "claude-code-20250219"
 ).join(",");
 export const ANTHROPIC_BETA_CLAUDE_OAUTH = [
   ...ANTHROPIC_BETA_BASE.slice(0, 3),
@@ -258,6 +260,14 @@ export function syncSkillsBeta(
  * inline-tools beta gates message-level `tool_addition` blocks; without it
  * upstream rejects the body with a 400 whose message reads
  * "`tool_addition` blocks require anthropic-beta".
+ *
+ * `server-side-fallback-2026-06-01` and `server-side-fallback-2026-07-01` gate the top-level
+ * `fallbacks` body parameter (server-side model fallback) that Claude Code sends by default on
+ * the models that support it, captured from @anthropic-ai/claude-code@2.1.295
+ * (`R("server_side_fallback","server-side-fallback-2026-06-01")` and
+ * `R("server_side_fallback_category","server-side-fallback-2026-07-01")` in the shipped binary).
+ * The `fallbacks` field travels through the passthrough; without its beta upstream rejects the
+ * body with `400 fallbacks: Extra inputs are not permitted`.
  */
 export const FORWARDABLE_CLIENT_BETAS = Object.freeze([
   "tool-search-tool-2025-10-19",
@@ -280,6 +290,15 @@ export const FORWARDABLE_CLIENT_BETAS = Object.freeze([
   "afk-mode-2026-01-31",
   "timing-2026-09-09",
   "inline-tools-2026-09-15",
+  // Top-level `thread` {type:create|continue,previous_message_id} (#15705), captured from
+  // @anthropic-ai/claude-code@2.1.291 (`v("message_threads","message-threads-2026-08-12")`).
+  // The body field passes through; without this beta upstream 400s "thread: Extra inputs".
+  "message-threads-2026-08-12",
+  // Top-level `fallbacks` (server-side model fallback), captured from
+  // @anthropic-ai/claude-code@2.1.295 — see the doc comment above. The body field passes through;
+  // without these betas upstream 400s "fallbacks: Extra inputs are not permitted".
+  "server-side-fallback-2026-06-01",
+  "server-side-fallback-2026-07-01",
 ]);
 
 /**

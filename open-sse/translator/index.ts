@@ -45,6 +45,7 @@ import {
   RESPONSES_STORE_MARKER,
 } from "./request/openai-responses/helpers.ts";
 import { applyReasoningInputPolicy } from "../services/reasoningInputPolicy.ts";
+import { normalizeReasoningRequest } from "@/shared/reasoning/effortStandardization";
 
 bootstrapTranslatorRegistry();
 export { register } from "./registry.ts";
@@ -358,7 +359,7 @@ export function translateRequest(
     copilotClient?: boolean;
   }
 ) {
-  let result = body;
+  let result = normalizeReasoningRequest(body, provider);
   const use9CharId = options?.normalizeToolCallId === true;
   const preserveDeveloperRole = options?.preserveDeveloperRole;
   const connectionCacheOverride = resolveConnectionCacheOverride(
@@ -578,8 +579,9 @@ export function translateRequest(
           const hasPreCompression = options?.preCompressionBody != null;
           const hasCopilot = options?.copilotClient === true;
           const hasProvider = provider != null;
+          const videoSensitive = options?.videoTranscriptSensitive === true;
           const translationCredentials =
-            hasNs || hasPreCompression || hasCopilot || hasProvider
+            hasNs || hasPreCompression || hasCopilot || hasProvider || videoSensitive
               ? {
                   ...(credentials && typeof credentials === "object" ? credentials : {}),
                   ...(hasNs ? { _signatureNamespace: options.signatureNamespace } : {}),
@@ -588,6 +590,8 @@ export function translateRequest(
                   // Routed provider id so target translators can apply provider-specific
                   // quirks (e.g. Vertex rejects function_call.id — #3440).
                   ...(hasProvider ? { _provider: provider } : {}),
+                  // Video-derived requests must not replay retained Claude signed thinking.
+                  ...(videoSensitive ? { _videoTranscriptSensitive: true } : {}),
                 }
               : credentials;
           // #9780 — carry the Responses namespace identity map across the pivot.

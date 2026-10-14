@@ -23,6 +23,7 @@ import {
   getReasoningEffortsOverride,
 } from "@/lib/db/modelCapabilityOverrides";
 import { getModelCompatVisionOverride } from "@/lib/db/models/compat";
+import { getProviderNodePrefixSync } from "@/lib/db/providers/nodePrefix";
 import { getCustomModelVisionOverride, getSyncedAvailableModelVision } from "@/lib/db/models";
 import type { ModelCapabilityResolutionSnapshot } from "@/lib/modelCapabilityResolutionSnapshot";
 import { resolveAudioCapability, resolveVideoCapability } from "@/lib/modelCapabilityModalities";
@@ -74,6 +75,11 @@ const REASONING_UNSUPPORTED_PATTERNS = [
   "dall-e",
   "flux-",
   "stable-diffusion",
+  // Non-reasoning Llama chat ids (#3258) dropped from the Groq static catalog when Groq retired
+  // them for free/developer tiers — enterprise keys and live discovery can still reach them, and
+  // Groq returns HTTP 400 if reasoning_effort is forwarded.
+  "llama-3.3-70b-versatile",
+  "llama-4-scout-17b-16e-instruct",
 ];
 
 /** Catalog/API surface types that are not chat completions. */
@@ -99,6 +105,7 @@ const MAX_TOKENS_UNSUPPORTED_PATTERNS = [
   "o3",
   "gpt-5.4",
   "gpt-5.5",
+  "gpt-5.6",
   "gpt-6",
 ];
 
@@ -190,6 +197,11 @@ function getRegistryModel(providerIdOrAlias: string | null, modelId: string | nu
  * names another provider (`openrouter` + `meta-llama/…`) or when the full id is
  * the provider's own registry id (`nvidia` + `nvidia/nemotron-…`, #12112).
  */
+function isCustomNodePrefix(provider: string, prefix: string): boolean {
+  const nodePrefix = getProviderNodePrefixSync(provider);
+  return !!nodePrefix && nodePrefix.toLowerCase() === prefix.trim().toLowerCase();
+}
+
 function stripOwnProviderPrefix(provider: string, model: string | null): string | null {
   const slash = model ? model.indexOf("/") : -1;
   if (!model || slash <= 0) return model;
@@ -198,7 +210,9 @@ function stripOwnProviderPrefix(provider: string, model: string | null): string 
   // resolves further, so compare against both forms of the step provider.
   const prefixProvider = resolveProviderAlias(model.slice(0, slash).trim());
   const ownPrefix =
-    prefixProvider === provider || prefixProvider === resolveProviderAlias(provider);
+    prefixProvider === provider ||
+    prefixProvider === resolveProviderAlias(provider) ||
+    isCustomNodePrefix(provider, model.slice(0, slash));
   if (!scopedModel || !ownPrefix || hasKnownProviderModel(provider, model)) return model;
   return scopedModel;
 }

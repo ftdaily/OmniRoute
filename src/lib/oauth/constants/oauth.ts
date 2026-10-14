@@ -5,6 +5,7 @@ import {
 } from "@omniroute/open-sse/config/antigravityUpstream.ts";
 import {
   CODEBUDDY_CN_USER_AGENT,
+  CODEBUDDY_INTL_USER_AGENT,
   GITHUB_COPILOT_API_VERSION,
   GITHUB_COPILOT_CHAT_PLUGIN_VERSION,
   GITHUB_COPILOT_CHAT_USER_AGENT,
@@ -116,22 +117,25 @@ export const CODEBUDDY_CN_CONFIG = {
   refreshUrl: "https://copilot.tencent.com/v2/plugin/auth/token/refresh",
   userAgent: CODEBUDDY_CN_USER_AGENT,
   platform: "CLI",
+  domain: "copilot.tencent.com",
   pollInterval: 5000,
 };
 
-// CodeBuddy International (codebuddy.ai) OAuth Configuration.
-// Mirrors the CN device-auth flow but uses the codebuddy.ai endpoint set
-// and `platform=ide` (CN uses platform=CLI). All /v2/plugin/* URLs are the
-// same shape, only the host and X-Domain header differ.
+// CodeBuddy International (codebuddy.ai) OAuth Configuration
 export const CODEBUDDY_INTL_CONFIG = {
   baseUrl: "https://www.codebuddy.ai",
   stateUrl: "https://www.codebuddy.ai/v2/plugin/auth/state",
   tokenUrl: "https://www.codebuddy.ai/v2/plugin/auth/token",
   refreshUrl: "https://www.codebuddy.ai/v2/plugin/auth/token/refresh",
-  userAgent: "IDE/2.63.2 CodeBuddy/2.63.2",
+  userAgent: CODEBUDDY_INTL_USER_AGENT,
   platform: "ide",
+  domain: "www.codebuddy.ai",
   pollInterval: 5000,
 };
+
+// WorkBuddy config lives with its device-flow module so this god-file only
+// re-exports. Do not alias CODEBUDDY_CN_CONFIG — different host and account.
+export { WORKBUDDY_CONFIG } from "../providers/workbuddy";
 
 // Grok Build (xAI) OAuth Configuration (Device Code + import-token fallback)
 // Public client_id resolved through resolvePublicCred so it is never a literal.
@@ -535,6 +539,7 @@ export const PROVIDERS = {
   TRAE: "trae",
   CODEBUDDY_CN: "codebuddy-cn",
   CODEBUDDY_INTL: "codebuddy-intl",
+  WORKBUDDY: "workbuddy",
   GROK_CLI: "grok-cli",
   XAI_OAUTH: "xai-oauth",
   OPENFERENCE: "openference",

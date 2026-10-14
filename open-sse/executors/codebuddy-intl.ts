@@ -1,57 +1,38 @@
-import { DefaultExecutor } from "./default.ts";
+import { CodeBuddyBaseExecutor, NEUTRAL_PROMPT } from "./codebuddy/shared.ts";
+import type { ProviderCredentials } from "./base.ts";
 
 /**
- * CodeBuddy International executor — codebuddy.ai.
+ * CodeBuddyIntlExecutor — talks to https://www.codebuddy.ai/v2/chat/completions
  *
- * OpenAI-compatible but stream-only, same rejection (HTTP 400, code 11101
- * "Non-stream chat request is currently not supported") as the CN gateway.
- * Force stream=true on every request; OmniRoute still re-aggregates SSE for
- * non-streaming clients. In contrast to CN, the intl backend does not
- * require a neutral-prompt rewrite — its content filter is more permissive.
+ * CodeBuddy International gateway strictly requires the first message in the
+ * request to be a system prompt (rejects with 400 "first message is not system
+ * prompt" otherwise). Inherits all shared CodeBuddy gateway behavior and
+ * prepends a neutral system prompt when callers/probes send none.
  */
-export class CodeBuddyIntlExecutor extends DefaultExecutor {
-  constructor() {
-    super("codebuddy-intl");
+export class CodeBuddyIntlExecutor extends CodeBuddyBaseExecutor {
+  constructor(providerId: string = "codebuddy-intl") {
+    super(providerId);
   }
 
-  transformRequest(model, body, stream, credentials) {
-    const transformed = super.transformRequest(model, body, stream, credentials) as Record<
-      string,
-      unknown
-    >;
-    transformed.stream = true;
-
-    // OpenAI-style reasoning_effort is honored on the intl backend; map
-    // "none"/"off" to absence (the upstream rejects explicit "off"), keep
-    // everything else as-is and tag reasoning_summary.
-    const eff = transformed.reasoning_effort;
-    if (eff === "none" || eff === "off") {
-      delete transformed.reasoning_effort;
-    } else if (eff) {
-      transformed.reasoning_summary = "auto";
+  transformRequest(
+    model: string,
+    body: unknown,
+    stream: boolean,
+    credentials: ProviderCredentials
+  ): unknown {
+    const transformed = super.transformRequest(model, body, stream, credentials);
+    if (!transformed || typeof transformed !== "object" || Array.isArray(transformed)) {
+      return transformed;
     }
+    const out = transformed as Record<string, unknown>;
 
-    // codebuddy.ai rejects plain OpenAI shape (11101 invalid request): needs a
-    // leading system prompt + user content as typed blocks.
-    const source = Array.isArray(transformed.messages)
-      ? (transformed.messages as Array<Record<string, unknown>>)
-      : [];
-    const messages: Array<Record<string, unknown>> = [
-      { role: "system", content: "You are CodeBuddy Code." },
-    ];
-    for (const message of source) {
-      if (!message || typeof message !== "object") continue;
-      if (["system", "developer"].includes(message.role as string)) continue;
-      if (message.role === "user" && typeof message.content === "string") {
-        messages.push({ ...message, content: [{ type: "text", text: message.content }] });
-      } else {
-        messages.push({ ...message });
+    if (Array.isArray(out.messages)) {
+      const first = out.messages[0] as Record<string, unknown> | undefined;
+      if (!first || first.role !== "system") {
+        out.messages = [{ role: "system", content: NEUTRAL_PROMPT }, ...out.messages];
       }
     }
-    transformed.messages = messages;
 
-    return transformed;
+    return out;
   }
 }
-
-export default CodeBuddyIntlExecutor;

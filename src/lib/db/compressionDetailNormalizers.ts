@@ -73,7 +73,9 @@ export function normalizeCcrConfig(value: unknown): CcrConfig {
   return {
     ...DEFAULT_CCR_CONFIG,
     minChars: boundedInt(record.minChars, DEFAULT_CCR_CONFIG.minChars, 100, 1_000_000),
-    retrievalRampFactor: boundedInt(
+    // Fractional by design: CCR_SCHEMA has no .int() and effectiveMinChars() ramps on
+    // fractions — flooring here would turn any factor in [1, 2) into 1, disabling the ramp.
+    retrievalRampFactor: boundedNumber(
       record.retrievalRampFactor,
       DEFAULT_CCR_CONFIG.retrievalRampFactor,
       1,

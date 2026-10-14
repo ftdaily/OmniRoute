@@ -17,6 +17,7 @@
 //     a real defect; exit 1.
 //   • DRIFT checks (eslint WARNINGS, cognitive-complexity, file-size, cyclomatic
 //     complexity, dead-code, type-coverage, compression-budget, openapi-coverage,
+//     pricing-freshness,
 //     workflow-lint/zizmor, codeql-ratchet) → ratchet drift accrued across the
 //     cycle is NOT a contributor's fault; it is reported and rebaselined by the
 //     maintainer at release. Drift NEVER changes the exit code, so wiring this as
@@ -252,6 +253,59 @@ export function parseCognitiveCount(out) {
   if (machine) return Number(machine[1]);
   const m = s.match(/(\d+)\s+(?:function\(s\) exceed|violações|violations)/i);
   return m ? Number(m[1]) : null;
+}
+
+/** Translate the shared complexity walk into the two metric records. */
+export function evaluateComplexityRun({ code, out }, cogBase) {
+  // The shared walk emits both machine counts followed by both ratchet verdicts.
+  // Do not use the legacy generic "N violações" fallback here: a partial walk
+  // containing only the cyclomatic summary would masquerade as cognitive data.
+  const cogMatch = /^cognitiveComplexity=(\d+)\r?$/m.exec(out);
+  const cycMatch = /^complexity=(\d+)\r?$/m.exec(out);
+  const cogSummary = /^\[cognitive-complexity\] (OK|REGRESSÃO) — (\d+) violações /m.exec(out);
+  const cycSummary = /^\[complexity\] (OK|REGRESSÃO) — (\d+) violações /m.exec(out);
+  const cogCurrent = cogMatch ? Number(cogMatch[1]) : null;
+  const cycCurrent = cycMatch ? Number(cycMatch[1]) : null;
+  const cogOver = isDrift(cogCurrent, cogBase);
+  const cycRegressed = cycSummary?.[1] === "REGRESSÃO";
+  const measured =
+    [cogCurrent, cycCurrent, cogBase].every((count) => Number.isSafeInteger(count) && count >= 0) &&
+    Number(cogSummary?.[2]) === cogCurrent &&
+    Number(cycSummary?.[2]) === cycCurrent &&
+    (cogSummary?.[1] === "REGRESSÃO") === cogOver;
+  // Exit 1 is expected only for a complete, measured ratchet regression. A
+  // cancelled/crashed tool or missing metrics is execution failure, not drift.
+  const measuredDrift = code === 1 && measured && (cogOver || cycRegressed);
+  if (!measured || (code !== 0 && !measuredDrift)) {
+    return [
+      {
+        id: "complexity",
+        label: "Complexity measurement",
+        kind: "hard",
+        ok: false,
+        detail:
+          code !== 0
+            ? `Complexity process exited ${code}: ${firstFailureLine(out)}`
+            : "Complexity process did not report complete finite metrics and baseline",
+      },
+    ];
+  }
+  return [
+    {
+      id: "cognitive-complexity",
+      label: "Cognitive complexity (ratchet)",
+      kind: "drift",
+      ok: !cogOver,
+      detail: `${cogCurrent} vs baseline ${cogBase}${cogOver ? ` (+${cogCurrent - cogBase} drift → rebaseline at release)` : ""}`,
+    },
+    {
+      id: "complexity",
+      label: "Cyclomatic complexity (ratchet)",
+      kind: "drift",
+      ok: !cycRegressed,
+      detail: `complexity=${cycCurrent} (shared walk with cognitive)${cycRegressed ? " REGRESSED" : ""}`,
+    },
+  ];
 }
 
 /**
@@ -592,42 +646,11 @@ async function main() {
   // Complexity + cognitive (one ESLint walk; both still recorded as drift)
   {
     announce("Complexity + cognitive ratchets (shared ESLint walk)");
-    const { out } = await run(npmCmd, ["run", "check:complexity-ratchets"]);
-    saveGateLog("complexity-ratchets", out);
-    const cogCurrent = parseCognitiveCount(out);
-    const cogBase = baselineValue("cognitiveComplexity");
-    const cogOver = isDrift(cogCurrent, cogBase);
-    const cycMatch = /(?:^|\n)complexity=(\d+)/.exec(out);
-    const cycOkMatch = /\[complexity\] OK — (\d+)/.exec(out);
-    const cycRegMatch = /\[complexity\] REGRESSÃO — (\d+)/.exec(out);
-    const cycCurrent = cycMatch
-      ? Number(cycMatch[1])
-      : cycOkMatch
-        ? Number(cycOkMatch[1])
-        : cycRegMatch
-          ? Number(cycRegMatch[1])
-          : null;
-    const cycRegressed = /\[complexity\] REGRESSÃO/.test(out);
-    record({
-      id: "cognitive-complexity",
-      label: "Cognitive complexity (ratchet)",
-      kind: "drift",
-      ok: !cogOver,
-      detail:
-        cogCurrent == null
-          ? "could not parse count"
-          : `${cogCurrent} vs baseline ${cogBase}${cogOver ? ` (+${cogCurrent - cogBase} drift → rebaseline at release)` : ""}`,
-    });
-    record({
-      id: "complexity",
-      label: "Cyclomatic complexity (ratchet)",
-      kind: "drift",
-      ok: !cycRegressed,
-      detail:
-        cycCurrent == null
-          ? firstFailureLine(out) || "measured via check:complexity-ratchets"
-          : `complexity=${cycCurrent} (shared walk with cognitive)${cycRegressed ? " REGRESSED" : ""}`,
-    });
+    const result = await run(npmCmd, ["run", "check:complexity-ratchets"]);
+    saveGateLog("complexity-ratchets", result.out);
+    for (const metric of evaluateComplexityRun(result, baselineValue("cognitiveComplexity"))) {
+      record(metric);
+    }
   }
 
   // file-size (drift)
@@ -694,6 +717,15 @@ async function main() {
     "run",
     "check:codeql-ratchet",
   ]);
+  // Pricing data untouched for 90 days: a clock, not a regression, so it can't belong to a
+  // PR gate (it would red every PR at once). Reported here, refreshed at release.
+  await driftCmd(
+    "pricing-freshness",
+    "Pricing freshness (90 days)",
+    npmCmd,
+    ["run", "check:pricing-freshness"],
+    "touched within 90 days"
+  );
 
   // Docs sync + fabricated-docs (strict) is a real-defect gate (invented env vars /
   // routes, i18n mirror drift) — HARD.
@@ -703,9 +735,10 @@ async function main() {
   ]);
 
   if (!QUICK) {
-    // These are the gates that catch inherited base-red tests from cycle PRs (the fast-path
-    // PR→release does NOT run unit/vitest/integration per-PR — the v3.8.42 release PR exploded
-    // with 15 such reds). They run SILENTLY for many minutes; the announce line above + these
+    // These are the gates that catch inherited base-red tests from cycle PRs (the v3.8.42
+    // release PR exploded with 15 such reds). Non-draft code PRs into release/** run the unit
+    // suite and test:vitest per PR (quality.yml fast-unit, fast-vitest); only integration is
+    // absent. These gates run SILENTLY for many minutes; the announce line above + these
     // hard ceilings keep a long-but-healthy run from being mistaken for a hang (the ceiling also
     // converts a genuine DB-handle hang into a visible failure instead of an infinite block).
     // The slow suites are INDEPENDENT processes (each self-isolates DATA_DIR) with

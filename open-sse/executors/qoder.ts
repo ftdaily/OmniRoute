@@ -17,12 +17,14 @@ import {
   buildQoderCompletionPayload,
   buildQoderPrompt,
   createQoderErrorResponse,
+  isQoderUpstreamBusy,
   parseQoderCliFailure,
+  parseQoderRetryAfterSeconds,
   parseQoderCliResult,
   runQoderCli,
 } from "../services/qoderCli.ts";
 import { sanitizeErrorMessage } from "../utils/error.ts";
-import { executeQoderHttp } from "../services/qoderHttp.ts";
+import { hasQoderCallerTools, resolveQoderAuthToken } from "../services/qoderCapabilities.ts";
 
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
@@ -125,6 +127,18 @@ async function unwrapQoderEnvelope(response: Response): Promise<Response> {
 
   if (errorStatus) {
     reader.cancel();
+    // #3510: a 403 envelope carrying the nested code 10605 is Qoder's temporary
+    // queue throttle, not an auth failure. Surface it as 503 upstream_busy (same
+    // classification as the CLI path) so healthy accounts are not parked on the
+    // auth cooldown.
+    if (isQoderUpstreamBusy(errorMsg)) {
+      return createQoderErrorResponse({
+        status: 503,
+        message: `[qoder error ${errorStatus}: ${sanitizeErrorMessage(truncate(errorMsg, 200))}]`,
+        code: "upstream_busy",
+        retryAfterSeconds: parseQoderRetryAfterSeconds(errorMsg),
+      });
+    }
     const errType =
       errorStatus === 401 || errorStatus === 403 ? "authentication_error" : "provider_error";
     return new Response(
@@ -167,22 +181,6 @@ async function unwrapQoderEnvelope(response: Response): Promise<Response> {
   });
 }
 
-function getAuthToken(credentials: ProviderCredentials): string {
-  if (typeof credentials.apiKey === "string" && credentials.apiKey.trim()) {
-    return credentials.apiKey.trim();
-  }
-  if (typeof credentials.accessToken === "string" && credentials.accessToken.trim()) {
-    return credentials.accessToken.trim();
-  }
-  if (typeof credentials.refreshToken === "string" && credentials.refreshToken.trim()) {
-    return credentials.refreshToken.trim();
-  }
-  // Fallback: QODER_PERSONAL_ACCESS_TOKEN env var (#966)
-  const envToken = String(process.env.QODER_PERSONAL_ACCESS_TOKEN || "").trim();
-  if (envToken) return envToken;
-  return "";
-}
-
 export class QoderExecutor extends BaseExecutor {
   constructor() {
     super("qoder", PROVIDERS.qoder);
@@ -208,16 +206,8 @@ export class QoderExecutor extends BaseExecutor {
     return sanitizeQwenThinkingToolChoice(payload, "QoderExecutor");
   }
 
-  async execute({
-    model,
-    body,
-    stream,
-    credentials,
-    signal,
-    upstreamExtraHeaders,
-    log,
-  }: ExecuteInput) {
-    const token = getAuthToken(credentials);
+  async execute({ model, body, stream, credentials, signal, upstreamExtraHeaders }: ExecuteInput) {
+    const token = resolveQoderAuthToken(credentials);
 
     if (!token) {
       return {
@@ -239,26 +229,25 @@ export class QoderExecutor extends BaseExecutor {
 
     const resolvedModel = model || "qwen3.8-max-preview";
 
-    // PATs (pt-...) are driven through the direct COSY HTTP path (see
-    // qoderHttp.ts) — the same approach 9router uses. The raw HTTP path
-    // supports native OpenAI tool-calling because the request body (including
-    // `tools`) flows straight to Qoder's inference endpoint. The qodercli
-    // spawn remains as a fallback when the HTTP path fails (e.g. WAF/COSY
-    // signature drift).
+    // Detect token type: PAT (Personal Access Token) starts with "pt-".
+    // PATs are driven through the local qodercli binary (see executeViaQoderCli);
+    // only the qodercli binary can produce the WASM-signed Cosy request the raw
+    // HTTP path can no longer replicate.
     const isPatToken = token.startsWith("pt-");
     if (isPatToken) {
-      const direct = await this.executeViaQoderHttp({
-        model: resolvedModel,
-        body,
-        credentials,
-        signal,
-        log: log as Parameters<typeof executeQoderHttp>[0]["log"],
-      });
-      if (direct.response.ok) {
-        return direct;
+      if (hasQoderCallerTools(body)) {
+        return {
+          response: createQoderErrorResponse({
+            status: 400,
+            message:
+              "Qoder PAT/CLI connections do not support caller tool calling. Use a compatible HTTP connection or another provider for agent requests.",
+            code: "tool_calling_unsupported",
+          }),
+          url: "qodercli://stdio",
+          headers: {},
+          transformedBody: body,
+        };
       }
-      // HTTP path failed (auth/network/billing) — fall back to the CLI.
-      // The CLI needs the raw token (it does its own exchange), so pass it.
       return this.executeViaQoderCli({ model: resolvedModel, body, stream, token, signal });
     }
 
@@ -359,35 +348,6 @@ export class QoderExecutor extends BaseExecutor {
    * performs Qoder's WASM-signed Cosy auth internally, so this is the only path
    * that works for PATs now that the pure-HTTP Cosy reimplementation is dead.
    */
-  private async executeViaQoderHttp({
-    model,
-    body,
-    credentials,
-    signal,
-    log,
-  }: {
-    model: string;
-    body: unknown;
-    credentials: ProviderCredentials;
-    signal?: AbortSignal | null;
-    log?: unknown;
-  }): Promise<{
-    response: Response;
-    url: string;
-    headers: Record<string, string>;
-    transformedBody: unknown;
-  }> {
-    const creds = credentials as unknown as Record<string, unknown>;
-    const { response, url } = await executeQoderHttp({
-      model,
-      body,
-      credentials: creds,
-      signal,
-      log: log as Parameters<typeof executeQoderHttp>[0]["log"],
-    });
-    return { response, url, headers: {}, transformedBody: body };
-  }
-
   private async executeViaQoderCli({
     model,
     body,

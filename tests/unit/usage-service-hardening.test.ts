@@ -74,9 +74,9 @@ test("usage service covers GitHub free-plan parsing, auth denial and unsupported
   assert.equal(calls[0].headers.Authorization, "token gho-free");
   // #10952 re-based the Copilot wire identity on the live-captured CLI 1.0.88
   // (copilot-developer-cli integration id; API version 2026-08-01).
-  assert.equal(calls[0].headers["User-Agent"], "GitHubCopilotChat/1.0.88");
-  assert.equal(calls[0].headers["Editor-Version"], "copilot/1.0.88");
-  assert.equal(calls[0].headers["Editor-Plugin-Version"], "copilot-chat/1.0.88");
+  assert.equal(calls[0].headers["User-Agent"], "GitHubCopilotChat/1.0.91");
+  assert.equal(calls[0].headers["Editor-Version"], "copilot/1.0.91");
+  assert.equal(calls[0].headers["Editor-Plugin-Version"], "copilot-chat/1.0.91");
   assert.equal(calls[0].headers["X-GitHub-Api-Version"], "2026-08-01");
 
   globalThis.fetch = async () => new Response("forbidden", { status: 403 });
@@ -221,7 +221,7 @@ test("usage service covers Antigravity quota parsing, exclusions and forbidden a
     loadCodeAssistCall?.url,
     `${ANTIGRAVITY_BOOTSTRAP_BASE_URLS[0]}/v1internal:loadCodeAssist`
   );
-  assert.match(loadCodeAssistCall?.init.headers["User-Agent"], /^antigravity\/ide\/2\.1\.1 /);
+  assert.match(loadCodeAssistCall?.init.headers["User-Agent"], /^antigravity\/ide\/2\.5\.5 /);
   assert.equal(loadCodeAssistCall?.init.headers["X-Goog-Api-Client"], undefined);
   assert.equal(loadCodeAssistCall?.init.headers["Client-Metadata"], undefined);
   assert.deepEqual(

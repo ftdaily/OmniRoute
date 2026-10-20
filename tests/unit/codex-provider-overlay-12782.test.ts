@@ -28,7 +28,10 @@ function fixture(base?: string) {
   return codexHome;
 }
 function overlay(codexHome: string) {
-  return JSON.parse(JSON.stringify(parse(readFileSync(join(codexHome, "auto-best-coding.config.toml"), "utf8"))));
+  // Parser table prototypes are not part of the generated configuration contract.
+  return structuredClone(
+    parse(readFileSync(join(codexHome, "auto-best-coding.config.toml"), "utf8"))
+  );
 }
 afterEach(() => {
   globalThis.fetch = originalFetch;

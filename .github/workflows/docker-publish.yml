@@ -140,7 +140,7 @@ jobs:
     name: Preflight — amd64 runner availability
     needs: prepare
     if: >-
-      github.event_name != 'schedule' && needs.prepare.outputs.skip != 'true' && vars.USE_VPS_RUNNER == 'true' &&
+      github.event_name != 'schedule' && needs.prepare.outputs.skip != 'true' && vars.USE_VPS_RUNNER == 'true' && vars.USE_VPS_BUILD_RUNNER == 'true' &&
       (github.event_name != 'schedule' || github.repository == 'diegosouzapw/OmniRoute')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -189,7 +189,7 @@ jobs:
     # (run 33253576569). The same tree's arm64 webpack build on hosted ARM
     # succeeded (run 33264823398). Dockerfile already documents webpack as the
     # Docker escape hatch (OMNIROUTE_USE_TURBOPACK=0).
-    runs-on: ${{ matrix.arch == 'amd64' && (vars.USE_VPS_RUNNER == 'true' && fromJSON('["self-hosted","omni-build"]') || 'ubuntu-24.04') || 'ubuntu-24.04-arm' }}
+    runs-on: ${{ matrix.arch == 'amd64' && (vars.USE_VPS_RUNNER == 'true' && vars.USE_VPS_BUILD_RUNNER == 'true' && fromJSON('["self-hosted","omni-build"]') || 'ubuntu-24.04') || 'ubuntu-24.04-arm' }}
     # Share the 1-slot omni-build ceiling (#12048) with ci.yml `Build` /
     # npm-publish. Same group as main's Build so a :next publish waits beside
     # the artefact instead of sitting next to it. arm64 is hosted — its own
@@ -237,6 +237,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Heap for the webpack build inside BuildKit: 12288 MB on every build-args block below.
+      # Validated on the hosted runners (16 GB) by the publishes of 2026-10-16/17 — runs
+      # 38904652365, 38907575198 and 39010473398, amd64 and arm64 green (27-55 min). It stays
+      # at or above build.yml's native webpack floor (10240 MB), never below it
+      # (tests/unit/docker-publish-build-heap-14325.test.ts).
       - name: Build and push platform image by digest
         id: build
         uses: docker/build-push-action@v7
@@ -462,6 +467,52 @@ jobs:
           path: /tmp/digests/bun-web
           merge-multiple: true
 
+      - name: Guard against stale digests
+        run: |
+          set -euo pipefail
+          # One digest per arch (amd64 + arm64) at most; more means stale digests leaked in (#15184).
+          # An optional image (bun-web is best-effort) may have produced no digest at all: its
+          # download step then creates no directory, and `find <missing>` under pipefail used to
+          # abort this step with exit 1 and no message, taking every mandatory manifest down with
+          # it (v3.8.52 release run 39316002758). The manifest step already skips such images.
+          for dir in base web bun-base bun-web; do
+            if [ ! -d "/tmp/digests/$dir" ]; then
+              echo "digests in $dir: none (optional image produced no digest — skipped)"
+              continue
+            fi
+            count=$(find "/tmp/digests/$dir" -type f 2>/dev/null | wc -l)
+            if [ "$count" -gt 2 ]; then
+              echo "digests in $dir: found $count, expected at most 2 (stale digests leaked in)" >&2
+              exit 1
+            fi
+          done
+
+      - name: Create Docker Hub version manifests
+        run: |
+          set -euo pipefail
+
+          create_manifest() {
+            local image="$1" suffix="$2" dir="$3" optional="${4:-}"
+            local refs=()
+            while IFS= read -r digest_file; do
+              refs+=("${image}@sha256:$(basename "$digest_file")")
+            done < <(find "$dir" -type f | sort)
+            if [ "${#refs[@]}" -eq 0 ]; then
+              if [ -n "$optional" ]; then
+                echo "::warning::No image digests in $dir — skipping optional tag ${image}:${VERSION}${suffix}" >&2
+                return 0
+              fi
+              echo "No image digests in $dir" >&2
+              exit 1
+            fi
+            docker buildx imagetools create -t "${image}:${VERSION}${suffix}" "${refs[@]}"
+          }
+
+          create_manifest "${IMAGE_NAME}" "" /tmp/digests/base
+          create_manifest "${IMAGE_NAME}" "-web" /tmp/digests/web
+          create_manifest "${IMAGE_NAME}" "-bun" /tmp/digests/bun-base optional
+          create_manifest "${IMAGE_NAME}" "-web-bun" /tmp/digests/bun-web optional
+
       - name: Create GHCR version manifests
         run: |
           set -euo pipefail
@@ -596,7 +647,82 @@ jobs:
       - name: Upload Trivy SARIF to Security tab
         if: needs.prepare.outputs.version != 'main'
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4.38.2
+        uses: github/codeql-action/upload-sarif@v4.38.3
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image
+
+      - name: Update Docker Hub description
+        # Only refresh README/description when we actually promote :latest
+        # (avoids overwriting from main, next, or back-fill builds).
+        if: needs.prepare.outputs.promote_latest == 'true'
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: diegosouzapw/omniroute
+          short-description: "OmniRoute — Unified AI proxy. Route any LLM through one endpoint."
+          readme-filepath: ./README.md
+
+  # #14560: alert when the only omni-build runner goes offline. Mirrors the
+  # nightly-release-green issue loop: open a deduplicated tracking issue when
+  # no online runner carries the label, comment with fresh evidence while it
+  # persists, and auto-close it when the pool recovers. Without this, an
+  # offline box is only discovered the next time a publish silently stalls.
+  runner-alert:
+    name: omni-build runner offline alert
+    if: >-
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      vars.USE_VPS_RUNNER == 'true' && vars.USE_VPS_BUILD_RUNNER == 'true' &&
+      (github.event_name != 'schedule' || github.repository == 'diegosouzapw/OmniRoute')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Open/update/close the tracking issue
+        env:
+          # Issue writes use GITHUB_TOKEN (issues: write); only the runner listing
+          # needs RUNNER_STATUS_TOKEN (see runner-preflight). Without it the check is
+          # skipped with a warning instead of opening/closing the issue on bad data.
+          GH_TOKEN: ${{ github.token }}
+          RUNNERS_TOKEN: ${{ secrets.RUNNER_STATUS_TOKEN || github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          TITLE="Docker publish runner offline: no online omni-build runner"
+          if ! ONLINE=$(GH_TOKEN="$RUNNERS_TOKEN" gh api "repos/${GITHUB_REPOSITORY}/actions/runners" \
+            --paginate --jq '[.runners[] | select(.status == "online") | select(any(.labels[]; .name == "omni-build"))] | length'); then
+            echo "::warning::Could not list self-hosted runners (token lacks Administration read — set the RUNNER_STATUS_TOKEN secret). Alert skipped."
+            exit 0
+          fi
+          echo "online omni-build runners: ${ONLINE}"
+
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "in:title ${TITLE}" --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ "${ONLINE}" -eq 0 ]; then
+            {
+              echo "No **online** runner carries the \`omni-build\` label (\`GET /repos/{owner}/{repo}/actions/runners\`)."
+              echo ""
+              echo "While this persists, every Docker publish with \`USE_VPS_RUNNER=true\` queues the amd64 build forever - the silent stall from #14560 (the runner-preflight job turns it into a red run at publish time; this issue is the standing signal between publishes)."
+              echo ""
+              echo "**Checked:** ${RUN_URL} at \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`"
+              echo ""
+              echo "_Auto-managed by the Publish to Docker Hub schedule - closes itself when a runner comes back online._"
+            } > issue-body.md
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body-file issue-body.md
+              echo "Updated existing issue #$EXISTING"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body-file issue-body.md
+              echo "Created tracking issue"
+            fi
+          elif [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --repo "$GITHUB_REPOSITORY" --reason completed \
+              --comment "OK: ${ONLINE} online \`omni-build\` runner(s) - pool recovered. Auto-closed."
+            echo "Closed issue #$EXISTING"
+          else
+            echo "Pool healthy (${ONLINE} online), nothing to do"
+          fi

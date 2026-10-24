@@ -10633,7 +10633,9 @@
     "comboDeleteConfirm": "Delete this combo? This cannot be undone.",
     "comboUpdateFailed": "Could not update the combo. Try again.",
     "comboDeleteFailed": "Could not delete the combo. Try again.",
-    "comboEditTitle": "Edit combo"
+    "comboEditTitle": "Edit combo",
+    "portalGrantHelper": "Open Connections, turn off Allow all connections, and select the specific connection(s) this key may use. Then return here to enable portal access.",
+    "portalGoToConnections": "Go to Connections"
   },
   "landing": {
     "brandName": "OmniRoute",

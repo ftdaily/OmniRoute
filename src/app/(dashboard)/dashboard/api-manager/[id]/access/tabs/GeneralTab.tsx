@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { Input } from "@/shared/components";
+import Toggle from "@/shared/components/Toggle";
+import Button from "@/shared/components/Button";
 import { ENDPOINT_CATEGORIES } from "@/shared/constants/endpointCategories";
 import { toLocalDateTimeInputValue } from "@/app/(dashboard)/dashboard/api-manager/apiManagerPageUtils";
 import RoutingEntryLink from "@/shared/components/routing/RoutingEntryLink";
@@ -21,6 +23,7 @@ interface GeneralTabProps {
   setExpiresAt: (expiresAt: string) => void;
   setPortalEnabled: (enabled: boolean) => void;
   setUserCombosEnabled: (enabled: boolean) => void;
+  goToConnections: () => void;
   setManageEnabled: (enabled: boolean) => void;
   setSelfUsageEnabled: (enabled: boolean) => void;
   setSelfAccountQuotaEnabled: (enabled: boolean) => void;
@@ -89,11 +92,14 @@ function PortalToggle({
   formState,
   setPortalEnabled,
   setUserCombosEnabled,
-}: GeneralSectionProps<"setPortalEnabled" | "setUserCombosEnabled">) {
+  goToConnections,
+}: GeneralSectionProps<"setPortalEnabled" | "setUserCombosEnabled" | "goToConnections">) {
   const t = useTranslations("userPortal");
   const hasExplicitGrant =
     !formState.allowAllConnections && formState.selectedConnections.length > 0;
   const grantMissing = !hasExplicitGrant;
+  // Block ON only; OFF always allowed even if grant later removed.
+  const portalBlocked = !formState.portalEnabled && grantMissing;
   return (
     <div className="flex flex-col gap-3 p-4 rounded-lg border border-border bg-surface/40">
       <div className="flex items-start justify-between gap-3">
@@ -101,37 +107,35 @@ function PortalToggle({
           <p className="text-sm font-medium text-text-main">{t("portalEnabledLabel")}</p>
           <p className="text-xs text-text-muted">{t("portalEnabledDesc")}</p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={formState.portalEnabled}
-          aria-disabled={grantMissing}
-          disabled={grantMissing || (formState.portalEnabled && grantMissing)}
-          onClick={() => setPortalEnabled(!formState.portalEnabled)}
-          className="px-2.5 py-1.5 rounded-md text-xs font-semibold border border-border"
-        >
-          {formState.portalEnabled ? t("disable") : t("enable")}
-        </button>
+        <Toggle
+          checked={formState.portalEnabled}
+          onChange={setPortalEnabled}
+          disabled={portalBlocked}
+          ariaLabel={t("portalEnabledLabel")}
+        />
       </div>
       {grantMissing ? (
-        <p role="note" className="text-xs text-text-muted">
-          {t("portalEnabledDesc")}
-        </p>
+        <div className="flex flex-col gap-2">
+          <p role="note" className="text-xs text-text-muted">
+            {t("portalGrantHelper")}
+          </p>
+          <div>
+            <Button type="button" onClick={goToConnections}>
+              {t("portalGoToConnections")}
+            </Button>
+          </div>
+        </div>
       ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium text-text-main">{t("userCombosEnabledLabel")}</p>
           <p className="text-xs text-text-muted">{t("userCombosEnabledDesc")}</p>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={formState.userCombosEnabled}
-          onClick={() => setUserCombosEnabled(!formState.userCombosEnabled)}
-          className="px-2.5 py-1.5 rounded-md text-xs font-semibold border border-border"
-        >
-          {formState.userCombosEnabled ? t("disable") : t("enable")}
-        </button>
+        <Toggle
+          checked={formState.userCombosEnabled}
+          onChange={setUserCombosEnabled}
+          ariaLabel={t("userCombosEnabledLabel")}
+        />
       </div>
     </div>
   );
@@ -438,6 +442,7 @@ export default function GeneralTab({
   setExpiresAt,
   setPortalEnabled,
   setUserCombosEnabled,
+  goToConnections,
   setManageEnabled,
   setSelfUsageEnabled,
   setSelfAccountQuotaEnabled,
@@ -459,6 +464,7 @@ export default function GeneralTab({
         formState={formState}
         setPortalEnabled={setPortalEnabled}
         setUserCombosEnabled={setUserCombosEnabled}
+        goToConnections={goToConnections}
       />
       <KeyActiveToggle formState={formState} setIsActive={setIsActive} />
       <BanToggle formState={formState} setIsBanned={setIsBanned} />

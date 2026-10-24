@@ -286,7 +286,7 @@ function useSaveAccessKey({
 
 type AccessFormContext = ReturnType<typeof useAccessFormContext>;
 function AccessGeneralPanelPanelContent({ context }: { context: AccessFormContext }) {
-  const { apiKey, form } = context;
+  const { apiKey, form, switchTab } = context;
   return (
     <GeneralTab
       apiKey={apiKey}
@@ -297,6 +297,7 @@ function AccessGeneralPanelPanelContent({ context }: { context: AccessFormContex
       setExpiresAt={form.setExpiresAt}
       setPortalEnabled={form.setPortalEnabled}
       setUserCombosEnabled={form.setUserCombosEnabled}
+      goToConnections={() => switchTab("connections")}
       setManageEnabled={form.setManageEnabled}
       setSelfUsageEnabled={form.setSelfUsageEnabled}
       setSelfAccountQuotaEnabled={form.setSelfAccountQuotaEnabled}

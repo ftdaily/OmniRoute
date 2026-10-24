@@ -22,6 +22,18 @@ function maskKeyId(apiKey: string): string {
   return `key_${tail}`;
 }
 
+/**
+ * MVP portal inference surface. Classification normalizes aliases, so these
+ * exact normalized paths cover the supported API. Everything else (files,
+ * batches, queued, /api/v1/ws, unknowns) is denied for portal keys — the
+ * direct-API inference path must prove unscoped dispatch before widening.
+ */
+const PORTAL_CLIENT_API_ALLOWLIST = new Set([
+  "/api/v1/chat/completions",
+  "/api/v1/responses",
+  "/api/v1/models",
+]);
+
 export const clientApiPolicy: RoutePolicy = {
   routeClass: "CLIENT_API",
   async evaluate(ctx: PolicyContext): Promise<AuthOutcome> {
@@ -58,6 +70,43 @@ export const clientApiPolicy: RoutePolicy = {
       // The subject is the credential that actually validated, so identity and
       // usage never bind to a stale Bearer sent next to a valid x-api-key.
       if (await validateApiKey(credential)) {
+        // Scoped portal boundary (MVP): a portal-enabled key may only touch
+        // the MVP inference surface. Fresh portal state per request — the
+        // validated-credential cache must never resurrect a cleared grant.
+        // Env/synthetic keys have no DB id/flags => legacy unchanged.
+        // DB errors fail closed (503), never legacy-false.
+        try {
+          const { getApiKeyMetadata } = await import("../../../lib/db/apiKeys");
+          const { isSyntheticApiKeyId } = await import("../../../shared/constants/apiKeyIdentities.ts");
+          const meta = await getApiKeyMetadata(credential);
+          const keyId = meta && typeof meta.id === "string" ? meta.id : null;
+          // Synthetic identities (env-key/self-loop) carry no portal row.
+          if (!keyId || isSyntheticApiKeyId(keyId)) {
+            return allow({ kind: "client_api_key", id: maskKeyId(credential) });
+          }
+          // Fresh portal state FIRST — metadata fast-path columns lag the
+          // portal lifecycle writer, and the validated-credential cache must
+          // never resurrect a cleared grant. Non-portal keys (no row / flag
+          // off) fall through to the legacy allow below unchanged.
+          const { getPortalKeyState } = await import("../../../lib/db/userPortal");
+          let state: Awaited<ReturnType<typeof getPortalKeyState>>;
+          try {
+            state = await getPortalKeyState(keyId);
+          } catch {
+            return reject(503, "AUTH_BACKEND_UNAVAILABLE", "Service temporarily unavailable");
+          }
+          if (!state || state.portalEnabled !== true) {
+            return allow({ kind: "client_api_key", id: maskKeyId(credential) });
+          }
+          if (!state.usable || !Array.isArray(state.allowedConnections) || state.allowedConnections.length === 0) {
+            return reject(403, "PORTAL_DISABLED", "Portal access disabled for this key");
+          }
+          if (!PORTAL_CLIENT_API_ALLOWLIST.has(ctx.classification.normalizedPath)) {
+            return reject(403, "PORTAL_PATH_DENIED", "Portal key not permitted on this endpoint");
+          }
+        } catch {
+          return reject(503, "AUTH_BACKEND_UNAVAILABLE", "Service temporarily unavailable");
+        }
         return allow({ kind: "client_api_key", id: maskKeyId(credential) });
       }
     }

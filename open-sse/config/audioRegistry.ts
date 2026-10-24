@@ -876,7 +876,14 @@ export function missingAudioProviderCredentialsMessage(
  * Get all audio models as a flat list
  */
 export function getAllAudioModels() {
-  const models = [];
+  // Explicit element type: an empty array literal otherwise infers `never[]`
+  // and every push below fails the typecheck.
+  const models: Array<{
+    id: string;
+    name: string;
+    provider: string;
+    subtype: string;
+  }> = [];
 
   for (const [providerId, config] of Object.entries(AUDIO_TRANSCRIPTION_PROVIDERS)) {
     for (const model of config.models) {

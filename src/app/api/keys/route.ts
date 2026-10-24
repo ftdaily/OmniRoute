@@ -111,6 +111,8 @@ export async function POST(request) {
       weeklyUsageLimitUsd,
       chaosModeEnabled,
       expiresAt,
+      portalEnabled,
+      userCombosEnabled,
     } = validation.data;
 
     const normalizedScopes = normalizeSelfServiceScopesForCreate(scopes);
@@ -125,6 +127,8 @@ export async function POST(request) {
       allowedCombos,
       allowedConnections,
       expiresAt,
+      portalEnabled,
+      userCombosEnabled,
     });
     const permissionOverrides = createPermissionOverrides(validation.data);
     if (permissionOverrides) await updateApiKeyPermissions(apiKey.id, permissionOverrides);

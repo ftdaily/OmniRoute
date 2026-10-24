@@ -17,7 +17,7 @@
  * Any route that cannot be classified MUST fail closed.
  */
 
-export type RouteClass = "PUBLIC" | "CLIENT_API" | "MANAGEMENT";
+export type RouteClass = "PUBLIC" | "CLIENT_API" | "MANAGEMENT" | "USER";
 
 /**
  * Why a particular path was placed into a route class. Used for telemetry,
@@ -27,6 +27,8 @@ export type RouteClass = "PUBLIC" | "CLIENT_API" | "MANAGEMENT";
 export type ClassificationReason =
   | "public_prefix"
   | "public_readonly_prefix"
+  | "user_portal_login"
+  | "user_portal"
   | "dashboard_prefix"
   | "setup_wizard"
   | "public_connect_page"
@@ -57,7 +59,7 @@ export interface RouteClassification {
  * handlers via assertAuth().
  */
 export interface AuthSubject {
-  kind: "client_api_key" | "dashboard_session" | "management_key" | "anonymous";
+  kind: "client_api_key" | "dashboard_session" | "management_key" | "anonymous" | "user_session";
   /**
    * Stable identifier of the principal:
    *  - hashed key id for API keys

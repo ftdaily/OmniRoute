@@ -439,7 +439,7 @@ test("isWithinSchedule: America/Sao_Paulo — outside window", () => {
   assert.equal(isWithinSchedule(schedule, utc(2024, 3, 11, 22, 0)), false);
 });
 
-test("enforceApiKeyPolicy bypasses local mode and unknown keys", async () => {
+test("enforceApiKeyPolicy bypasses local mode (no key presented)", async () => {
   const policy = await loadPolicy("bypass");
 
   assert.deepEqual(await policy.enforceApiKeyPolicy(makePolicyRequest(null), "openai/gpt-4.1"), {
@@ -447,6 +447,10 @@ test("enforceApiKeyPolicy bypasses local mode and unknown keys", async () => {
     apiKeyInfo: null,
     rejection: null,
   });
+});
+
+test("enforceApiKeyPolicy denies explicit unknown keys — retired identity must not ride an unrestricted cache", async () => {
+  const policy = await loadPolicy("bypass");
 
   const unknown = await policy.enforceApiKeyPolicy(
     makePolicyRequest("sk-unknown"),
@@ -454,7 +458,11 @@ test("enforceApiKeyPolicy bypasses local mode and unknown keys", async () => {
   );
   assert.equal(unknown.apiKey, "sk-unknown");
   assert.equal(unknown.apiKeyInfo, null);
-  assert.equal(unknown.rejection, null);
+  // Security: an explicit credential that resolves to no row (typo, revoked,
+  // ROTATED-OUT secret) must 401 — never skip policy as if it were anonymous
+  // local mode. Otherwise a retired key keeps the last cached allow.
+  assert.ok(unknown.rejection, "explicit unknown key must be rejected");
+  assert.equal(unknown.rejection.status, 401);
 });
 
 test("enforceApiKeyPolicy rejects disabled keys and blocked schedules", async () => {

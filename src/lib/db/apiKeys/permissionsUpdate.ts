@@ -37,6 +37,17 @@ export interface ApiKeyPermissionsUpdate {
   allowAutoCombos?: boolean;
   catalogScope?: "all" | "combos" | "models";
   forcedModel?: string | null;
+  portalEnabled?: boolean;
+  userCombosEnabled?: boolean;
+}
+
+function parsePortalFlag(value: unknown): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return false;
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === "1" || value === "true") return true;
+  if (value === 0 || value === "0" || value === "false") return false;
+  return undefined;
 }
 
 export function normalizeApiKeyPermissionsUpdate(
@@ -82,5 +93,7 @@ export function normalizeApiKeyPermissionsUpdate(
     allowAutoCombos: update.allowAutoCombos,
     catalogScope: update.catalogScope,
     forcedModel: update.forcedModel,
+    portalEnabled: parsePortalFlag(update.portalEnabled),
+    userCombosEnabled: parsePortalFlag(update.userCombosEnabled),
   };
 }

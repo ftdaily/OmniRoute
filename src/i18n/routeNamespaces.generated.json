@@ -29,7 +29,8 @@
     "sidebar",
     "stats",
     "traeAuthModal",
-    "trafficInspector"
+    "trafficInspector",
+    "userPortal"
   ],
   "chrome": [
     "agentSkills",
@@ -183,6 +184,35 @@
       "traeAuthModal",
       "trafficInspector"
     ],
+    "agent-ports": [
+      "agentPorts",
+      "agentSkills",
+      "analytics",
+      "breadcrumbs",
+      "cache",
+      "cloudSyncStatus",
+      "codexKeyServiceMode",
+      "common",
+      "costs",
+      "cursorAuthModal",
+      "header",
+      "kiroAuthModal",
+      "kiroSocialOAuthModal",
+      "landing",
+      "noAuthProvider",
+      "oauthModal",
+      "proxyConfigModal",
+      "proxyLog",
+      "proxyLogger",
+      "reasoningRouting",
+      "requestLogger",
+      "requestTimeline",
+      "sharedComponents",
+      "sidebar",
+      "stats",
+      "traeAuthModal",
+      "trafficInspector"
+    ],
     "agent-skills": [
       "agentSkills",
       "analytics",
@@ -299,7 +329,8 @@
       "stats",
       "traeAuthModal",
       "trafficInspector",
-      "usageLimits"
+      "usageLimits",
+      "userPortal"
     ],
     "audit": [
       "agentSkills",

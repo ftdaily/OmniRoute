@@ -101,6 +101,10 @@ export interface ApiKeyAccessData {
   modelAccessMode?: "all" | "restricted" | null;
   blockedModels?: string[] | null;
   allowedCombos?: string[] | null;
+  // Optional p3-owned backend fields; absent until the storage/GET layer
+  // exposes them. UI renders optimistically via Record-read, never `any`.
+  portalEnabled?: boolean | null;
+  userCombosEnabled?: boolean | null;
   // `connectionAccessMode` is a PATCH-only input: the stored key has no such column, so
   // GET never returns it and an empty list is what "all connections" looks like.
   allowedConnections?: string[] | null;
@@ -145,6 +149,10 @@ export interface ApiKeyAccessFormState {
   selectedConnections: string[];
   allowAllEndpoints: boolean;
   selectedEndpoints: string[];
+  // Portal flags (admin-owned p9 UI, p3-owned storage). Present in state so
+  // toggles/save work before the GET layer exposes the columns.
+  portalEnabled: boolean;
+  userCombosEnabled: boolean;
   noLog: boolean;
   autoResolve: boolean;
   isActive: boolean;
@@ -261,9 +269,12 @@ function initialAccessListState(apiKey: StoredApiKey) {
 }
 
 function initialKeyStatusState(apiKey: StoredApiKey) {
+  const record = apiKey as unknown as Record<string, unknown> | null | undefined;
   return {
     noLog: apiKey?.noLog === true,
     autoResolve: apiKey?.autoResolve === true,
+    portalEnabled: record?.portalEnabled === true,
+    userCombosEnabled: record?.userCombosEnabled === true,
     isActive: apiKey?.isActive !== false,
     throttleDelayMs: positiveNumberOrZero(apiKey?.throttleDelayMs),
     isBanned: apiKey?.isBanned === true,
@@ -325,12 +336,21 @@ function initialBehaviourState(
   };
 }
 
+function initialPortalState(apiKey: StoredApiKey) {
+  const record = apiKey as unknown as Record<string, unknown> | null | undefined;
+  return {
+    portalEnabled: record?.portalEnabled === true,
+    userCombosEnabled: record?.userCombosEnabled === true,
+  };
+}
+
 // The groups are spread in the original field order, so JSON.stringify (the dirty check) sees
 // the same key order as before.
 export function createInitialFormState(apiKey: StoredApiKey): ApiKeyAccessFormState {
   return {
     ...initialAccessListState(apiKey),
     ...initialKeyStatusState(apiKey),
+    ...initialPortalState(apiKey),
     ...initialScheduleState(apiKey),
     ...initialScopeState(apiKey),
     ...initialBehaviourState(apiKey),
@@ -443,6 +463,8 @@ export function buildApiKeyAccessPayload(
     blockedModels: validBlockedModels,
     allowedCombos: validCombos,
     allowedConnections: validConnections,
+    portalEnabled: formState.portalEnabled,
+    userCombosEnabled: formState.userCombosEnabled,
     noLog: formState.noLog,
     autoResolve: formState.autoResolve,
     isActive: formState.isActive,
@@ -551,7 +573,21 @@ function useGeneralSetters(setFormState: FormStateSetter) {
     [setFormState]
   );
 
-  return { setName, setIsActive, setIsBanned, setExpiresAt };
+  const setPortalEnabled = useCallback(
+    (portalEnabled: boolean) => {
+      setFormState((prev) => ({ ...prev, portalEnabled }));
+    },
+    [setFormState]
+  );
+
+  const setUserCombosEnabled = useCallback(
+    (userCombosEnabled: boolean) => {
+      setFormState((prev) => ({ ...prev, userCombosEnabled }));
+    },
+    [setFormState]
+  );
+
+  return { setName, setIsActive, setIsBanned, setExpiresAt, setPortalEnabled, setUserCombosEnabled };
 }
 
 /** Management scope, self-service scopes and endpoint setters (General tab). */

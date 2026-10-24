@@ -22,6 +22,7 @@ import { checkRequestIP } from "@omniroute/open-sse/services/ipFilter.ts";
 import { clientApiPolicy } from "./policies/clientApi";
 import { managementPolicy } from "./policies/management";
 import { publicPolicy } from "./policies/public";
+import { userPortalPolicy } from "./policies/userPortal";
 import {
   AUTHZ_HEADER_AUTH_ID,
   AUTHZ_HEADER_AUTH_KIND,
@@ -49,6 +50,7 @@ const POLICIES: Record<RouteClass, RoutePolicy> = {
   PUBLIC: publicPolicy,
   CLIENT_API: clientApiPolicy,
   MANAGEMENT: managementPolicy,
+  USER: userPortalPolicy,
 };
 
 function stampSubject(headers: Headers, subject: AuthSubject): void {

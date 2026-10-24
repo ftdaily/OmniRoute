@@ -19,6 +19,8 @@ interface GeneralTabProps {
   setIsActive: (isActive: boolean) => void;
   setIsBanned: (isBanned: boolean) => void;
   setExpiresAt: (expiresAt: string) => void;
+  setPortalEnabled: (enabled: boolean) => void;
+  setUserCombosEnabled: (enabled: boolean) => void;
   setManageEnabled: (enabled: boolean) => void;
   setSelfUsageEnabled: (enabled: boolean) => void;
   setSelfAccountQuotaEnabled: (enabled: boolean) => void;
@@ -80,6 +82,58 @@ function ExclusiveLeaseNotice({ apiKey }: Pick<GeneralTabProps, "apiKey">) {
         </div>
       )}
     </>
+  );
+}
+
+function PortalToggle({
+  formState,
+  setPortalEnabled,
+  setUserCombosEnabled,
+}: GeneralSectionProps<"setPortalEnabled" | "setUserCombosEnabled">) {
+  const t = useTranslations("userPortal");
+  const hasExplicitGrant =
+    !formState.allowAllConnections && formState.selectedConnections.length > 0;
+  const grantMissing = !hasExplicitGrant;
+  return (
+    <div className="flex flex-col gap-3 p-4 rounded-lg border border-border bg-surface/40">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-medium text-text-main">{t("portalEnabledLabel")}</p>
+          <p className="text-xs text-text-muted">{t("portalEnabledDesc")}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={formState.portalEnabled}
+          aria-disabled={grantMissing}
+          disabled={grantMissing || (formState.portalEnabled && grantMissing)}
+          onClick={() => setPortalEnabled(!formState.portalEnabled)}
+          className="px-2.5 py-1.5 rounded-md text-xs font-semibold border border-border"
+        >
+          {formState.portalEnabled ? t("disable") : t("enable")}
+        </button>
+      </div>
+      {grantMissing ? (
+        <p role="note" className="text-xs text-text-muted">
+          {t("portalEnabledDesc")}
+        </p>
+      ) : null}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-medium text-text-main">{t("userCombosEnabledLabel")}</p>
+          <p className="text-xs text-text-muted">{t("userCombosEnabledDesc")}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={formState.userCombosEnabled}
+          onClick={() => setUserCombosEnabled(!formState.userCombosEnabled)}
+          className="px-2.5 py-1.5 rounded-md text-xs font-semibold border border-border"
+        >
+          {formState.userCombosEnabled ? t("disable") : t("enable")}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -382,6 +436,8 @@ export default function GeneralTab({
   setIsActive,
   setIsBanned,
   setExpiresAt,
+  setPortalEnabled,
+  setUserCombosEnabled,
   setManageEnabled,
   setSelfUsageEnabled,
   setSelfAccountQuotaEnabled,
@@ -399,6 +455,11 @@ export default function GeneralTab({
       {apiKey?.id && <RoutingEntryLink apiKeyId={apiKey.id} />}
 
       <ExclusiveLeaseNotice apiKey={apiKey} />
+      <PortalToggle
+        formState={formState}
+        setPortalEnabled={setPortalEnabled}
+        setUserCombosEnabled={setUserCombosEnabled}
+      />
       <KeyActiveToggle formState={formState} setIsActive={setIsActive} />
       <BanToggle formState={formState} setIsBanned={setIsBanned} />
       <ExpirationDateField formState={formState} setExpiresAt={setExpiresAt} />

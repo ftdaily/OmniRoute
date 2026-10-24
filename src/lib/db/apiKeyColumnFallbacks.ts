@@ -74,6 +74,14 @@ export const API_KEY_COLUMN_FALLBACKS = [
   },
   // Per-key enforced routing target (NULL = not pinned). See resolveApiKeyForcedModel.
   { name: "forced_model", definition: "forced_model TEXT" },
+  // Scoped user portal flags (migration 213). Fallback ensures fresh/test DBs
+  // that never ran the migration still get the columns.
+  { name: "portal_enabled", definition: "portal_enabled INTEGER NOT NULL DEFAULT 0" },
+  { name: "user_combos_enabled", definition: "user_combos_enabled INTEGER NOT NULL DEFAULT 0" },
+  {
+    name: "portal_session_revision",
+    definition: "portal_session_revision INTEGER NOT NULL DEFAULT 0",
+  },
 ] as const;
 
 interface ApiKeySchemaDb {

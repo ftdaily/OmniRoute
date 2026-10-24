@@ -100,6 +100,8 @@ export async function PATCH(request, { params }) {
       dailyUsageLimitUsd,
       weeklyUsageLimitUsd,
       chaosModeEnabled,
+      portalEnabled,
+      userCombosEnabled,
     } = validation.data;
 
     const scopeAuthError = await requireCredentialForManagementScopedKey(request, scopes);
@@ -141,6 +143,45 @@ export async function PATCH(request, { params }) {
     if (dailyUsageLimitUsd !== undefined) payload.dailyUsageLimitUsd = dailyUsageLimitUsd;
     if (weeklyUsageLimitUsd !== undefined) payload.weeklyUsageLimitUsd = weeklyUsageLimitUsd;
     if (chaosModeEnabled !== undefined) payload.chaosModeEnabled = chaosModeEnabled;
+    // Scoped user portal (pA-owned): portal flags pass through the same admin
+    // management auth as every other permission field above.
+    if (portalEnabled !== undefined) payload.portalEnabled = portalEnabled;
+    if (userCombosEnabled !== undefined) payload.userCombosEnabled = userCombosEnabled;
+
+    // Portal enable requires a nonempty explicit connection grant whose ids all
+    // resolve in provider_connections (existing lookup helper, no raw SQL).
+    // Clearing the grant while enabled, nonexistent ids, or enabling with an
+    // empty grant => 400 atomic (no partial write — validated before update).
+    const wantsPortalOn =
+      portalEnabled === true ||
+      (portalEnabled === undefined && userCombosEnabled === true);
+    const grantAfter =
+      connectionAccessMode === "all"
+        ? []
+        : allowedConnections !== undefined
+          ? allowedConnections
+          : undefined;
+    if (wantsPortalOn || (grantAfter !== undefined && grantAfter.length === 0)) {
+      const { getProviderConnectionById } = await import("@/lib/db/providers");
+      const { getApiKeyById } = await import("@/lib/db/apiKeys");
+      const current = await getApiKeyById(id);
+      if (!current) {
+        return NextResponse.json({ error: "Key not found" }, { status: 404 });
+      }
+      const effectiveGrant = grantAfter !== undefined ? grantAfter : current.allowedConnections ?? [];
+      const effectivePortal =
+        portalEnabled !== undefined ? portalEnabled : (current as { portalEnabled?: boolean }).portalEnabled === true;
+      if (effectivePortal) {
+        if (!Array.isArray(effectiveGrant) || effectiveGrant.length === 0) {
+          return NextResponse.json({ error: "portalEnabled requires a nonempty allowedConnections grant" }, { status: 400 });
+        }
+        for (const connId of effectiveGrant) {
+          if (!(await getProviderConnectionById(connId))) {
+            return NextResponse.json({ error: `unknown connection: ${connId}` }, { status: 400 });
+          }
+        }
+      }
+    }
 
     const updated = await updateApiKeyPermissions(id, payload);
     if (!updated) {

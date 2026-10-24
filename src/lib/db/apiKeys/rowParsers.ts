@@ -66,6 +66,16 @@ export function parseAllowAutoCombos(value: unknown): boolean {
   return true;
 }
 
+/** Portal flag: DEFAULT 0 — keys created before the column stay portal-off (fail-closed). */
+export function parsePortalEnabled(value: unknown): boolean {
+  return value === 1 || value === "1" || value === true;
+}
+
+/** User-combos flag: DEFAULT 0 — same fail-closed legacy semantics as portalEnabled. */
+export function parseUserCombosEnabled(value: unknown): boolean {
+  return value === 1 || value === "1" || value === true;
+}
+
 export type CatalogScope = "all" | "combos" | "models";
 
 export function parseCatalogScope(value: unknown): CatalogScope {

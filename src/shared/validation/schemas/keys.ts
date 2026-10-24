@@ -65,6 +65,8 @@ export const createKeySchema = z
     expiresAt: z.string().datetime().nullable().optional(),
     scopes: z.array(z.string().trim().min(1).max(64)).max(32).optional(),
     allowedConnections: z.array(z.string().uuid()).min(1).max(100).optional(),
+    portalEnabled: z.boolean().optional(),
+    userCombosEnabled: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     requireConsistentModelAccess(value, ctx);
@@ -186,6 +188,8 @@ export const updateKeyPermissionsSchema = z
     catalogScope: z.enum(["all", "combos", "models"]).optional(),
     // Per-key enforced routing target; null (or blank) clears the pin.
     forcedModel: z.string().trim().max(300).nullable().optional(),
+    portalEnabled: z.boolean().optional(),
+    userCombosEnabled: z.boolean().optional(),
     cacheDefaultMode: z.enum(["legacy", "bypass"]).optional(),
     disableNonPublicModels: z.boolean().optional(),
     allowUsageCommand: z.boolean().optional(),
@@ -254,7 +258,9 @@ export const updateKeyPermissionsSchema = z
       value.usageLimitEnabled === undefined &&
       value.dailyUsageLimitUsd === undefined &&
       value.weeklyUsageLimitUsd === undefined &&
-      value.chaosModeEnabled === undefined
+      value.chaosModeEnabled === undefined &&
+      value.portalEnabled === undefined &&
+      value.userCombosEnabled === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

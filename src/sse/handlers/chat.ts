@@ -433,6 +433,39 @@ function logBreakerStateChange(name: string, from: string, to: string): void {
 
 export { shouldTripProviderBreakerForResult } from "./chatPredicates";
 
+/**
+ * Scoped user portal — private combo wire id check.
+ *
+ * `user-combo/<uuid>` is the ONLY private-combo wire form. The uuid shape is
+ * validated by the policy layer (`parseUserComboWireId`).
+ */
+function isPrivateComboWireId(modelStr: unknown): boolean {
+  return typeof modelStr === "string" && modelStr.startsWith("user-combo/");
+}
+
+/**
+ * Scoped user portal — materialize the owner's private combo for the ordinary
+ * combo executor.
+ *
+ * Returns null when the key does not own the combo (the policy layer already
+ * answered 403 in that case, so this path is only reached for the owner) and
+ * a Response when the portal state is unavailable (fail-closed — never a
+ * global fallback).
+ */
+async function buildPortalPrivateCombo(
+  keyId: string | undefined | null,
+  wireId: string
+): Promise<Record<string, unknown> | null | Response> {
+  if (!keyId) return null;
+  try {
+    const { buildPrivateComboRuntime } = await import("@/lib/userPortalPolicy");
+    return await buildPrivateComboRuntime(keyId, wireId);
+  } catch (error) {
+    log.error("CHAT", "Private combo resolution failed.", { error });
+    return errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, "Private combo unavailable");
+  }
+}
+
 async function handleChatImplementation(
   request: any,
   clientRawRequest: any = null,
@@ -1110,6 +1143,18 @@ async function handleChatImplementation(
   telemetry.startPhase("resolve");
   let combo: any = await getComboForModel(resolvedModelStr);
   if (reasoningDecision?.targetCombo) combo = reasoningDecision.targetCombo;
+
+  // Scoped user portal — a `user-combo/<uuid>` target is the OWNER's private
+  // combo, not a global combo name. It is authorized upstream in
+  // `enforceApiKeyPolicy` (owner + admin ceiling + personal prefs). Here it is
+  // materialized in the shape the existing combo executor consumes, so the
+  // ordinary fan-out / fallback / connection-scoping path runs unchanged.
+  // A private combo NEVER resolves through the global combo/alias lookups.
+  if (!combo && isPrivateComboWireId(resolvedModelStr)) {
+    const portalCombo = await buildPortalPrivateCombo(apiKeyInfo?.id, resolvedModelStr);
+    if (portalCombo instanceof Response) return portalCombo;
+    combo = portalCombo;
+  }
 
   // "auto" prefix fuzzy matching: "auto/fast" → "auto/best-fast", etc.
   // parseModel splits "auto/fast" into provider="auto" which isn't a real provider.

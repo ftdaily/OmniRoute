@@ -58,6 +58,8 @@ export {
 export const NO_ELIGIBLE_CONNECTION_ID = "__omniroute_key_scope_no_connection__";
 
 export interface KeyScopeApiKeyInfo extends ComboTargetKeyPolicyInfo {
+  /** Key id for id-keyed portal scope resolution (fresh state, before intersect). */
+  id?: string | null;
   allowedConnections?: unknown;
   allowedQuotas?: unknown;
 }
@@ -89,6 +91,43 @@ function noEligibleConnectionResponse(): Response {
 export async function resolveKeyConnectionScope(
   apiKeyInfo: KeyScopeApiKeyInfo | null | undefined
 ): Promise<KeyConnectionScope> {
+  const keyId = apiKeyInfo && typeof apiKeyInfo.id === "string" ? apiKeyInfo.id : null;
+  if (keyId) {
+    try {
+      // Portal key: fresh state, EMPTY-grant DENY before legacy intersect.
+      const { getPortalKeyState } = await import("@/lib/db/userPortal");
+      const state = await getPortalKeyState(keyId);
+      if (state?.portalEnabled) {
+        if (!state.usable || state.allowedConnections.length === 0) {
+          return { allowedConnections: null, rejection: noEligibleConnectionResponse() };
+        }
+        let allowed = intersectAllowedConnectionIds(state.allowedConnections, null);
+        if (!Array.isArray(allowed) || allowed.length === 0) {
+          return { allowedConnections: null, rejection: noEligibleConnectionResponse() };
+        }
+        const allowedQuotas = stringList((apiKeyInfo as { allowedQuotas?: unknown } | null | undefined)?.allowedQuotas);
+        if (allowedQuotas.length > 0) {
+          try {
+            const quotaScope = await resolveQuotaKeyScope(allowedQuotas);
+            allowed = constrainConnectionsToQuota(allowed ?? [], quotaScope.connectionIds);
+          } catch (error) {
+            log.warn("AUTH", "Quota scope unavailable; refusing connection selection", {
+              error: error instanceof Error ? error.name : "unknown",
+            });
+            allowed = [];
+          }
+        }
+        if (Array.isArray(allowed) && allowed.length === 0) {
+          return { allowedConnections: null, rejection: noEligibleConnectionResponse() };
+        }
+        return { allowedConnections: allowed, rejection: null };
+      }
+      // Only a genuinely non-portal key may retain legacy unrestricted semantics.
+    } catch {
+      // storage unavailable — never widen; deny by refusing eligibility
+      return { allowedConnections: null, rejection: noEligibleConnectionResponse() };
+    }
+  }
   let allowed = intersectAllowedConnectionIds(apiKeyInfo?.allowedConnections ?? null, null);
 
   const allowedQuotas = stringList(apiKeyInfo?.allowedQuotas);

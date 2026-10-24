@@ -69,11 +69,12 @@ import {
   parseAllowAutoCombos,
   parseCatalogScope,
   parseForcedModel,
+  parsePortalEnabled,
+  parseUserCombosEnabled,
   parseModelAccessMode,
 } from "./apiKeys/rowParsers";
 import {
   clearModelPermissionCache,
-  getCachedModelPermission,
   setCachedModelPermission,
   evictModelPermissionCache,
 } from "./apiKeys/modelPermissionCache";
@@ -103,6 +104,8 @@ interface CreateApiKeyOptions {
   allowedCombos?: string[];
   allowedConnections?: string[];
   expiresAt?: string | null;
+  portalEnabled?: boolean;
+  userCombosEnabled?: boolean;
 }
 
 export type { AccessSchedule, RateLimitRule } from "./apiKeys/types";
@@ -147,6 +150,8 @@ interface ApiKeyMetadata {
   allowAutoCombos: boolean;
   catalogScope: "all" | "combos" | "models";
   forcedModel: string | null;
+  portalEnabled: boolean;
+  userCombosEnabled: boolean;
 }
 
 interface ApiKeyRow extends JsonRecord {
@@ -202,6 +207,10 @@ interface ApiKeyRow extends JsonRecord {
   catalogScope?: unknown;
   forced_model?: unknown;
   forcedModel?: unknown;
+  portal_enabled?: unknown;
+  portalEnabled?: unknown;
+  user_combos_enabled?: unknown;
+  userCombosEnabled?: unknown;
 }
 
 interface StatementLike<TRow = unknown> {
@@ -262,7 +271,6 @@ interface ApiKeyView extends JsonRecord {
 const _keyValidationCache = new Map<string, { valid: boolean; timestamp: number }>();
 const _keyMetadataCache = new Map<string, CacheEntry<ApiKeyMetadata>>();
 const _lastUsedUpdateCache = new Map<string, number>();
-const CACHE_TTL = 60 * 1000; // 1 minute TTL
 const LAST_USED_UPDATE_TTL = 5 * 60 * 1000;
 const MAX_CACHE_SIZE = 1000;
 const EXCLUSIVE_LEASE_SCOPE = "lease:exclusive";
@@ -490,7 +498,7 @@ function getPreparedStatements(db: ApiKeysDbLike): ApiKeysStatements {
       "SELECT id, name, machine_id, model_access_mode, allowed_models, blocked_models, allowed_combos, allowed_connections, allowed_quotas, no_log, auto_resolve, is_active, access_schedule, max_requests_per_day, max_requests_per_minute, throttle_delay_ms, max_sessions, revoked_at, expires_at, ip_allowlist, scopes, rate_limits, is_banned, key_hash, allowed_endpoints, stream_default_mode, cache_default_mode, codex_service_mode, disable_non_public_models, allow_usage_command, usage_limit_enabled, daily_usage_limit_usd, weekly_usage_limit_usd, chaos_mode_enabled, compression_enabled, allow_auto_combos, catalog_scope, forced_model, proxy_id FROM api_keys WHERE key_hash = ?"
     );
     _stmtInsertKey = db.prepare(
-      "INSERT INTO api_keys (id, name, key, machine_id, model_access_mode, allowed_models, allowed_combos, allowed_connections, no_log, created_at, key_prefix, key_hash, scopes, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO api_keys (id, name, key, machine_id, model_access_mode, allowed_models, allowed_combos, allowed_connections, no_log, created_at, key_prefix, key_hash, scopes, expires_at, portal_enabled, user_combos_enabled, portal_session_revision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"
     );
     _stmtDeleteKey = db.prepare("DELETE FROM api_keys WHERE id = ?");
   }
@@ -563,6 +571,8 @@ export async function getApiKeys(limit?: number, offset?: number) {
     camelRow.allowAutoCombos = parseAllowAutoCombos((camelRow as JsonRecord).allowAutoCombos);
     camelRow.catalogScope = parseCatalogScope((camelRow as JsonRecord).catalogScope);
     camelRow.forcedModel = parseForcedModel((camelRow as JsonRecord).forcedModel);
+    camelRow.portalEnabled = parsePortalEnabled((camelRow as JsonRecord).portal_enabled ?? (camelRow as JsonRecord).portalEnabled ?? false);
+    camelRow.userCombosEnabled = parseUserCombosEnabled((camelRow as JsonRecord).user_combos_enabled ?? (camelRow as JsonRecord).userCombosEnabled ?? false);
     Object.assign(camelRow, parseApiKeyUsageLimitFields(camelRow));
     if (typeof camelRow.id === "string" && camelRow.id.length > 0) {
       setNoLog(camelRow.id, camelRow.noLog === true);
@@ -708,6 +718,8 @@ export async function getApiKeyById(id: string) {
   camelRow.allowAutoCombos = parseAllowAutoCombos((camelRow as JsonRecord).allowAutoCombos);
   camelRow.catalogScope = parseCatalogScope((camelRow as JsonRecord).catalogScope);
   camelRow.forcedModel = parseForcedModel((camelRow as JsonRecord).forcedModel);
+  camelRow.portalEnabled = parsePortalEnabled((camelRow as JsonRecord).portal_enabled ?? (camelRow as JsonRecord).portalEnabled ?? false);
+  camelRow.userCombosEnabled = parseUserCombosEnabled((camelRow as JsonRecord).user_combos_enabled ?? (camelRow as JsonRecord).userCombosEnabled ?? false);
   Object.assign(camelRow, parseApiKeyUsageLimitFields(camelRow));
   if (typeof camelRow.id === "string" && camelRow.id.length > 0) {
     setNoLog(camelRow.id, camelRow.noLog === true);
@@ -781,7 +793,9 @@ export async function createApiKey(
     apiKey.key.slice(0, 12),
     await hashKey(apiKey.key),
     JSON.stringify(scopes),
-    apiKey.expiresAt
+    apiKey.expiresAt,
+    options.portalEnabled ? 1 : 0,
+    options.userCombosEnabled ? 1 : 0
   );
   setNoLog(apiKey.id, false);
 
@@ -801,9 +815,9 @@ export async function regenerateApiKey(id: string) {
   const newHash = await hashKey(newKey);
   const newPrefix = newKey.slice(0, 12);
 
-  // Update in DB
+  // Update in DB (regen rotates the secret only; portal flags stay as the row has them).
   const updateStmt = db.prepare(
-    "UPDATE api_keys SET key = ?, key_hash = ?, key_prefix = ? WHERE id = ?"
+    "UPDATE api_keys SET key = ?, key_hash = ?, key_prefix = ?, portal_session_revision = COALESCE(portal_session_revision, 0) + 1, portal_enabled = COALESCE(portal_enabled, 0), user_combos_enabled = COALESCE(user_combos_enabled, 0) WHERE id = ?"
   );
   updateStmt.run(encryptApiKeySecret(newKey), newHash, newPrefix, id);
 
@@ -874,6 +888,8 @@ export async function updateApiKeyPermissions(
     normalized.allowAutoCombos === undefined &&
     normalized.catalogScope === undefined &&
     normalized.forcedModel === undefined &&
+    normalized.portalEnabled === undefined &&
+    normalized.userCombosEnabled === undefined &&
     !hasUsageLimitUpdate(normalized as Record<string, unknown>)
   ) {
     return false;
@@ -1046,6 +1062,16 @@ export async function updateApiKeyPermissions(
     params.forcedModel = parseForcedModel(normalized.forcedModel);
   }
 
+  if (normalized.portalEnabled !== undefined) {
+    updates.push("portal_enabled = @portalEnabled");
+    (params as Record<string, unknown>).portalEnabled = normalized.portalEnabled ? 1 : 0;
+  }
+
+  if (normalized.userCombosEnabled !== undefined) {
+    updates.push("user_combos_enabled = @userCombosEnabled");
+    (params as Record<string, unknown>).userCombosEnabled = normalized.userCombosEnabled ? 1 : 0;
+  }
+
   appendUsageLimitUpdates(normalized as Record<string, unknown>, updates, params);
 
   const maxSessionsUpdate = (normalized as Record<string, unknown>).maxSessions;
@@ -1131,7 +1157,7 @@ export async function updateApiKeyPermissions(
           : normalized.allowedConnections;
       assertExclusiveLeaseKeyPolicy(nextScopes, nextAllowedConnections);
       const upd = db
-        .prepare(`UPDATE api_keys SET ${updates.join(", ")} WHERE id = @id`)
+        .prepare(`UPDATE api_keys SET ${updates.join(", ")}, portal_session_revision = COALESCE(portal_session_revision, 0) + 1 WHERE id = @id`)
         .run(params);
       changedRows = upd.changes ?? 0;
       db.exec("COMMIT");
@@ -1158,7 +1184,7 @@ export async function updateApiKeyPermissions(
       }
       assertExclusiveLeaseKeyPolicy(parseStringList(row.scopes), normalized.allowedConnections);
       const upd = db
-        .prepare(`UPDATE api_keys SET ${updates.join(", ")} WHERE id = @id`)
+        .prepare(`UPDATE api_keys SET ${updates.join(", ")}, portal_session_revision = COALESCE(portal_session_revision, 0) + 1 WHERE id = @id`)
         .run(params);
       changedRows = upd.changes ?? 0;
       db.exec("COMMIT");
@@ -1171,7 +1197,7 @@ export async function updateApiKeyPermissions(
       throw err;
     }
   } else {
-    const upd = db.prepare(`UPDATE api_keys SET ${updates.join(", ")} WHERE id = @id`).run(params);
+    const upd = db.prepare(`UPDATE api_keys SET ${updates.join(", ")}, portal_session_revision = COALESCE(portal_session_revision, 0) + 1 WHERE id = @id`).run(params);
     changedRows = upd.changes ?? 0;
   }
 
@@ -1249,6 +1275,8 @@ export async function deleteApiKey(id: string) {
 
   db.prepare("DELETE FROM domain_budgets WHERE api_key_id = ?").run(id);
   db.prepare("DELETE FROM domain_cost_history WHERE api_key_id = ?").run(id);
+  db.prepare("DELETE FROM key_preferences WHERE key_id = ?").run(id);
+  db.prepare("DELETE FROM user_combos WHERE key_id = ?").run(id);
   setNoLog(id, false);
 
   // Invalidate caches since a key was removed
@@ -1271,7 +1299,7 @@ export async function revokeApiKey(id: string): Promise<boolean> {
 
   const result = db
     .prepare(
-      "UPDATE api_keys SET revoked_at = COALESCE(revoked_at, @ts), is_active = 0 WHERE id = @id"
+      "UPDATE api_keys SET revoked_at = COALESCE(revoked_at, @ts), is_active = 0, portal_session_revision = COALESCE(portal_session_revision, 0) + 1 WHERE id = @id"
     )
     .run({ id, ts: new Date().toISOString() });
 
@@ -1325,10 +1353,8 @@ export async function validateApiKey(key: string | null | undefined) {
   const hashedKey = await hashKey(key);
   const cacheKey = hashedKey;
 
-  const cached = _keyValidationCache.get(cacheKey);
-  if (cached && now - cached.timestamp < CACHE_TTL) {
-    return cached.valid;
-  }
+  // SQLite remains authoritative across independently bundled route modules.
+  // A cached positive can outlive rotation/revocation performed in another bundle.
 
   // A Redis hit never authorizes on its own (GHSA-66vh-35g3-78qv): eviction on regenerate/revoke
   // is best-effort and a late SET can resurrect an evicted entry, so the entry could keep a
@@ -1463,16 +1489,14 @@ export async function getApiKeyMetadata(
       allowAutoCombos: true,
       catalogScope: "all",
       forcedModel: null,
+      portalEnabled: false,
+      userCombosEnabled: false,
       ...selfLoopKeyOverrides(key),
     };
   }
 
-  // Check cache first
+  // Re-read key ownership and policy after mutations in independently bundled routes.
   const hashedKey = await hashKey(key);
-  const cached = _keyMetadataCache.get(hashedKey);
-  if (cached && now - cached.timestamp < CACHE_TTL) {
-    return cached.value;
-  }
 
   const db = getDbInstance() as ApiKeysDbLike;
   const stmt = getPreparedStatements(db);
@@ -1561,6 +1585,12 @@ export async function getApiKeyMetadata(
       (record as JsonRecord).catalog_scope ?? (record as JsonRecord).catalogScope
     ),
     forcedModel: parseForcedModel(record.forced_model ?? record.forcedModel),
+    portalEnabled: parsePortalEnabled(
+      (record as JsonRecord).portal_enabled ?? (record as JsonRecord).portalEnabled
+    ),
+    userCombosEnabled: parseUserCombosEnabled(
+      (record as JsonRecord).user_combos_enabled ?? (record as JsonRecord).userCombosEnabled
+    ),
     ...parseApiKeyUsageLimitFields(record as JsonRecord),
   };
 
@@ -1609,20 +1639,44 @@ export async function isComboNameAllowedForKey(
   return allowedModels.some((pattern) => modelPatternMatches(pattern, candidates));
 }
 
+/**
+ * Server-only evaluation options for isModelAllowedForKey. NOT caller input:
+ * no route/param may set these. Only the portal catalog projection uses
+ * `ignorePersonalRestrictions` (admin-ceiling-only view so disabled models
+ * stay listed and re-enableable). Inference keeps the default (false).
+ */
+export interface ModelAllowedOptions {
+  ignorePersonalRestrictions?: boolean;
+}
+
 export async function isModelAllowedForKey(
   key: string | null | undefined,
   modelId: string | null | undefined,
-  resolvedModelId?: string | null
+  resolvedModelId?: string | null,
+  options?: ModelAllowedOptions
 ): Promise<boolean> {
   // If no key provided, allow (request may be using different auth method like JWT)
   // If no modelId provided, deny (invalid request)
   if (!key) return true;
   if (!modelId) return false;
 
-  // Create cache key
+  const ignorePersonal = options?.ignorePersonalRestrictions === true;
+  if (!ignorePersonal) {
+    const metadata = await getApiKeyMetadata(key);
+    if (!metadata) return false;
+    try {
+      const { isModelPersonallyDisabled } = await import("./apiKeys/userPortalPersonal");
+      if (await isModelPersonallyDisabled(metadata, modelId, resolvedModelId ?? null)) return false;
+    } catch {
+      return false;
+    }
+  }
+
+  // Create cache key — the ignore flag partitions the cache so an
+  // admin-ceiling read can never bleed into (or out of) an inference verdict.
   const cacheKey = resolvedModelId
-    ? JSON.stringify([key, modelId, resolvedModelId])
-    : `${key}:${modelId}`;
+    ? JSON.stringify([key, modelId, resolvedModelId, ignorePersonal ? "no-personal" : ""])
+    : `${key}:${modelId}${ignorePersonal ? ":no-personal" : ""}`;
   const now = Date.now();
   const catalogGeneration = getModelCatalogCacheVersion();
   const usesSettingDependentClaudeRouting =
@@ -1630,10 +1684,7 @@ export async function isModelAllowedForKey(
     (typeof resolvedModelId === "string" && isPotentialUnprefixedClaudeCodeModel(resolvedModelId));
 
   // Check permission cache
-  const cached = getCachedModelPermission(cacheKey, now, catalogGeneration);
-  if (!usesSettingDependentClaudeRouting && cached !== undefined) {
-    return cached;
-  }
+  // Do not trust bundle-local permission results after another route updates key policy.
 
   const metadata = await getApiKeyMetadata(key);
   // SECURITY: Key not found in database = deny access (invalid/non-existent key)
@@ -1653,6 +1704,20 @@ export async function isModelAllowedForKey(
   // broad dynamic scopes like cc/* while excluding expensive families.
   if (blockedModels?.some((pattern) => modelPatternMatches(pattern, modelPermissionCandidates))) {
     return false;
+  }
+
+  // Personal portal disables are user-scoped deny entries, checked inline with
+  // the blocklist BEFORE any cache write so a changed preference list can never
+  // re-admit a model through a stale ALLOW. Skipped ONLY for the server-side
+  // admin-ceiling catalog projection (ignorePersonalRestrictions) — inference
+  // always enforces personal disables.
+  if (!ignorePersonal) {
+    try {
+      const { isModelPersonallyDisabled } = await import("./apiKeys/userPortalPersonal");
+      if (await isModelPersonallyDisabled(metadata, modelId, resolvedModelId ?? null)) return false;
+    } catch {
+      // Portal storage unavailable — never fail open into allow from this hook.
+    }
   }
 
   // Check disableNonPublicModels flag

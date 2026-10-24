@@ -463,8 +463,6 @@ export function buildApiKeyAccessPayload(
     blockedModels: validBlockedModels,
     allowedCombos: validCombos,
     allowedConnections: validConnections,
-    portalEnabled: formState.portalEnabled,
-    userCombosEnabled: formState.userCombosEnabled,
     noLog: formState.noLog,
     autoResolve: formState.autoResolve,
     isActive: formState.isActive,

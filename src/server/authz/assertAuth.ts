@@ -47,7 +47,7 @@ export function readSubjectFromHeaders(headers: HeaderSource): AuthSubject {
 
 export function readRouteClassFromHeaders(headers: HeaderSource): RouteClass | null {
   const raw = readHeader(headers, AUTHZ_HEADER_ROUTE_CLASS);
-  if (raw === "PUBLIC" || raw === "CLIENT_API" || raw === "MANAGEMENT" || raw === "USER") return raw;
+  if (raw === "PUBLIC" || raw === "CLIENT_API" || raw === "MANAGEMENT") return raw;
   return null;
 }
 

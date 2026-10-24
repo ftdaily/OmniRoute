@@ -17,7 +17,7 @@
  * Any route that cannot be classified MUST fail closed.
  */
 
-export type RouteClass = "PUBLIC" | "CLIENT_API" | "MANAGEMENT" | "USER";
+export type RouteClass = "PUBLIC" | "CLIENT_API" | "MANAGEMENT";
 
 /**
  * Why a particular path was placed into a route class. Used for telemetry,
@@ -27,8 +27,6 @@ export type RouteClass = "PUBLIC" | "CLIENT_API" | "MANAGEMENT" | "USER";
 export type ClassificationReason =
   | "public_prefix"
   | "public_readonly_prefix"
-  | "user_portal_login"
-  | "user_portal"
   | "dashboard_prefix"
   | "setup_wizard"
   | "public_connect_page"

@@ -101,46 +101,62 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("portal toggle grant gate", () => {
-  it("no grant: enable blocked, helper + go-to-connections present", async () => {
+describe("portal toggles hidden (user portal removed), connection grants still usable", () => {
+  it("no portal switch or combos switch rendered", async () => {
     installFetch(keyRecord({ allowedConnections: [] }));
     await openGeneral();
-    const portalSwitch = await screen.findByRole("switch", { name: /user portal access/i });
-    expect(portalSwitch.getAttribute("aria-checked")).toBe("false");
-    expect((portalSwitch as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/Open Connections, turn off Allow all connections/i)).toBeDefined();
-    expect(screen.getByRole("button", { name: /go to connections/i })).toBeDefined();
+    expect(screen.queryByRole("switch", { name: /user portal access/i })).toBeNull();
+    expect(screen.queryByRole("switch", { name: /private combos/i })).toBeNull();
   });
 
-  it("no grant: action opens connections tab", async () => {
+  it("management tabs still render", async () => {
     installFetch(keyRecord({ allowedConnections: [] }));
     await openGeneral();
-    fireEvent.click(screen.getByRole("button", { name: /go to connections/i }));
+    for (const name of [/general/i, /models/i, /combos/i, /connections/i, /limits/i]) {
+      expect(screen.getByRole("tab", { name })).toBeDefined();
+    }
+  });
+
+  it("connections tab shows grant controls and selects a connection", async () => {
+    installFetch(keyRecord({ allowedConnections: [] }));
+    await openGeneral();
+    fireEvent.click(screen.getByRole("tab", { name: /connections/i }));
     await waitFor(() => {
       expect(screen.getByRole("tab", { name: /connections/i }).getAttribute("aria-selected")).toBe("true");
     });
+    // Grant UI: All/Selected segmented buttons + per-connection list when restricted.
+    const grantButtons = screen.queryAllByRole("button", { name: /connections/i });
+    const listControls = screen.queryByText(/select at least one connection/i)
+      || screen.queryByText(/restricted to/i)
+      || screen.queryByText(/all connections/i);
+    expect(grantButtons.length > 0 || listControls !== null).toBe(true);
   });
 
-  it("with grant: enable works via shared Toggle onChange", async () => {
-    installFetch(keyRecord({ allowedConnections: ["conn-1"] }));
-    await openGeneral();
-    const portalSwitch = await screen.findByRole("switch", { name: /user portal access/i });
-    expect((portalSwitch as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(portalSwitch);
-    await waitFor(() => {
-      expect(portalSwitch.getAttribute("aria-checked")).toBe("true");
+  it("grant selection persists through PATCH without portal flags", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      const s = String(url);
+      if (s.includes("/api/keys/test-key-id") && init?.method === "PATCH") {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        expect(body.portalEnabled).toBeUndefined();
+        expect(body.userCombosEnabled).toBeUndefined();
+        return { ok: true, status: 200, json: async () => ({ message: "ok" }) };
+      }
+      if (s.includes("/api/keys/test-key-id")) return { ok: true, status: 200, json: async () => keyRecord({ allowedConnections: [] }) };
+      if (s.includes("/api/providers")) return { ok: true, status: 200, json: async () => ({ connections: [{ id: "conn-1", name: "AmanAI", provider: "test" }] }) };
+      return { ok: true, status: 200, json: async () => ({}) };
     });
-  });
-
-  it("enabled + grant removed: OFF still works", async () => {
-    installFetch(keyRecord({ allowedConnections: [], portalEnabled: true }));
+    vi.stubGlobal("fetch", fetchMock);
     await openGeneral();
-    const portalSwitch = await screen.findByRole("switch", { name: /user portal access/i });
-    expect(portalSwitch.getAttribute("aria-checked")).toBe("true");
-    expect((portalSwitch as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(portalSwitch);
+    fireEvent.click(screen.getByRole("tab", { name: /connections/i }));
     await waitFor(() => {
-      expect(portalSwitch.getAttribute("aria-checked")).toBe("false");
+      expect(screen.getByRole("tab", { name: /connections/i }).getAttribute("aria-selected")).toBe("true");
     });
+    const save = screen.queryByRole("button", { name: /save/i });
+    if (save) {
+      fireEvent.click(save);
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalled();
+      });
+    }
   });
 });

@@ -295,9 +295,6 @@ function AccessGeneralPanelPanelContent({ context }: { context: AccessFormContex
       setIsActive={form.setIsActive}
       setIsBanned={form.setIsBanned}
       setExpiresAt={form.setExpiresAt}
-      setPortalEnabled={form.setPortalEnabled}
-      setUserCombosEnabled={form.setUserCombosEnabled}
-      goToConnections={() => switchTab("connections")}
       setManageEnabled={form.setManageEnabled}
       setSelfUsageEnabled={form.setSelfUsageEnabled}
       setSelfAccountQuotaEnabled={form.setSelfAccountQuotaEnabled}

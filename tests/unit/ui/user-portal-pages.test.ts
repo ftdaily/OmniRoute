@@ -17,58 +17,6 @@ const src = (p: string) => readFileSync(resolve(ROOT, p), "utf-8");
 const exists = (p: string) => existsSync(resolve(ROOT, p));
 
 // --- /user/login page ---
-test("src/app/user/login/page.tsx exists outside (dashboard) layout", () => {
-  assert.ok(exists("src/app/user/login/page.tsx"), "login page missing");
-  const s = src("src/app/user/login/page.tsx");
-  assert.ok(
-    s.includes('outside (dashboard) layout'),
-    "login page must document standalone placement"
-  );
-  assert.ok(
-    s.includes('type="password"') || s.includes("type='password'"),
-    "raw key input must be password field"
-  );
-  assert.ok(
-    s.includes("localStorage") === false && s.includes("sessionStorage") === false,
-    "never persist raw key in browser storage"
-  );
-  assert.ok(s.includes("/api/user/auth/login"), "login must POST frozen contract route");
-  assert.ok(s.includes("window.location.origin"), "BaseURL from served host, not hardcoded localhost");
-  assert.ok(s.includes("localhost:") === false, "no hardcoded localhost");
-});
-
-// --- /user page ---
-test("src/app/user/page.tsx exists with models + combos + logout-all", () => {
-  assert.ok(exists("src/app/user/page.tsx"), "user page missing");
-  const s = src("src/app/user/page.tsx");
-  assert.ok(s.includes("/api/user/models"), "must fetch effective model catalog");
-  assert.ok(s.includes("/api/user/preferences"), "must PATCH disabledModels+expectedRevision");
-  assert.ok(s.includes("/api/user/combos"), "must CRUD private combos");
-  assert.ok(s.includes("user-combo/"), "private combo wire id copy required");
-  assert.ok(s.includes("/api/user/auth/logout"), "logout-all button required");
-});
-
-// --- /user layout i18n scope ---
-test("src/app/user/layout.tsx re-scopes userPortal via SectionI18nProvider", () => {
-  assert.ok(exists("src/app/user/layout.tsx"), "user layout missing");
-  const s = src("src/app/user/layout.tsx");
-  assert.ok(s.includes("SectionI18nProvider"), "must use existing provider");
-  assert.ok(s.includes("userPortal"), "must include userPortal namespace");
-  assert.ok(!s.includes("(dashboard)"), "must stay outside admin layout");
-});
-
-// --- user combos edit/delete/enable ---
-test("src/app/user/page.tsx manages own combos via id routes + revisions", () => {
-  const s = src("src/app/user/page.tsx");
-  assert.ok(s.includes("encodeURIComponent("), "id routes must encode id");
-  assert.ok(s.includes('"PATCH"') || s.includes("'PATCH'") || s.includes("method: \"PATCH\""), "PATCH expectedRevision required");
-  assert.ok(s.includes('"DELETE"') || s.includes("method: \"DELETE\""), "DELETE with revision required");
-  assert.ok(s.includes("comboWireId"), "wire id must not double-prefix");
-  assert.ok(s.includes("window.confirm"), "delete confirmation required");
-  assert.ok(s.includes("comboDeleteConfirm") && s.includes("comboUpdateFailed"), "EN labels required");
-});
-
-// --- own CSRF helper ---
 test("src/lib/userPortalCsrf.ts fetches own token, no hardcoded host", () => {
   assert.ok(exists("src/lib/userPortalCsrf.ts"), "CSRF helper missing");
   const s = src("src/lib/userPortalCsrf.ts");
@@ -89,14 +37,12 @@ test("en.json root gains userPortal namespace only", () => {
   );
 });
 
-// --- admin key-editor portal flags ---
-test("GeneralTab gates portalEnabled on explicit nonempty connection grant", () => {
+// --- admin key-editor: portal flag toggles hidden; connection grant UI kept, backend validation intact ---
+test("GeneralTab hides portal flags; connection grant UI retained", () => {
   const p = "src/app/(dashboard)/dashboard/api-manager/[id]/access/tabs/GeneralTab.tsx";
   const s = src(p);
-  assert.ok(s.includes("portalEnabled"), "portalEnabled flag UI missing");
-  assert.ok(s.includes("userCombosEnabled"), "userCombosEnabled flag UI missing");
-  assert.ok(
-    s.includes("selectedConnections") || s.includes("allowAllConnections"),
-    "enable must depend on existing connection grant selection"
-  );
+  assert.ok(!s.includes("setPortalEnabled"), "portalEnabled toggle must stay hidden");
+  assert.ok(!s.includes("setUserCombosEnabled"), "userCombosEnabled toggle must stay hidden");
+  const conn = src("src/app/(dashboard)/dashboard/api-manager/[id]/access/tabs/ConnectionsTab.tsx");
+  assert.ok(conn.includes("allowAllConnections") || conn.includes("selectedConnections"), "connection grant UI must be retained");
 });

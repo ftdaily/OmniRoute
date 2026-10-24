@@ -84,15 +84,6 @@ const PUBLIC_CLOUD_API_ROUTES = [
   { path: "/api/cloud/models/alias", methods: new Set(["GET", "HEAD", "OPTIONS"]) },
 ];
 
-// Scoped user portal login bootstrap: exact path, POST only (OPTIONS for
-// preflight). The handler enforces its own origin + rate guard; every other
-// /api/user path stays MANAGEMENT-path and enforces requireUserSession
-// in-handler. Never a subtree wildcard.
-const PUBLIC_USER_PORTAL_LOGIN = {
-  path: "/api/user/auth/login",
-  methods: new Set(["POST", "OPTIONS"]),
-};
-
 function pathMatchesExactRoute(pathname: string, routePath: string): boolean {
   return pathname === routePath || pathname === `${routePath}/`;
 }
@@ -142,13 +133,6 @@ export function isPublicApiRoute(pathname: string, method = "GET"): boolean {
   }
 
   if (isPublicCloudApiRoute(pathname, method)) {
-    return true;
-  }
-
-  if (
-    pathMatchesExactRoute(pathname, PUBLIC_USER_PORTAL_LOGIN.path) &&
-    PUBLIC_USER_PORTAL_LOGIN.methods.has(String(method).toUpperCase())
-  ) {
     return true;
   }
 

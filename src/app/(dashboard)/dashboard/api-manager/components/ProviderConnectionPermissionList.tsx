@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getProviderDisplayName } from "@/lib/display/names";
+import { useProviderNodeMap, resolveProviderName } from "@/lib/display/useProviderNodeMap";
 import { Input } from "@/shared/components";
 import { compareTr, matchesSearch } from "@/shared/utils/turkishText";
 
@@ -60,6 +60,7 @@ export const ProviderConnectionPermissionList = memo(function ProviderConnection
 }: ProviderConnectionPermissionListProps) {
   const tc = useTranslations("common");
 
+  const nodeMap = useProviderNodeMap();
   const safeConnections = useMemo(
     () => (Array.isArray(connections) ? connections : []),
     [connections]
@@ -107,7 +108,7 @@ export const ProviderConnectionPermissionList = memo(function ProviderConnection
   const filteredGroups = useMemo(() => {
     const result: Array<[provider: string, connections: ProviderConnection[]]> = [];
     for (const [provider, conns] of allConnectionsByProvider.entries()) {
-      const providerDisplayName = getProviderDisplayName(provider) || provider;
+      const providerDisplayName = resolveProviderName(provider, nodeMap);
       const providerMatches =
         isSearching &&
         (matchesSearch(provider, query) || matchesSearch(providerDisplayName, query));
@@ -124,7 +125,7 @@ export const ProviderConnectionPermissionList = memo(function ProviderConnection
       }
     }
     return result.sort(([a], [b]) => compareTr(a, b));
-  }, [allConnectionsByProvider, isSearching, query]);
+  }, [allConnectionsByProvider, isSearching, query, nodeMap]);
 
   // Expand providers that have active selections by default. `connections` /
   // `selectedConnections` commonly arrive after mount (the permissions modal
@@ -248,7 +249,7 @@ export const ProviderConnectionPermissionList = memo(function ProviderConnection
             const isExpanded = isSearching
               ? !collapsedInSearch.has(provider)
               : expandedProviders.has(provider);
-            const providerDisplayName = getProviderDisplayName(provider) || provider;
+            const providerDisplayName = resolveProviderName(provider, nodeMap);
 
             return (
               <div key={provider} className="group">

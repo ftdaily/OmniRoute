@@ -240,3 +240,29 @@ test("updateApiKeyPermissions without scopes field does not emit any scope audit
   );
   assert.equal(scopeEvents.length, 0);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// merge-3853: createApiKey round-trip — defaults + preferred/portal/alias
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("createApiKey round-trip: defaults, preferredConnections, portal flags, alias update", async () => {
+  const created = await apiKeysDb.createApiKey("roundtrip", MACHINE_ID, [], {
+    preferredConnections: ["conn-a"],
+    portalEnabled: true,
+    userCombosEnabled: true,
+  });
+  const row = (await apiKeysDb.getApiKeyById(created.id)) as unknown as Record<string, unknown>;
+  assert.deepEqual(row.preferredConnections, ["conn-a"]);
+  assert.equal(row.portalEnabled, true);
+  assert.equal(row.userCombosEnabled, true);
+  // Upstream intent: alias flag is NOT an INSERT column (column fallback
+  // DDL DEFAULT 1, opt-out); it flows through the shared update path only.
+  assert.equal(row.allowCcDiscoveryAliases, true);
+  await apiKeysDb.updateApiKeyPermissions(created.id, {
+    preferredConnections: ["conn-b"],
+    allowCcDiscoveryAliases: true,
+  });
+  const updated = (await apiKeysDb.getApiKeyById(created.id)) as unknown as Record<string, unknown>;
+  assert.deepEqual(updated.preferredConnections, ["conn-b"]);
+  assert.equal(updated.allowCcDiscoveryAliases, true);
+});

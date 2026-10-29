@@ -11,6 +11,9 @@
 //   - its scheduled full sweep of `main` runs once a day (05:23) — main's SHA only moves on
 //     a release, and the midday/evening re-sweeps held the single omni-release slot for
 //     ~2 h each while `--quick` push runs waited behind them (2026-10-19).
+// Fork delta (this repo): ci.yml and quality.yml keep `mine` on push AND pull_request —
+// this fork publishes its own `mine` image channel from that branch and needs its CI
+// gate on both triggers. The diet invariant (no per-push runs on release/**) is unchanged.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -34,12 +37,14 @@ const load = (file: string): Workflow =>
 for (const file of ["ci.yml", "quality.yml"]) {
   test(`${file}: push trigger is main-only; PRs and merge groups still cover release/**`, () => {
     const on = load(file).on ?? {};
+    // Fork delta: `mine` rides alongside `main` on push (same fork-delta rationale as the
+    // admission-verdict test: the `mine` image channel needs its CI gate on both triggers).
     assert.deepEqual(
       on.push?.branches,
-      ["main"],
+      ["main", "mine"],
       `${file} must not run the matrix per release push`
     );
-    assert.deepEqual(on.pull_request?.branches, ["main", "release/**"]);
+    assert.deepEqual(on.pull_request?.branches, ["main", "mine", "release/**"]);
     assert.ok(on.merge_group, `${file} keeps the merge-queue trigger`);
   });
 }

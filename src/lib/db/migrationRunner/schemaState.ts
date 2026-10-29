@@ -181,6 +181,45 @@ export function reconcileRenumberedMigrations(db: SqliteAdapter, files: Migratio
       );
     }
 
+    // 213->217 (fork portal renumber): only remap when the FULL portal shape
+    // already exists. A columns-only partial keeps its 213 row so 217 stays
+    // pending and the 217 dispatch heals the missing tables.
+    const isPortal213Compat =
+      compatibility.fromVersion === "213" && compatibility.toVersion === "217";
+    const portalShapeComplete =
+      !isPortal213Compat ||
+      (hasColumn(db, "api_keys", "portal_enabled") &&
+        hasColumn(db, "api_keys", "user_combos_enabled") &&
+        hasColumn(db, "api_keys", "portal_session_revision") &&
+        hasTable(db, "key_preferences") &&
+        hasTable(db, "user_combos"));
+    if (isPortal213Compat && !portalShapeComplete) {
+      // Partial portal shape: remap the legacy 213 row to 217 to free the
+      // 213 slot for the upstream 213 file, then drop the 217 marker so 217
+      // stays pending — the 217 dispatch heals the missing tables via
+      // applyMigrationSkippingExistingColumns and writes the real 217 row.
+      db.transaction(() => {
+        db.prepare(
+          "UPDATE _omniroute_migrations SET version = ?, name = ? WHERE version = ? AND name = ?"
+        ).run(
+          compatibility.toVersion,
+          compatibility.toName,
+          compatibility.fromVersion,
+          compatibility.fromName
+        );
+        db.prepare("DELETE FROM _omniroute_migrations WHERE version = ? AND name = ?").run(
+          compatibility.toVersion,
+          compatibility.toName
+        );
+      })();
+      repaired = true;
+      console.warn(
+        `[Migration] Reconciled renamed migration ${compatibility.fromVersion}_${compatibility.fromName} ` +
+          `to ${compatibility.toVersion}_${compatibility.toName} to preserve pending migrations.`
+      );
+      continue;
+    }
+
     const applyRepair = db.transaction(() => {
       if (targetRow) {
         db.prepare("DELETE FROM _omniroute_migrations WHERE version = ? AND name = ?").run(

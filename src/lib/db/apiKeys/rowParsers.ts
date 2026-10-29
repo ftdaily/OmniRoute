@@ -76,6 +76,12 @@ export function parseUserCombosEnabled(value: unknown): boolean {
   return value === 1 || value === "1" || value === true;
 }
 
+export function parseAllowCcDiscoveryAliases(value: unknown): boolean {
+  // DEFAULT 1 — keys predating this column keep the discovery catalog they had.
+  if (value === 0 || value === "0" || value === false) return false;
+  return true;
+}
+
 export type CatalogScope = "all" | "combos" | "models";
 
 export function parseCatalogScope(value: unknown): CatalogScope {

@@ -224,14 +224,9 @@ async function postHandler(request: Request) {
     const tokenHash = hashToken(rawToken);
     const token = getRelayTokenByHash(tokenHash);
     if (!token) {
-      recordRelayUsage("unknown", {
-        requestId: request.headers.get("x-request-id") || undefined,
-        status: "auth_failed",
-        statusCode: 401,
-        latencyMs: Date.now() - startTime,
-        clientIp,
-        userAgent,
-      });
+      // No analytics row for an unknown token: "unknown" has no relay_tokens
+      // FK row, so an INSERT would throw FOREIGN KEY → 500 and mask the 401.
+      // The 401 response below is the audit signal.
       return new Response(JSON.stringify(buildErrorBody(401, "Invalid relay token")), {
         status: 401,
         headers: JSON_CORS_HEADERS,

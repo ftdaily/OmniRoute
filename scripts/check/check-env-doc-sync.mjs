@@ -220,6 +220,11 @@ const IGNORE_FROM_CODE = new Set([
   // write-build-sha.mjs to stamp dist/BUILD_SHA — injected by the build, never
   // configured by users in .env.
   "OMNIROUTE_BUILD_SHA",
+  // Build-profile signal: set by `build:backend` (package.json) and read by
+  // scripts/build/build-next-isolated.mjs + src/lib/agentPorts/supervisor.ts
+  // (skip agent listeners during backend-only builds) — injected by the build,
+  // never configured by users in .env.
+  "OMNIROUTE_BUILD_BACKEND_ONLY",
   // Listener-owned self-fetch transport signal. The HTTP/HTTPS launchers set
   // this before application imports; it is not user-configurable product env.
   "OMNIROUTE_INTERNAL_SCHEME",

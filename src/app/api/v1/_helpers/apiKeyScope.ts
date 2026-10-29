@@ -21,7 +21,7 @@ import { hasManageScope } from "@/shared/constants/managementScopes";
  * `apiKeyId !== null` ⟺ `keyState === "valid"`. Additive field: every consumer
  * that only reads `apiKeyId` keeps working unchanged.
  */
-export type ApiKeyState = "none" | "unresolved" | "invalid" | "valid";
+export type ApiKeyState = "none" | "unresolved" | "invalid" | "retired" | "valid";
 
 export interface ApiKeyRequestScope {
   apiKey: string | null;
@@ -57,7 +57,19 @@ export async function getApiKeyRequestScope(request: Request): Promise<ApiKeyReq
   // revoked/expired/banned key as invalid without each route re-implementing
   // the check — this is the single lifecycle gate; routes must not re-run it.
   let keyState: ApiKeyState = "unresolved";
-  if (apiKeyMetadata) keyState = (await validateApiKey(apiKey)) ? "valid" : "invalid";
+  if (apiKeyMetadata) {
+    keyState = (await validateApiKey(apiKey)) ? "valid" : "invalid";
+  } else {
+    // A rotated-out secret leaves no row: the tombstone marks it retired
+    // (deny, never anonymous). Genuinely unknown keys stay unresolved.
+    // A tombstone lookup that cannot RUN must NOT be caught here: it throws
+    // up to enforceApiKeyPolicy, which maps it to 503 (never anonymous).
+    const { hashKey, isRetiredApiKeyHash } = await import("@/lib/db/apiKeys");
+    const { getDbInstance } = await import("@/lib/db/core");
+    if (isRetiredApiKeyHash(getDbInstance(), await hashKey(apiKey))) {
+      keyState = "retired";
+    }
+  }
   if (keyState !== "valid") {
     return {
       apiKey,

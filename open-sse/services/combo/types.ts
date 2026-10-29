@@ -81,10 +81,15 @@ export type HandleSingleModel = (
  * `true` means the target may be dispatched.
  * `false` is the generic availability bucket (credentials, key policy, hidden).
  * `"model_not_in_catalog"` is the live-catalog miss, recorded separately.
+ * `"key_policy_denied"` is an API-key policy denial (#12886): the requested
+ * combo is not granted or the target is blocked for this key. Recorded as a
+ * distinct skip reason so the terminal response can surface 403 instead of
+ * collapsing into the generic 503 availability bucket.
  */
 export type ModelAvailabilityResult =
   | boolean
   | "model_not_in_catalog"
+  | "key_policy_denied"
   | { available: false; reason: "connection_cooldown"; retryAfterMs: number };
 
 export type IsModelAvailable = (
@@ -95,9 +100,11 @@ export type IsModelAvailable = (
 /** `null` when the target may be dispatched. */
 export function modelAvailabilitySkipReason(
   result: ModelAvailabilityResult
-): "availability" | "model_not_in_catalog" | null {
+): "availability" | "model_not_in_catalog" | "key_policy_denied" | null {
   if (result === true) return null;
-  return result === "model_not_in_catalog" ? "model_not_in_catalog" : "availability";
+  if (result === "model_not_in_catalog") return "model_not_in_catalog";
+  if (result === "key_policy_denied") return "key_policy_denied";
+  return "availability";
 }
 
 export type ComboRelayOptions = {

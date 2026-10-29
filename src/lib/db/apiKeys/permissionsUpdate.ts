@@ -9,6 +9,7 @@ export interface ApiKeyPermissionsUpdate {
   blockedModels?: string[];
   allowedCombos?: string[];
   allowedConnections?: string[];
+  preferredConnections?: string[];
   allowedQuotas?: string[];
   noLog?: boolean;
   autoResolve?: boolean;
@@ -35,6 +36,7 @@ export interface ApiKeyPermissionsUpdate {
   chaosModeEnabled?: boolean;
   compressionEnabled?: boolean;
   allowAutoCombos?: boolean;
+  allowCcDiscoveryAliases?: boolean;
   catalogScope?: "all" | "combos" | "models";
   forcedModel?: string | null;
   portalEnabled?: boolean;
@@ -65,6 +67,7 @@ export function normalizeApiKeyPermissionsUpdate(
     blockedModels: update.blockedModels,
     allowedCombos: update.allowedCombos,
     allowedConnections: update.allowedConnections,
+    preferredConnections: update.preferredConnections,
     allowedQuotas: update.allowedQuotas,
     noLog: update.noLog,
     autoResolve: update.autoResolve,
@@ -91,6 +94,7 @@ export function normalizeApiKeyPermissionsUpdate(
     chaosModeEnabled: update.chaosModeEnabled,
     compressionEnabled: update.compressionEnabled,
     allowAutoCombos: update.allowAutoCombos,
+    allowCcDiscoveryAliases: update.allowCcDiscoveryAliases,
     catalogScope: update.catalogScope,
     forcedModel: update.forcedModel,
     portalEnabled: parsePortalFlag(update.portalEnabled),

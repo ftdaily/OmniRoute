@@ -17,6 +17,7 @@ import {
 } from "./scripts/build/knownBuildWarnings.mjs";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+const LOCALE_MESSAGES_JSON = /[\\/]src[\\/]i18n[\\/]messages[\\/][^\\/]+\.json$/;
 const distDir = process.env.NEXT_DIST_DIR || ".build/next";
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const scriptSrc =
@@ -232,14 +233,17 @@ const nextConfig = {
     // runaway that OOM'd even at a 28 GB --max-old-space-size (RSS pinned at the
     // ceiling in a GC death-spiral). Removing it keeps the build's heap bounded.
     // optimizePackageImports is designed for external libs, not workspaces.
+    // Exception: `@omniroute/ui-kit` (KEA-7886) — a flat barrel (62 exports over
+    // 73 files, no deep re-export graph); the spike and Task 2 production builds
+    // stayed at the base's 232 warnings with no heap growth. open-sse stays out.
     optimizePackageImports: [
       "lobehub/icons",
       "@lobehub/icons",
       "lucide-react",
+      "@omniroute/ui-kit",
       "date-fns",
       "lodash",
       "lodash-es",
-      "material-symbols",
       "next-intl",
     ],
   },
@@ -353,19 +357,44 @@ const nextConfig = {
     "util",
     "process",
   ],
-  transpilePackages: ["@omniroute/open-sse", "@lobehub/icons", "fumadocs-ui", "fumadocs-core"],
+  transpilePackages: [
+    "@omniroute/open-sse",
+    "@lobehub/icons",
+    "fumadocs-ui",
+    "fumadocs-core",
+    "@omniroute/ui-kit",
+  ],
   allowedDevOrigins: ["localhost", "127.0.0.1", "192.168.0.250"],
   typescript: {
     // TODO: Re-enable after fixing all sub-component useTranslations scope issues
     ignoreBuildErrors: true,
   },
   webpack(config, { dev, webpack }) {
-    // PackFile cache serializes the full graph into one giant string and causes a late
-    // memory spike. Cache affects build speed only, not runtime output.
-    if (!dev) config.cache = false;
+    // Production webpack builds skip the persistent filesystem cache unless
+    // OMNIROUTE_WEBPACK_BUILD_CACHE=1 (measured ~2.5 GB peak-RSS saving at a
+    // 6144 MB heap cap on clean CI/Docker builds; repeat builds can opt back in).
+    if (!dev && process.env.OMNIROUTE_WEBPACK_BUILD_CACHE !== "1") {
+      config.cache = false;
+    }
     config.ignoreWarnings = [
       ...(config.ignoreWarnings || []),
       isNextIntlExtractorDynamicImportWarning,
+    ];
+    // Locale catalogs (src/i18n/messages/*.json) are only ever read whole, through
+    // the dynamic import in src/i18n/request.ts. As `json` modules webpack keeps
+    // every catalog as an object tree, tracks an export for every nested key and
+    // generates code from it, about 1 GB of server compile heap for 67 catalogs.
+    // As `asset/source` each catalog stays a string (validated and minified by
+    // the loader) and request.ts parses it on first use. Turbopack does not read
+    // this hook and still imports the catalogs as JSON.
+    config.module = config.module || {};
+    config.module.rules = [
+      ...(config.module.rules || []),
+      {
+        test: LOCALE_MESSAGES_JSON,
+        type: "asset/source",
+        use: [{ loader: join(projectRoot, "scripts/build/localeMessagesLoader.cjs") }],
+      },
     ];
     const infrastructureLogging = config.infrastructureLogging || {};
     config.infrastructureLogging = {

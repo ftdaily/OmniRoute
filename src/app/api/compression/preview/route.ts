@@ -244,6 +244,41 @@ function resolveLiteDetail(config: unknown): {
   return { liteDetail, liteStepDetail };
 }
 
+/**
+ * Resolve the optional ultra/aggressive detail sub-objects from a synthesized
+ * compression config. Same shape as resolveLiteDetail: the preview route builds
+ * single-engine/pipeline steps directly, so it must thread these into buildStep
+ * the same way buildStepOptions does via resolveStepDetailConfig — otherwise a
+ * sent `config: { ultra: {...} }` is silently dropped before dispatch.
+ */
+function resolveUltraDetail(config: unknown): {
+  ultraDetail: CompressionConfig["ultra"] | undefined;
+  ultraStepDetail: Record<string, unknown> | undefined;
+} {
+  const ultraDetail =
+    config && typeof config === "object" && config !== null
+      ? (config as CompressionConfig).ultra
+      : undefined;
+  const ultraStepDetail =
+    ultraDetail && typeof ultraDetail === "object" ? { ...(ultraDetail as object) } : undefined;
+  return { ultraDetail, ultraStepDetail };
+}
+
+function resolveAggressiveDetail(config: unknown): {
+  aggressiveDetail: CompressionConfig["aggressive"] | undefined;
+  aggressiveStepDetail: Record<string, unknown> | undefined;
+} {
+  const aggressiveDetail =
+    config && typeof config === "object" && config !== null
+      ? (config as CompressionConfig).aggressive
+      : undefined;
+  const aggressiveStepDetail =
+    aggressiveDetail && typeof aggressiveDetail === "object"
+      ? { ...(aggressiveDetail as object) }
+      : undefined;
+  return { aggressiveDetail, aggressiveStepDetail };
+}
+
 async function dispatchCompression(
   requestBody: Record<string, unknown>,
   opts: {
@@ -269,6 +304,8 @@ async function dispatchCompression(
   const { toolSchemaDetail, toolSchemaStepDetail } = resolveToolSchemaDetail(opts.config);
   const { relevanceDetail, relevanceStepDetail } = resolveRelevanceDetail(opts.config);
   const { liteDetail, liteStepDetail } = resolveLiteDetail(opts.config);
+  const { ultraDetail, ultraStepDetail } = resolveUltraDetail(opts.config);
+  const { aggressiveDetail, aggressiveStepDetail } = resolveAggressiveDetail(opts.config);
 
   if (opts.engineId) {
     const q = quantumExtras(opts.quantumLock);
@@ -286,13 +323,19 @@ async function dispatchCompression(
                   ? relevanceStepDetail
                   : opts.engineId === "lite"
                     ? liteStepDetail
-                    : undefined
+                    : opts.engineId === "ultra"
+                      ? ultraStepDetail
+                      : opts.engineId === "aggressive"
+                        ? aggressiveStepDetail
+                        : undefined
           ),
         ],
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
         ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
         ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
         ...(liteDetail ? { lite: liteDetail } : {}),
+        ...(ultraDetail ? { ultra: ultraDetail } : {}),
+        ...(aggressiveDetail ? { aggressive: aggressiveDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...(opts.contentTypeRouter ? { contentTypeRouter: opts.contentTypeRouter } : {}),
@@ -317,13 +360,19 @@ async function dispatchCompression(
                   ? relevanceStepDetail
                   : engine === "lite"
                     ? liteStepDetail
-                    : undefined
+                    : engine === "ultra"
+                      ? ultraStepDetail
+                      : engine === "aggressive"
+                        ? aggressiveStepDetail
+                        : undefined
           )
         ),
         ...(headroomDetail ? { headroom: headroomDetail } : {}),
         ...(toolSchemaDetail ? { toolSchema: toolSchemaDetail } : {}),
         ...(relevanceDetail ? { relevance: relevanceDetail } : {}),
         ...(liteDetail ? { lite: liteDetail } : {}),
+        ...(ultraDetail ? { ultra: ultraDetail } : {}),
+        ...(aggressiveDetail ? { aggressive: aggressiveDetail } : {}),
         ...(opts.fidelityGate ? { fidelityGate: opts.fidelityGate } : {}),
         ...(opts.riskGate ? { riskGate: opts.riskGate } : {}),
         ...(opts.contentTypeRouter ? { contentTypeRouter: opts.contentTypeRouter } : {}),

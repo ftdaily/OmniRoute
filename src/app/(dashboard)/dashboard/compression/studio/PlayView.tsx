@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import Button from "@/shared/components/Button";
 import { usePreviewCompression, type Lane, type PreviewBatch } from "@/hooks/usePreviewCompression";
 import {
   detectContentType,
@@ -35,15 +36,17 @@ function LaneList({ lanes, onSelect }: { lanes: Lane[]; onSelect: (e: string) =>
   return (
     <>
       {lanes.map((l) => (
-        <button
+        <Button
           key={l.engine}
+          variant="ghost"
+          size="sm"
           data-testid="play-lane"
           onClick={() => onSelect(l.engine)}
-          className="flex w-full items-center justify-between border-b py-1 text-left font-mono text-xs"
+          className="h-auto min-h-8 w-full justify-between rounded-none border-b border-border px-1 py-1 text-left font-mono text-xs"
         >
           <span>{l.engine}</span>
           <span>{laneStatus(l, t)}</span>
-        </button>
+        </Button>
       ))}
     </>
   );
@@ -118,7 +121,7 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-auto">
         {fullyGated ? (
-          <div data-testid="content-type-warning" className="text-xs text-amber-700">
+          <div data-testid="content-type-warning" className="text-xs text-warning">
             {t("contentTypeNoEngine", { contentType: fullyGated })}
           </div>
         ) : null}
@@ -131,14 +134,14 @@ export function PlayView({ text, onText, laneEngines = LANE_ENGINES }: PlayViewP
             <WaterfallInspector run={batch.combined} />
             <RiskGateBadge stats={batch?.riskGate ?? null} />
             {batch?.contentType ? (
-              <div data-testid="content-type-badge" className="text-xs text-slate-500">
+              <div data-testid="content-type-badge" className="text-xs text-text-muted">
                 {batch.contentType.type} ({Math.round(batch.contentType.confidence * 100)}%)
               </div>
             ) : null}
           </section>
         )}
         {batch && !batch.combined && batch.combinedError && (
-          <section data-testid="play-combined-error" className="text-xs text-red-600">
+          <section data-testid="play-combined-error" className="text-xs text-error">
             {t("combinedError", { reason: batch.combinedError })}
           </section>
         )}

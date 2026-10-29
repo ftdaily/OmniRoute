@@ -76,6 +76,7 @@ export async function PATCH(request, { params }) {
       blockedModels,
       allowedCombos,
       allowedConnections,
+      preferredConnections,
       noLog,
       autoResolve,
       isActive,
@@ -90,6 +91,7 @@ export async function PATCH(request, { params }) {
       streamDefaultMode,
       compressionEnabled,
       allowAutoCombos,
+      allowCcDiscoveryAliases,
       catalogScope,
       forcedModel,
       cacheDefaultMode,
@@ -118,6 +120,7 @@ export async function PATCH(request, { params }) {
     } else if (allowedConnections !== undefined) {
       payload.allowedConnections = allowedConnections;
     }
+    if (preferredConnections !== undefined) payload.preferredConnections = preferredConnections;
     if (noLog !== undefined) payload.noLog = noLog;
     if (autoResolve !== undefined) payload.autoResolve = autoResolve;
     if (isActive !== undefined) payload.isActive = isActive;
@@ -133,6 +136,8 @@ export async function PATCH(request, { params }) {
     if (compressionEnabled !== undefined) payload.compressionEnabled = compressionEnabled;
     if (codexServiceMode !== undefined) payload.codexServiceMode = codexServiceMode;
     if (allowAutoCombos !== undefined) payload.allowAutoCombos = allowAutoCombos;
+    if (allowCcDiscoveryAliases !== undefined)
+      payload.allowCcDiscoveryAliases = allowCcDiscoveryAliases;
     if (catalogScope !== undefined) payload.catalogScope = catalogScope;
     if (forcedModel !== undefined) payload.forcedModel = forcedModel;
     if (cacheDefaultMode !== undefined) payload.cacheDefaultMode = cacheDefaultMode;
@@ -153,8 +158,7 @@ export async function PATCH(request, { params }) {
     // Clearing the grant while enabled, nonexistent ids, or enabling with an
     // empty grant => 400 atomic (no partial write — validated before update).
     const wantsPortalOn =
-      portalEnabled === true ||
-      (portalEnabled === undefined && userCombosEnabled === true);
+      portalEnabled === true || (portalEnabled === undefined && userCombosEnabled === true);
     const grantAfter =
       connectionAccessMode === "all"
         ? []
@@ -168,12 +172,18 @@ export async function PATCH(request, { params }) {
       if (!current) {
         return NextResponse.json({ error: "Key not found" }, { status: 404 });
       }
-      const effectiveGrant = grantAfter !== undefined ? grantAfter : current.allowedConnections ?? [];
+      const effectiveGrant =
+        grantAfter !== undefined ? grantAfter : (current.allowedConnections ?? []);
       const effectivePortal =
-        portalEnabled !== undefined ? portalEnabled : (current as { portalEnabled?: boolean }).portalEnabled === true;
+        portalEnabled !== undefined
+          ? portalEnabled
+          : (current as { portalEnabled?: boolean }).portalEnabled === true;
       if (effectivePortal) {
         if (!Array.isArray(effectiveGrant) || effectiveGrant.length === 0) {
-          return NextResponse.json({ error: "portalEnabled requires a nonempty allowedConnections grant" }, { status: 400 });
+          return NextResponse.json(
+            { error: "portalEnabled requires a nonempty allowedConnections grant" },
+            { status: 400 }
+          );
         }
         for (const connId of effectiveGrant) {
           if (!(await getProviderConnectionById(connId))) {
@@ -199,6 +209,7 @@ export async function PATCH(request, { params }) {
       ...(blockedModels !== undefined && { blockedModels }),
       ...(allowedCombos !== undefined && { allowedCombos }),
       ...(allowedConnections !== undefined && { allowedConnections }),
+      ...(preferredConnections !== undefined && { preferredConnections }),
       ...(noLog !== undefined && { noLog }),
       ...(autoResolve !== undefined && { autoResolve }),
       ...(isActive !== undefined && { isActive }),
@@ -212,6 +223,7 @@ export async function PATCH(request, { params }) {
       ...(allowedEndpoints !== undefined && { allowedEndpoints }),
       ...(streamDefaultMode !== undefined && { streamDefaultMode }),
       ...(compressionEnabled !== undefined && { compressionEnabled }),
+      ...(allowCcDiscoveryAliases !== undefined && { allowCcDiscoveryAliases }),
       ...(cacheDefaultMode !== undefined && { cacheDefaultMode }),
       ...(codexServiceMode !== undefined && { codexServiceMode }),
       ...(forcedModel !== undefined && { forcedModel }),

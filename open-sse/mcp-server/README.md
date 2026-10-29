@@ -148,28 +148,28 @@ omniroute --mcp
 
 ### Cache and Compression Tools
 
-| #   | Tool                                | Scopes              | Description                                                                  |
-| --- | ----------------------------------- | ------------------- | ---------------------------------------------------------------------------- |
-| 21  | `omniroute_cache_stats`             | `read:cache`        | Semantic cache, prompt-cache, and idempotency statistics                     |
-| 22  | `omniroute_cache_flush`             | `write:cache`       | Flush cache entries globally or by signature/model                           |
-| 23  | `omniroute_compression_status`      | `read:compression`  | Compression settings, analytics summary, and provider-aware cache statistics |
-| 24  | `omniroute_compression_configure`   | `write:compression` | Configure compression mode and trigger thresholds at runtime                 |
-| 25  | `omniroute_set_compression_engine`  | `write:compression` | Set Caveman, RTK, or stacked compression mode and pipeline                   |
-| 26  | `omniroute_list_compression_combos` | `read:compression`  | List named compression combos and routing assignments                        |
-| 27  | `omniroute_compression_combo_stats` | `read:compression`  | Read analytics grouped by compression combo and engine                       |
-| 28  | `omniroute_ccr_store`               | `write:compression` | Store content in the caller-isolated in-memory CCR store                     |
-| 29  | `omniroute_ccr_retrieve`            | `read:compression`  | Retrieve full or ranged caller-owned CCR content                             |
-| 30  | `omniroute_ccr_inspect`             | `read:compression`  | Inspect CCR metadata without returning content                               |
-| 31  | `omniroute_ccr_list`                | `read:compression`  | List paginated caller-owned CCR metadata                                     |
-| 32  | `omniroute_ccr_delete`              | `write:compression` | Delete a caller-owned CCR block                                              |
-| 33  | `omniroute_ccr_stats`               | `read:compression`  | Report caller usage, bounded-store limits, and lifecycle counters            |
-| 34  | `omniroute_list_compression_engines` | `read:compression` | List registered compression engines with config schemas and runtime state    |
-| 35  | `omniroute_get_compression_engine`  | `read:compression`  | Get one engine's metadata, config schema, and runtime state                  |
-| 36  | `omniroute_update_compression_engine` | `write:compression` | Update an engine at runtime (enabled flag and/or validated config)         |
-| 37  | `omniroute_list_compression_rules`  | `read:compression`  | List caveman rule metadata, optionally filtered by intensity                 |
-| 38  | `omniroute_list_compression_language_packs` | `read:compression` | List compression languages and installed caveman rule packs        |
-| 39  | `omniroute_compression_preview`     | `read:compression`  | Dry-run compression on text: token counts, savings, compressed text          |
-| 40  | `omniroute_compression_compare`     | `read:compression`  | A/B-compare engines on text, best-first summary table                        |
+| #   | Tool                                        | Scopes              | Description                                                                  |
+| --- | ------------------------------------------- | ------------------- | ---------------------------------------------------------------------------- |
+| 21  | `omniroute_cache_stats`                     | `read:cache`        | Semantic cache, prompt-cache, and idempotency statistics                     |
+| 22  | `omniroute_cache_flush`                     | `write:cache`       | Flush cache entries globally or by signature/model                           |
+| 23  | `omniroute_compression_status`              | `read:compression`  | Compression settings, analytics summary, and provider-aware cache statistics |
+| 24  | `omniroute_compression_configure`           | `write:compression` | Configure compression mode and trigger thresholds at runtime                 |
+| 25  | `omniroute_set_compression_engine`          | `write:compression` | Set Caveman, RTK, or stacked compression mode and pipeline                   |
+| 26  | `omniroute_list_compression_combos`         | `read:compression`  | List named compression combos and routing assignments                        |
+| 27  | `omniroute_compression_combo_stats`         | `read:compression`  | Read analytics grouped by compression combo and engine                       |
+| 28  | `omniroute_ccr_store`                       | `write:compression` | Store content in the caller-isolated in-memory CCR store                     |
+| 29  | `omniroute_ccr_retrieve`                    | `read:compression`  | Retrieve full or ranged caller-owned CCR content                             |
+| 30  | `omniroute_ccr_inspect`                     | `read:compression`  | Inspect CCR metadata without returning content                               |
+| 31  | `omniroute_ccr_list`                        | `read:compression`  | List paginated caller-owned CCR metadata                                     |
+| 32  | `omniroute_ccr_delete`                      | `write:compression` | Delete a caller-owned CCR block                                              |
+| 33  | `omniroute_ccr_stats`                       | `read:compression`  | Report caller usage, bounded-store limits, and lifecycle counters            |
+| 34  | `omniroute_list_compression_engines`        | `read:compression`  | List registered compression engines with config schemas and runtime state    |
+| 35  | `omniroute_get_compression_engine`          | `read:compression`  | Get one engine's metadata, config schema, and runtime state                  |
+| 36  | `omniroute_update_compression_engine`       | `write:compression` | Update an engine at runtime (enabled flag and/or validated config)           |
+| 37  | `omniroute_list_compression_rules`          | `read:compression`  | List caveman rule metadata, optionally filtered by intensity                 |
+| 38  | `omniroute_list_compression_language_packs` | `read:compression`  | List compression languages and installed caveman rule packs                  |
+| 39  | `omniroute_compression_preview`             | `read:compression`  | Dry-run compression on text: token counts, savings, compressed text          |
+| 40  | `omniroute_compression_compare`             | `read:compression`  | A/B-compare engines on text, best-first summary table                        |
 
 CCR storage is bounded and in-memory only: 2 MiB per block, 16 MiB per principal, 64 MiB global,
 with a 24-hour default TTL. Full MCP retrieval is capped at 256 KiB; larger blocks use ranged or
@@ -693,4 +693,4 @@ mcp-server/
 
 ## License
 
-Part of [OmniRoute](https://github.com/diegosouzapw/OmniRoute) — MIT License.
+Part of [OmniRoute](https://github.com/cheaper-inference/OmniRoute) — MIT License.

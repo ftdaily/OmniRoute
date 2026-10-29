@@ -27,7 +27,7 @@ usage() {
 usage: ci-discriminate.sh <PR> [--ref-pr <N> | --base-red <issue>] [--repo <owner/repo>]
   --ref-pr <N>       reference PR whose reds are inherited (same base, ideally near-empty)
   --base-red <issue> base-red issue whose body/comments list the inherited reds
-  --repo <slug>      GitHub repository (default diegosouzapw/OmniRoute)
+  --repo <slug>      GitHub repository (default cheaper-inference/OmniRoute)
 env: GH_BIN (gh binary), CI_DISC_DIR (where <PR>.txt lands; default <main checkout>/_artifacts/ci-disc)
 EOF
 }
@@ -38,7 +38,7 @@ die() {
 }
 
 GH="${GH_BIN:-gh}"
-REPO="diegosouzapw/OmniRoute"
+REPO="cheaper-inference/OmniRoute"
 PR=""
 REF_PR=""
 BASE_RED=""
@@ -111,7 +111,7 @@ extract_signatures() {
     { grep -av printf || true; } |
     sed -E 's/^[[:space:]]+//; s/^(##\[(error|warning)\]|::(error|warning)[^:]*::|[-*] )+//; s/^[[:space:]]+//; s/[[:space:]]+$//; s/ \([0-9.]+ ?m?s\)$//' |
     { grep -av '^$' || true; } |
-    sort -u
+    LC_ALL=C sort -u
 }
 
 # $1 line → 0 when the reference set carries it. The base-red issue prefixes every red with
@@ -188,7 +188,7 @@ collect_pr() {
         ;;
     esac
   done < <(checks_tsv "$checks")
-  sort -u "$raw" >"$OUT_DIR/$pr.txt"
+  LC_ALL=C sort -u "$raw" >"$OUT_DIR/$pr.txt"
 }
 
 # $1 issue number → the signature lines quoted in its body and comments (markdown bullets

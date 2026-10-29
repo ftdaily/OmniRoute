@@ -7,6 +7,19 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { DataTableShell } from "@omniroute/ui-kit/data-table-shell";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@omniroute/ui-kit/table";
+import Badge from "@/shared/components/Badge";
+import Button from "@/shared/components/Button";
+import Input from "@/shared/components/Input";
+import { Select } from "@/shared/components";
 
 type EndpointPublic = {
   id: string;
@@ -45,10 +58,7 @@ export default function AgentPortsPage() {
   const [editPort, setEditPort] = useState("");
   const [editApiKeyId, setEditApiKeyId] = useState("");
 
-  const keyName = useCallback(
-    (id: string) => keys.find((k) => k.id === id)?.name ?? id,
-    [keys],
-  );
+  const keyName = useCallback((id: string) => keys.find((k) => k.id === id)?.name ?? id, [keys]);
 
   const refresh = useCallback(async () => {
     try {
@@ -93,7 +103,11 @@ export default function AgentPortsPage() {
       const data = (await res.json()) as { endpoints: Array<{ port: number }> };
       const assigned = data.endpoints?.some((e) => e.port === p);
       // informational only — the ACTUAL bind at start remains authoritative
-      setCheck(assigned ? { kind: "taken", detail: "Port is already assigned to an agent endpoint" } : { kind: "free" });
+      setCheck(
+        assigned
+          ? { kind: "taken", detail: "Port is already assigned to an agent endpoint" }
+          : { kind: "free" }
+      );
     } catch (err) {
       setCheck({ kind: "invalid", detail: err instanceof Error ? err.message : "Check failed" });
     }
@@ -201,15 +215,8 @@ export default function AgentPortsPage() {
     }
   };
 
-  const statusStyle = (s: string) =>
-    s === "running"
-      ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30"
-      : s === "error"
-        ? "bg-red-500/15 text-red-500 border border-red-500/30"
-        : "bg-gray-500/15 text-text-muted border border-gray-500/30";
-
-  const inputCls =
-    "rounded-md border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 px-3 py-2 text-sm text-text-main focus:outline-none focus:ring-1 focus:ring-blue-500";
+  const statusTone = (s: string): "success" | "error" | "default" =>
+    s === "running" ? "success" : s === "error" ? "error" : "default";
 
   return (
     <div className="space-y-6 p-6">
@@ -219,21 +226,23 @@ export default function AgentPortsPage() {
       </div>
 
       {error && (
-        <div role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">
+        <div
+          role="alert"
+          className="rounded-md border border-error/30 bg-error-bg p-3 text-sm text-error"
+        >
           {error}
         </div>
       )}
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] p-4">
+      <div className="rounded-xl border border-border bg-bg-subtle p-4">
         <h2 className="mb-3 font-medium text-text-main">{t("newPort")}</h2>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="agent-port-name" className="text-xs text-text-muted">
               {t("name")}
             </label>
-            <input
+            <Input
               id="agent-port-name"
-              className={inputCls}
               placeholder="claude-code"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -244,9 +253,9 @@ export default function AgentPortsPage() {
             <label htmlFor="agent-port-port" className="text-xs text-text-muted">
               {t("port")}
             </label>
-            <input
+            <Input
               id="agent-port-port"
-              className={`${inputCls} w-36`}
+              className="w-36"
               placeholder="1024–65535"
               value={port}
               inputMode="numeric"
@@ -257,9 +266,8 @@ export default function AgentPortsPage() {
             <label htmlFor="agent-port-key" className="text-xs text-text-muted">
               {t("apiKey")}
             </label>
-            <select
+            <Select
               id="agent-port-key"
-              className={inputCls}
               value={apiKeyId}
               onChange={(e) => setApiKeyId(e.target.value)}
             >
@@ -269,95 +277,84 @@ export default function AgentPortsPage() {
                   {k.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
-          <button
-            type="button"
-            className="rounded-md border border-black/10 dark:border-white/10 px-3 py-2 text-sm text-text-main hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
-            disabled={!port || check.kind === "checking"}
-            onClick={checkAvailability}
-          >
-            {check.kind === "checking" ? t("checking") : t("checkAvailability")}
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
-            disabled={busy || !name.trim() || !port || !apiKeyId}
-            onClick={create}
-          >
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => void create()}>
             {t("create")}
-          </button>
+          </Button>
         </div>
         {check.kind === "free" && (
-          <p className="mt-2 text-xs text-emerald-500">{t("portAppearsFree")}</p>
+          <p className="mt-2 text-xs text-success">{t("portAppearsFree")}</p>
         )}
         {check.kind === "taken" && (
-          <p role="alert" className="mt-2 text-xs text-amber-500">
+          <p role="alert" className="mt-2 text-xs text-warning">
             {check.detail} — {t("bindAuthoritative")}
           </p>
         )}
         {check.kind === "invalid" && (
-          <p role="alert" className="mt-2 text-xs text-red-500">
+          <p role="alert" className="mt-2 text-xs text-error">
             {check.detail}
           </p>
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead>
-            <tr className="border-b border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-left">
-              <th className="p-3 font-medium text-text-muted">{t("name")}</th>
-              <th className="p-3 font-medium text-text-muted">{t("port")}</th>
-              <th className="p-3 font-medium text-text-muted">{t("apiKey")}</th>
-              <th className="p-3 font-medium text-text-muted">{t("baseUrl")}</th>
-              <th className="p-3 font-medium text-text-muted">{t("status")}</th>
-              <th className="p-3 font-medium text-text-muted">{t("actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
+      <DataTableShell loading={false} loadingLabel={t("name")}>
+        <Table className="text-sm">
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("name")}</TableHead>
+              <TableHead>{t("port")}</TableHead>
+              <TableHead>{t("apiKey")}</TableHead>
+              <TableHead>{t("baseUrl")}</TableHead>
+              <TableHead>{t("status")}</TableHead>
+              <TableHead>{t("actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {endpoints.length === 0 && (
-              <tr>
-                <td className="p-4 text-text-muted" colSpan={6}>
-                  {t("empty")}
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={6}>{t("empty")}</TableCell>
+              </TableRow>
             )}
             {endpoints.map((ep) => (
-              <tr key={ep.id} className="border-b border-black/5 dark:border-white/5">
-                <td className="p-3 font-medium text-text-main">{ep.name}</td>
-                <td className="p-3 text-text-main">{ep.port}</td>
-                <td className="p-3 text-text-main">
+              <TableRow key={ep.id}>
+                <TableCell className="font-medium">{ep.name}</TableCell>
+                <TableCell>{ep.port}</TableCell>
+                <TableCell>
                   <span title={ep.apiKeyId}>{keyName(ep.apiKeyId)}</span>
                   <span className="ml-1 text-xs text-text-muted">({ep.apiKeyId.slice(0, 8)}…)</span>
-                </td>
-                <td className="p-3">
+                </TableCell>
+                <TableCell>
                   <code className="text-xs text-text-main">{ep.baseUrl}</code>
+                  {/* kit-exception: inline copy-link beside the URL value; the kit Button is a
+                      pill control and CopyButton carries its own copied state */}
                   <button
                     type="button"
-                    className="ml-2 text-xs text-blue-500 hover:underline"
+                    className="ml-2 text-xs text-primary hover:underline"
                     onClick={() => copyBase(ep)}
                   >
                     {copied === ep.id ? t("copied") : t("copy")}
                   </button>
-                </td>
-                <td className="p-3" title={ep.statusDetail ?? undefined}>
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusStyle(ep.status)}`}>
+                </TableCell>
+                <TableCell title={ep.statusDetail ?? undefined}>
+                  <Badge size="sm" variant={statusTone(ep.status)}>
                     {ep.status}
-                  </span>
-                </td>
-                <td className="space-x-2 p-3 whitespace-nowrap">
-                  <button
+                  </Badge>
+                </TableCell>
+                <TableCell className="space-x-2 whitespace-nowrap">
+                  <Button
                     type="button"
-                    className="rounded border border-black/10 dark:border-white/10 px-2 py-1 text-xs text-text-main hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+                    variant="secondary"
+                    size="sm"
                     disabled={busy}
                     onClick={() => act(ep.id, ep.status === "running" ? "stop" : "start")}
                   >
                     {ep.status === "running" ? t("stop") : t("start")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="rounded border border-black/10 dark:border-white/10 px-2 py-1 text-xs text-text-main hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+                    variant="secondary"
+                    size="sm"
                     disabled={busy}
                     onClick={() => {
                       setEditingId(editingId === ep.id ? null : ep.id);
@@ -366,28 +363,28 @@ export default function AgentPortsPage() {
                     }}
                   >
                     {t("edit")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="rounded border border-red-500/30 px-2 py-1 text-xs text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                    variant="danger"
+                    size="sm"
                     disabled={busy}
                     onClick={() => remove(ep.id)}
                   >
                     {t("delete")}
-                  </button>
+                  </Button>
                   {editingId === ep.id && (
                     <span className="ml-2 inline-flex items-center gap-2 align-middle">
-                      <input
+                      <Input
                         aria-label={t("newPortValue")}
-                        className={`${inputCls} w-28`}
+                        className="w-28"
                         placeholder={t("newPortValue")}
                         value={editPort}
                         inputMode="numeric"
                         onChange={(e) => setEditPort(e.target.value.replace(/[^0-9]/g, ""))}
                       />
-                      <select
+                      <Select
                         aria-label={t("reassignKey")}
-                        className={inputCls}
                         value={editApiKeyId}
                         onChange={(e) => setEditApiKeyId(e.target.value)}
                       >
@@ -397,23 +394,23 @@ export default function AgentPortsPage() {
                             {k.name}
                           </option>
                         ))}
-                      </select>
-                      <button
+                      </Select>
+                      <Button
                         type="button"
-                        className="rounded bg-blue-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+                        size="sm"
                         disabled={busy || (!editPort && !editApiKeyId)}
                         onClick={() => saveEdit(ep.id)}
                       >
                         {t("save")}
-                      </button>
+                      </Button>
                     </span>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </DataTableShell>
     </div>
   );
 }

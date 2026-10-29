@@ -246,8 +246,15 @@ describe("Continue CLI detection", () => {
   it("should not report Continue as installed when the cn binary is absent", async () => {
     const previousPath = process.env.PATH;
     const previousOverride = process.env.CLI_CONTINUE_BIN;
+    const previousConfigHome = process.env.CLI_CONFIG_HOME;
     process.env.PATH = "";
     delete process.env.CLI_CONTINUE_BIN;
+    // Mask the operator's real config home: a ~/.continue/config.yaml on the
+    // dev machine would otherwise trigger the settings-fallback
+    // (installed:true, settings_found_binary_unresolved) and make this
+    // absence assertion machine-dependent. Point at a fresh empty dir.
+    const emptyHome = fs.mkdtempSync(path.join(os.tmpdir(), "omniroute-cli-no-home-"));
+    process.env.CLI_CONFIG_HOME = emptyHome;
 
     try {
       const result = await getCliRuntimeStatus("continue");
@@ -260,6 +267,9 @@ describe("Continue CLI detection", () => {
       else process.env.PATH = previousPath;
       if (previousOverride === undefined) delete process.env.CLI_CONTINUE_BIN;
       else process.env.CLI_CONTINUE_BIN = previousOverride;
+      if (previousConfigHome === undefined) delete process.env.CLI_CONFIG_HOME;
+      else process.env.CLI_CONFIG_HOME = previousConfigHome;
+      fs.rmSync(emptyHome, { recursive: true, force: true });
     }
   });
 

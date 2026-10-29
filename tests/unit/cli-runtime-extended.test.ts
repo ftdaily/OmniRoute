@@ -14,6 +14,30 @@ const originalSpawn = childProcess.spawn;
 const originalExecFileSync = childProcess.execFileSync;
 const originalEnv = { ...process.env };
 
+/**
+ * Fixture-owned env keys that MUST be absent unless a case sets them. Computed
+ * once at load: any of these present in a case's env is that case's doing, so
+ * teardown deletes them even if the generic sweep above misses one. Covers the
+ * PATH-lookup inputs (CLI_EXTRA_PATHS, per-tool BIN overrides, npm prefix,
+ * config-home masks) — a leak here silently redirects the NEXT case's binary
+ * resolution at a real system install instead of its fixture.
+ */
+const OWNED_ENV_KEYS = [
+  "CLI_EXTRA_PATHS",
+  "CLI_QODER_BIN",
+  "CLI_CONTINUE_BIN",
+  "CLI_CLAUDE_BIN",
+  "CLI_CLINE_BIN",
+  "CLI_DROID_BIN",
+  "CLI_CONFIG_HOME",
+  "CLI_MODE",
+  "SHELL",
+  "npm_config_prefix",
+] as const;
+const OWNED_ABSENT_AT_LOAD = (OWNED_ENV_KEYS as readonly string[]).filter(
+  (key) => !(key in originalEnv)
+);
+
 const tempDirs = new Set<string>();
 
 async function importFresh(label) {
@@ -24,6 +48,12 @@ function restoreEnv() {
   for (const key of Object.keys(process.env)) {
     if (!(key in originalEnv)) delete process.env[key];
   }
+  // Owned-key belt-and-braces: Object.assign() restores values but can never
+  // delete keys, so explicitly drop fixture-owned keys that were absent at
+  // load — a leaked CLI_EXTRA_PATHS (or sibling override) would otherwise
+  // survive into the next case and shadow its fixture (the suspicious-size
+  // case resolving a real system binary instead of the empty fixture).
+  for (const key of OWNED_ABSENT_AT_LOAD) delete process.env[key];
   Object.assign(process.env, originalEnv);
 }
 
@@ -316,6 +346,13 @@ test("getCliRuntimeStatus resolves known binaries from npm global prefix discove
 });
 
 test("getCliRuntimeStatus ignores suspicious known-path binaries and symlink escapes", async () => {
+  // Mask the operator's real HOME: known-path candidates include
+  // ~/.local/bin/<tool>, and a real install there would shadow the empty
+  // suspicious fixture below (installed:true) making this machine-dependent.
+  // Point HOME at a fresh empty dir; npm_config_prefix still injects the
+  // fixture candidate. Restored in afterEach via restoreEnv.
+  const emptyHome = createTempDir("omniroute-cli-no-home-");
+  process.env.HOME = emptyHome;
   const prefixDir = createTempDir("omniroute-cli-suspicious-");
   const binDir = path.join(prefixDir, process.platform === "win32" ? "" : "bin");
   const scriptName = process.platform === "win32" ? "qodercli.exe" : "qodercli";
@@ -324,7 +361,25 @@ test("getCliRuntimeStatus ignores suspicious known-path binaries and symlink esc
 
   process.env.npm_config_prefix = prefixDir;
   process.env.PATH = process.platform === "win32" ? process.env.PATH || "" : "/bin:/usr/bin";
+  // Neutralize login-shell PATH enrichment for this case: getLookupEnv merges
+  // the cached `$SHELL -ilc` PATH (which on a dev machine contains the real
+  // ~/.local/bin install) into the lookup env, so the real qodercli would
+  // shadow the empty suspicious fixture via PATH. An invalid SHELL fails the
+  // allowlist regex so getLoginShellPath returns null — pure fixture, and the
+  // shared cache is per-process (already populated or not, the null comes from
+  // the regex gate before any spawn). Restored by the owned-keys teardown.
+  process.env.SHELL = "invalid shell for tests";
 
+  // Same shared-cache reset as the npm-prefix case above: cliRuntimeNpmPrefix.ts
+  // is NOT re-evaluated by importFresh(), so without this the previous case's
+  // cached healthy prefix would shadow this case's npm_config_prefix fixture.
+  // Same for the login-shell PATH cache (loginShellPath.ts singleton): reset it
+  // while SHELL is masked so the re-computed value is null, not the real login
+  // PATH (which contains the operator's genuine ~/.local/bin install).
+  const npmPrefixModule = await import("../../src/shared/services/cliRuntimeNpmPrefix.ts");
+  npmPrefixModule.__resetNpmGlobalPrefixCacheForTests();
+  const loginShellModule = await import("../../src/shared/services/loginShellPath.ts");
+  loginShellModule.__resetLoginShellPathCacheForTests();
   const cliRuntime = await importFresh("suspicious-size");
   const suspiciousStatus = await cliRuntime.getCliRuntimeStatus("qoder");
 

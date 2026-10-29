@@ -36,6 +36,7 @@ before(async () => {
     "getApiKeysCount",
     "getExclusiveLeaseConnectionIds",
     "isModelAllowedForKey",
+    "isComboNameAllowedForKey",
     "isModelBlockedByPatterns",
     "pickApiKeyForInternalUse",
     "regenerateApiKey",

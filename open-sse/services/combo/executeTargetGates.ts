@@ -357,7 +357,9 @@ export async function evaluateExecuteTargetGates(opts: {
         "COMBO",
         skipReason === "model_not_in_catalog"
           ? `Skipping ${modelStr} — model is not in the live catalog`
-          : `Skipping ${modelStr} — no credentials available or model excluded`
+          : skipReason === "key_policy_denied"
+            ? `Skipping ${modelStr} — API key policy denies this combo target`
+            : `Skipping ${modelStr} — no credentials available or model excluded`
       );
       deps.clearStaleLKGP(
         deps.combo.name,
@@ -375,6 +377,18 @@ export async function evaluateExecuteTargetGates(opts: {
         reason: skipReason,
       });
       bumpFallback();
+      // #12886: a key-policy denial is a client 403, not a routing 503. Record
+      // an `auth`-kind structured entry so resolveComboTerminalStatus preserves
+      // the 403 when every target was denied for policy (uniform kind). The
+      // gate still returns skip — zero dispatches, same as before.
+      if (skipReason === "key_policy_denied") {
+        state.comboErrors.push({
+          model: modelStr,
+          status: 403,
+          error: `API key policy denies combo target ${modelStr}`,
+          kind: "auth",
+        });
+      }
       return {
         kind: "skip",
         result: stopProtectedPriorityTarget(`Model ${modelStr} is unavailable`),

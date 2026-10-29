@@ -70,8 +70,8 @@ describe("migrationRunner/constants — exact small-table snapshots", () => {
 // ── large tables — count + shape + spot-checks (corruption guard) ─────────────
 
 describe("migrationRunner/constants — large-table integrity", () => {
-  it("RENAMED_MIGRATION_COMPATIBILITY has 33 well-formed entries", () => {
-    assert.equal(RENAMED_MIGRATION_COMPATIBILITY.length, 33);
+  it("RENAMED_MIGRATION_COMPATIBILITY has 40 well-formed entries", () => {
+    assert.equal(RENAMED_MIGRATION_COMPATIBILITY.length, 40);
     for (const e of RENAMED_MIGRATION_COMPATIBILITY) {
       assert.equal(typeof e.fromVersion, "string");
       assert.equal(typeof e.fromName, "string");
@@ -81,13 +81,20 @@ describe("migrationRunner/constants — large-table integrity", () => {
   });
 
   it("RENAMED_MIGRATION_COMPATIBILITY spot-checks the boundary renames", () => {
-    const first = RENAMED_MIGRATION_COMPATIBILITY[0];
-    assert.deepEqual(first, {
-      fromVersion: "022",
-      fromName: "call_logs_summary_storage",
-      toVersion: "025",
-      toName: "call_logs_summary_storage",
-    });
+    // Merge 3853 prepended the fork 213→217 compat entry (fork 213 renumbered
+    // to 217, upstream took 213) — first entry is no longer 022. The canonical
+    // 022 rename must still exist exactly once.
+    assert.deepEqual(
+      RENAMED_MIGRATION_COMPATIBILITY.find(
+        (e) => e.fromVersion === "022" && e.fromName === "call_logs_summary_storage"
+      ),
+      {
+        fromVersion: "022",
+        fromName: "call_logs_summary_storage",
+        toVersion: "025",
+        toName: "call_logs_summary_storage",
+      }
+    );
     // both manifest_routing collisions (052→059 and 056→059) must survive
     const manifest = RENAMED_MIGRATION_COMPATIBILITY.filter((e) => e.toName === "manifest_routing");
     assert.deepEqual(manifest.map((e) => e.fromVersion).sort(), ["052", "056"]);
@@ -174,6 +181,31 @@ describe("migrationRunner/constants — large-table integrity", () => {
       toVersion: "101",
       toName: "api_key_usage_limits",
     });
+    // Merge 3853: fork 213 renumbered to 217 (upstream took 213) — Tencent
+    // compat entry so old 213-named state resolves to canonical 217.
+    assert.deepEqual(
+      RENAMED_MIGRATION_COMPATIBILITY.find(
+        (e) => e.fromVersion === "213" && e.fromName === "user_portal_flags_prefs_combos"
+      ),
+      {
+        fromVersion: "213",
+        fromName: "user_portal_flags_prefs_combos",
+        toVersion: "217",
+        toName: "user_portal_flags_prefs_combos",
+      }
+    );
+  });
+
+  it("name-locks every published Team draft slot to canonical migration 215", () => {
+    assert.deepEqual(
+      RENAMED_MIGRATION_COMPATIBILITY.filter((entry) => entry.toName === "team_cost_centers"),
+      ["153", "154", "155", "161", "163", "164"].map((fromVersion) => ({
+        fromVersion,
+        fromName: "team_cost_centers",
+        toVersion: "215",
+        toName: "team_cost_centers",
+      }))
+    );
   });
 
   it("PHYSICAL_SCHEMA_SENTINELS has 15 well-formed entries incl. the newest 064", () => {

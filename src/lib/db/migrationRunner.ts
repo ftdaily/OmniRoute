@@ -18,7 +18,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { SqliteAdapter } from "./adapters/types";
-import { DEFAULT_DATABASE_SETTINGS } from "@/types/databaseSettings";
 import { isAutomatedTestProcess } from "@/shared/utils/testProcess";
 import {
   LEGACY_VERSION_SLOT_MIGRATIONS,
@@ -631,6 +630,21 @@ function isSchemaAlreadyApplied(
         hasColumn(db, "usage_history", "provider_credits") &&
         hasColumn(db, "usage_history", "provider_cost_usd")
       );
+    case "217":
+      // Fork 213 renumbered to 217 (upstream took 213): Tencent applied the old
+      // number, so skip re-execution only when the FULL portal shape exists —
+      // all three api_keys columns AND both tables. A columns-only partial DB
+      // flows to the 217 dispatch below, which heals via
+      // applyMigrationSkippingExistingColumns (skips landed ADD COLUMNs, runs
+      // CREATE TABLE IF NOT EXISTS for the missing tables). Exact schema
+      // match — never skip on version alone.
+      return (
+        hasColumn(db, "api_keys", "portal_enabled") &&
+        hasColumn(db, "api_keys", "user_combos_enabled") &&
+        hasColumn(db, "api_keys", "portal_session_revision") &&
+        hasTable(db, "key_preferences") &&
+        hasTable(db, "user_combos")
+      );
     default:
       return false;
   }
@@ -1112,6 +1126,7 @@ export function runMigrations(
     if (isDeferredUnsupportedMigration(db, migration)) continue;
 
     let genericSql: string | null = null;
+    let ledgerWrittenByDispatch = false;
     const applyMigration = db.transaction(() => {
       if (atomicPhysicalReplays.has(migration.version)) {
         const removed = db
@@ -1129,6 +1144,28 @@ export function runMigrations(
         console.warn(
           `[Migration] Skipped executing ${migration.version}_${migration.name} as schema changes are already present (Idempotency check).`
         );
+      } else if (
+        migration.version === "217" &&
+        migration.name === "user_portal_flags_prefs_combos"
+      ) {
+        // Partial-shape heal ONLY when some portal column already landed: skip
+        // those ADD COLUMNs, run the rest (CREATE TABLE IF NOT EXISTS covers
+        // missing tables). The helper writes the 217 ledger row itself.
+        // Fresh DBs (no portal cols) use the normal exec + shared ledger path
+        // — the helper's comment-adjacent ALTER parsing drops statements on
+        // pristine runs. Full legacy DBs skip earlier via isSchemaAlreadyApplied.
+        const sql = fs.readFileSync(migration.path, "utf-8");
+        genericSql = sql;
+        const hasAnyPortalCol =
+          hasColumn(db, "api_keys", "portal_enabled") ||
+          hasColumn(db, "api_keys", "user_combos_enabled") ||
+          hasColumn(db, "api_keys", "portal_session_revision");
+        if (hasAnyPortalCol) {
+          applyMigrationSkippingExistingColumns(db, migration, sql);
+          ledgerWrittenByDispatch = true;
+        } else {
+          db.exec(sql);
+        }
       } else if (migration.version === "032") {
         applyApiKeyLifecycleMigration(db);
       } else if (migration.version === "041" && migration.name === "compression_receipts") {
@@ -1143,10 +1180,12 @@ export function runMigrations(
         genericSql = sql;
         db.exec(sql);
       }
-      db.prepare("INSERT INTO _omniroute_migrations (version, name) VALUES (?, ?)").run(
-        migration.version,
-        migration.name
-      );
+      if (!ledgerWrittenByDispatch) {
+        db.prepare("INSERT INTO _omniroute_migrations (version, name) VALUES (?, ?)").run(
+          migration.version,
+          migration.name
+        );
+      }
     });
 
     try {
@@ -1181,41 +1220,15 @@ export function runMigrations(
     console.log(`[Migration] ${count} migration(s) applied successfully.`);
   }
 
-  // After applying all migrations, insert default settings if we just ran migration 46
-  try {
-    if (appliedRecords.some((m) => m.name.startsWith("051_"))) {
-      insertDefaultDatabaseSettings(db);
-    }
-  } catch (error) {
-    console.error("Error inserting default database settings:", error);
-  }
+  // #17186: the "insert default settings after migration 051" guard that used
+  // to live here was unreachable — `name` is the filename's SECOND capture group
+  // (text after the numeric prefix), so it never starts with "051_". The seeded
+  // defaults were also redundant: the read path (optimizationSettings.ts) merges
+  // DEFAULT_DATABASE_SETTINGS on read, so absent rows are the normal case.
+  // Removed along with the dead insertDefaultDatabaseSettings() helper and its
+  // now-unused import.
 
   return count;
-}
-
-function insertDefaultDatabaseSettings(db: SqliteAdapter) {
-  const tx = db.transaction(() => {
-    // Insert all default settings
-    for (const [section, values] of Object.entries(DEFAULT_DATABASE_SETTINGS)) {
-      for (const [key, value] of Object.entries(values as Record<string, unknown>)) {
-        db.prepare("INSERT OR IGNORE INTO key_value (namespace, key, value) VALUES (?, ?, ?)").run(
-          "databaseSettings",
-          `${section}.${key}`,
-          JSON.stringify(value)
-        );
-      }
-    }
-  });
-
-  // Run in an immediate transaction to avoid nested transactions
-  try {
-    runImmediateTransaction(db, () => {
-      tx();
-    });
-  } catch (error) {
-    console.error("Transaction error inserting default settings:", error);
-    throw error;
-  }
 }
 
 /**

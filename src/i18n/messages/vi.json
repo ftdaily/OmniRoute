@@ -1,4 +1,108 @@
 {
+  "agentPorts": {
+    "agentPorts": "Agent Ports",
+    "agentPortsSubtitle": "Per-agent localhost ports with dedicated API keys",
+    "newPort": "New agent port",
+    "name": "Name",
+    "port": "Port",
+    "apiKey": "API key",
+    "selectKey": "Assign API key…",
+    "checkAvailability": "Check availability",
+    "checking": "Checking…",
+    "portAppearsFree": "Port appears free (informational — the actual bind at start remains authoritative)",
+    "create": "Create",
+    "baseUrl": "Base URL",
+    "status": "Status",
+    "actions": "Actions",
+    "empty": "No agent ports yet.",
+    "copied": "copied!",
+    "copy": "copy",
+    "stop": "Stop",
+    "start": "Start",
+    "edit": "Edit",
+    "delete": "Delete",
+    "newPortValue": "New port",
+    "reassignKey": "Reassign key",
+    "save": "Save",
+    "bindAuthoritative": "The actual bind at start decides"
+  },
+  "teamCosts": {
+    "title": "Chi phí nhóm",
+    "subtitle": "Quản lý ngân sách mềm dùng chung và ước tính chi phí theo danh mục.",
+    "refresh": "Làm mới",
+    "create": "Tạo nhóm",
+    "edit": "Chỉnh sửa nhóm",
+    "archive": "Lưu trữ",
+    "selectTeam": "Nhóm",
+    "searchTeams": "Tìm nhóm",
+    "statusFilter": "Trạng thái nhóm",
+    "active": "Đang hoạt động",
+    "archived": "Đã lưu trữ · chỉ đọc",
+    "allTeams": "Tất cả nhóm",
+    "noTeams": "Không có nhóm phù hợp.",
+    "selectHint": "Tạo hoặc chọn một nhóm để xem chi phí.",
+    "loading": "Đang tải chi phí nhóm…",
+    "budgetTitle": "Ngân sách mềm hiện tại",
+    "budgetSubtitle": "Mức dùng thành công đã ghi nhận · cửa sổ trượt · độc lập với ngày của báo cáo",
+    "archivedBudget": "Đã lưu trữ: việc áp dụng ngân sách không hoạt động. Báo cáo lịch sử vẫn khả dụng.",
+    "unlimited": "Không giới hạn — chưa cấu hình ngân sách mềm dùng chung.",
+    "budgetUnavailable": "Không có trạng thái ngân sách. Làm mới để thử lại.",
+    "used": "Mức dùng thành công",
+    "maximum": "Ngân sách tối đa",
+    "remaining": "Số dư đã biết",
+    "resets": "Đặt lại vào",
+    "unpricedBudget": "Một phần mức dùng thành công không rõ giá. Tổng đã biết chưa đầy đủ; việc áp dụng ngân sách coi cửa sổ này là đã vượt.",
+    "overBudget": "Đã đạt hoặc vượt ngân sách · vượt {amount}",
+    "reportTitle": "Báo cáo sử dụng",
+    "reportSubtitle": "Mọi lần thử · ước tính theo danh mục bằng USD, không phải hóa đơn · nguyên ngày UTC",
+    "reportPeriod": "Kỳ báo cáo",
+    "day1": "1 ngày",
+    "day7": "7 ngày",
+    "day30": "30 ngày",
+    "allTime": "Toàn thời gian",
+    "reportSpend": "Chi tiêu ước tính của báo cáo",
+    "requests": "Yêu cầu",
+    "assignedKeys": "Khóa đã gán",
+    "unpricedReport": "Báo cáo này có giá không xác định. Chi tiêu ước tính chưa đầy đủ.",
+    "breakdown": "Chi phí theo khóa API",
+    "noUsage": "Không có mức dùng trong kỳ báo cáo này.",
+    "keyName": "Tên khóa API",
+    "tokens": "Token đầu vào + đầu ra",
+    "unnamedKey": "Khóa không tên hoặc đã xóa",
+    "unpriced": "Giá không xác định",
+    "members": "Thành viên",
+    "memberSubtitle": "Đổi thành viên giữ chi tiêu lịch sử ở nhóm ban đầu.",
+    "searchKeys": "Tìm khóa hoặc chủ sở hữu hiện tại",
+    "chooseKey": "Chọn khóa API",
+    "unassigned": "Chưa gán",
+    "ownership": "Nhóm thanh toán hiện tại: {team}",
+    "assign": "Gán",
+    "remove": "Gỡ bỏ",
+    "noMembers": "Không có thành viên hiện tại. Mức dùng lịch sử vẫn có thể được tính vào ngân sách.",
+    "assignedAt": "Đã gán {date} (UTC)",
+    "name": "Tên nhóm",
+    "description": "Mô tả",
+    "enableBudget": "Bật ngân sách mềm dùng chung",
+    "amount": "Số tiền ngân sách (USD)",
+    "duration": "Cửa sổ ngân sách trượt",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "confirm": "Xác nhận",
+    "transferTitle": "Xác nhận chuyển khóa",
+    "transferMessage": "Chuyển khóa này từ “{source}” sang “{destination}”? Chi tiêu lịch sử vẫn ở nhóm ban đầu.",
+    "removeTitle": "Gỡ bỏ việc gán khóa",
+    "removeMessage": "Gỡ khóa này khỏi “{team}”? Chi tiêu lịch sử vẫn ở nhóm này.",
+    "archiveTitle": "Lưu trữ nhóm",
+    "archiveMessage": "Lưu trữ “{team}”? Mọi liên kết hiện tại sẽ đóng và việc áp dụng ngân sách dừng lại. Báo cáo lịch sử vẫn khả dụng.",
+    "invalidName": "Nhập tên (1–200 ký tự) và mô tả tối đa 2.000 ký tự.",
+    "invalidAmount": "Nhập số tiền ngân sách hữu hạn lớn hơn không.",
+    "unauthorized": "Đăng nhập vào bảng điều khiển quản trị để tiếp tục.",
+    "forbidden": "Bạn không có quyền quản lý nhóm. Dữ liệu bạn nhập đã được giữ lại.",
+    "notFound": "Nhóm hoặc việc gán này không còn tồn tại.",
+    "conflict": "Việc gán hoặc nhóm đã thay đổi. Hãy làm mới và xác nhận quyền sở hữu hiện tại trước khi thử lại.",
+    "failed": "Yêu cầu thất bại. Dữ liệu bạn nhập đã được giữ lại; vui lòng thử lại.",
+    "partialBudget": "Một số nhóm dữ liệu theo ngày được giữ lại chồng lên ranh giới cửa sổ và không thể phân bổ chính xác. Chi tiêu hiển thị chưa đầy đủ; hạn mức còn lại không khả dụng. Chính sách ngân sách mềm hiện có không thay đổi."
+  },
   "codexKeyServiceMode": {
     "title": "Chế độ dịch vụ Codex cho khóa API này",
     "description": "Áp dụng cho các yêu cầu Codex, bao gồm các mô hình Codex bên trong các tổ hợp. Chế độ bắt buộc sẽ ghi đè thiết lập của ứng dụng khách, thiết lập chung và thiết lập mặc định của kết nối. Các nhà cung cấp khác không bị ảnh hưởng.",
@@ -25,8 +129,10 @@
     "confirm": "Bạn có chắc không?",
     "refresh": "Làm mới",
     "close": "Đóng",
+    "dialogTitleFallback": "Hộp thoại",
     "previousPage": "Trang trước",
     "nextPage": "Trang sau",
+    "pagination": "Phân trang",
     "capsLockOn": "Caps Lock đang bật",
     "dismissNotification": "Đóng thông báo",
     "toggleColumns": "Bật/tắt cột",
@@ -182,6 +288,7 @@
     "combos": "Combo",
     "noModelsFound": "Không tìm thấy mô hình nào",
     "clear": "Xóa",
+    "clearFilters": "Xóa bộ lọc",
     "done": "Xong",
     "selectAll": "Chọn tất cả",
     "unselectAll": "Bỏ chọn tất cả",
@@ -998,7 +1105,10 @@
     "batchFileUsedByCount": "{count, plural, one {# batch} other {# batch}}",
     "batchFilePreview": "Bản xem trước",
     "batchFilePreviewTruncated": "Hiển thị {shown} dòng đầu tiên (tổng cộng {total} dòng)",
-    "batchFileDownloadFull": "Tải xuống toàn bộ tệp"
+    "batchFileDownloadFull": "Tải xuống toàn bộ tệp",
+    "tokensPageTitle": "Token",
+    "tokensPageDescription": "Gửi token giữa các khóa API, chia sẻ mã mời và kết nối máy chủ cộng đồng.",
+    "tokensServerUrlLabel": "URL máy chủ"
   },
   "disabled": "Đã tắt",
   "featureFlagOmnirouteEmergencyFallbackDescription": "Định tuyến các yêu cầu đã hết ngân sách đến nhà cung cấp/mô hình dự phòng khẩn cấp miễn phí.",
@@ -1085,17 +1195,8 @@
     "serverDisconnectedMsg": "Máy chủ proxy đã bị dừng hoặc đang khởi động lại.",
     "expandSidebar": "Mở rộng thanh bên",
     "collapseSidebar": "Thu gọn thanh bên",
-    "themes": "Giao diện",
-    "presetColors": "Màu phổ biến",
     "createTheme": "Tạo giao diện",
     "chooseColor": "Chọn một màu",
-    "themeCoral": "San hô",
-    "themeBlue": "Xanh dương",
-    "themeRed": "Đỏ",
-    "themeGreen": "Xanh lá",
-    "themeViolet": "Tím",
-    "themeOrange": "Cam",
-    "themeCyan": "Xanh lơ",
     "cliToolsShort": "Công cụ",
     "cache": "Cache",
     "cacheShort": "Cache",
@@ -1103,12 +1204,10 @@
     "themeSystem": "Giao diện theo hệ thống",
     "whitelabelingDesc": "Mô tả về gắn nhãn trắng",
     "switchThemes": "Chuyển đổi giao diện",
-    "themeAccentDesc": "Mô tả màu nhấn của giao diện",
     "uploadFavicon": "Tải lên favicon",
     "themeDark": "Giao diện tối",
     "customLogoDesc": "Mô tả logo tùy chỉnh",
     "sidebarVisibilityToggle": "Bật/tắt hiển thị thanh bên",
-    "themeAccent": "Màu nhấn giao diện",
     "resetFavicon": "Đặt lại favicon",
     "whitelabeling": "Gắn nhãn trắng",
     "darkMode": "Chế độ tối",
@@ -1122,10 +1221,8 @@
     "customLogo": "Logo tùy chỉnh",
     "appearance": "Giao diện hiển thị",
     "themeSelectionAria": "Nhãn ARIA để chọn giao diện",
-    "themeCreate": "Tạo giao diện",
     "customFaviconDesc": "Mô tả favicon tùy chỉnh",
     "logoPreview": "Xem trước logo",
-    "themeCustom": "Giao diện tùy chỉnh",
     "hideHealthLogsDesc": "Mô tả ẩn nhật ký tình trạng",
     "faviconPreview": "Xem trước favicon",
     "changelog": "Lịch sử thay đổi",
@@ -1141,6 +1238,8 @@
     "contextHeadroom": "Headroom",
     "contextSessionDedup": "Session Dedup",
     "contextCcr": "CCR",
+    "contextToolSchema": "Tool Schema",
+    "contextRelevance": "Relevance",
     "contextLlmlingua": "LLMLingua",
     "combosLive": "Combo Studio",
     "combosLiveSubtitle": "Chuỗi định tuyến trực tiếp",
@@ -1150,6 +1249,8 @@
     "contextHeadroomSubtitle": "Nén dạng bảng",
     "contextSessionDedupSubtitle": "Khử trùng lặp giữa các lượt",
     "contextCcrSubtitle": "Dấu mốc truy xuất",
+    "contextToolSchemaSubtitle": "Tool-definition trimming",
+    "contextRelevanceSubtitle": "Extractive scoring",
     "contextLlmlinguaSubtitle": "Lược bỏ theo ngữ nghĩa",
     "contextLiteSubtitle": "Dọn khoảng trắng nhanh",
     "contextAggressiveSubtitle": "Tóm tắt và làm cũ",
@@ -1352,7 +1453,33 @@
       "open": "mở",
       "close": "đóng"
     },
-    "noResults": "Không có kết quả"
+    "noResults": "Không có kết quả",
+    "agentPorts": "Agent Ports",
+    "agentPortsSubtitle": "Per-agent localhost ports with dedicated API keys",
+    "newPort": "New agent port",
+    "name": "Name",
+    "port": "Port",
+    "apiKey": "API key",
+    "selectKey": "Assign API key…",
+    "checkAvailability": "Check availability",
+    "checking": "Checking…",
+    "portAppearsFree": "Port appears free (informational — the actual bind at start remains authoritative)",
+    "create": "Create",
+    "baseUrl": "Base URL",
+    "status": "Status",
+    "actions": "Actions",
+    "empty": "No agent ports yet.",
+    "copied": "copied!",
+    "copy": "copy",
+    "stop": "Stop",
+    "start": "Start",
+    "edit": "Edit",
+    "delete": "Delete",
+    "newPortValue": "New port",
+    "reassignKey": "Reassign key",
+    "save": "Save",
+    "costsTeams": "Nhóm",
+    "costsTeamsSubtitle": "Trung tâm chi phí nhóm"
   },
   "webhooks": {
     "title": "Webhook",
@@ -1485,7 +1612,11 @@
       "chatIdPlaceholder": "-100123456789 hoặc @channelname",
       "chatIdHint": "Mã định danh số duy nhất hoặc tên người dùng công khai của cuộc trò chuyện/kênh.",
       "tutorial": "Cách cấu hình webhook Telegram:"
-    }
+    },
+    "copy": "Sao chép",
+    "copied": "Đã sao chép!",
+    "expandDetails": "Hiện chi tiết",
+    "collapseDetails": "Ẩn chi tiết"
   },
   "compliance": {
     "auditTitle": "Kiểm toán",
@@ -1597,22 +1728,17 @@
     "mcpMetricCalls24h": "Lượt gọi (24 giờ)",
     "mcpMetricSuccessRate": "Tỷ lệ thành công",
     "mcpMetricAvgDuration": "Thời lượng trung bình",
-    "mcpMetricTopTool": "tool hàng đầu"
-  },
-  "themesPage": {
-    "title": "Chủ đề",
-    "description": "Chọn một chủ đề có sẵn hoặc tự tạo chủ đề của riêng bạn với một màu duy nhất",
-    "presetColors": "Các màu phổ biến",
-    "customTheme": "Chủ đề tùy chỉnh",
-    "customThemeDesc": "Nhấp vào \"Tạo chủ đề\" và chọn một màu",
-    "createTheme": "Tạo chủ đề",
-    "activePreset": "Chủ đề đang hoạt động"
+    "mcpMetricTopTool": "tool hàng đầu",
+    "dismissError": "Bỏ qua lỗi"
   },
   "header": {
+    "teamsDescription": "Ước tính chi phí nhóm và ngân sách mềm dùng chung",
     "logout": "Đăng xuất",
     "quickNavigation": "Điều hướng nhanh",
     "quickNavigationTitle": "Điều hướng nhanh (⌘K / Ctrl+K)",
     "openQuickNavigation": "Mở điều hướng nhanh",
+    "openMenu": "Mở menu",
+    "products": "Sản phẩm Keak",
     "switchToLightMode": "Chuyển sang chế độ sáng",
     "switchToDarkMode": "Chuyển sang chế độ tối",
     "language": "Ngôn ngữ",
@@ -1640,8 +1766,6 @@
     "anthropicCompatible": "Tương thích Anthropic",
     "media": "Đa phương tiện",
     "mediaDescription": "Tạo hình ảnh, video và âm nhạc",
-    "themes": "Chủ đề",
-    "themesDescription": "Chọn chủ đề màu sắc cho toàn bộ bảng điều khiển",
     "costsDescription": "Theo dõi chi tiêu, phân tích xu hướng và quản lý ngân sách AI của bạn trên tất cả các nhà cung cấp",
     "cacheDescription": "Theo dõi hiệu quả cache prompt của nhà cung cấp và tái sử dụng phản hồi ngữ nghĩa cục bộ.",
     "limitsDescription": "Cấu hình giới hạn tốc độ và hạn mức cho mỗi khóa API và nhà cung cấp",
@@ -1818,7 +1942,30 @@
     "agentBridge": "Cầu nối tác tử",
     "trafficInspector": "Trình kiểm tra lưu lượng",
     "usage": "Mức sử dụng",
-    "orchestration": "Điều phối"
+    "orchestration": "Điều phối",
+    "agentPorts": "Agent Ports",
+    "agentPortsSubtitle": "Per-agent localhost ports with dedicated API keys",
+    "newPort": "New agent port",
+    "name": "Name",
+    "port": "Port",
+    "apiKey": "API key",
+    "selectKey": "Assign API key…",
+    "checkAvailability": "Check availability",
+    "checking": "Checking…",
+    "portAppearsFree": "Port appears free (informational — the actual bind at start remains authoritative)",
+    "create": "Create",
+    "baseUrl": "Base URL",
+    "status": "Status",
+    "actions": "Actions",
+    "empty": "No agent ports yet.",
+    "copied": "copied!",
+    "copy": "copy",
+    "stop": "Stop",
+    "start": "Start",
+    "delete": "Delete",
+    "newPortValue": "New port",
+    "reassignKey": "Reassign key",
+    "save": "Save"
   },
   "home": {
     "quickStart": "Bắt đầu nhanh",
@@ -2495,7 +2642,12 @@
     "onlySelectedConnections": "Chỉ các kết nối đã chọn",
     "selectAtLeastOneConnection": "Chọn ít nhất một kết nối hoặc chọn Tất cả kết nối.",
     "allConnectionsDesc": "Khóa này có thể dùng bất kỳ kết nối đang hoạt động nào.",
-    "restrictedToConnections": "Giới hạn ở {count, plural, one {# kết nối} other {# kết nối}}."
+    "restrictedToConnections": "Giới hạn ở {count, plural, one {# kết nối} other {# kết nối}}.",
+    "preferredConnections": "Kết nối ưu tiên",
+    "preferredConnectionsDesc": "Thứ tự ưu tiên theo từng khóa. Nếu một kết nối ưu tiên không khả dụng, định tuyến sẽ chuyển sang kết nối đủ điều kiện tiếp theo.",
+    "preferredConnectionsNone": "Chưa đặt ưu tiên — chiến lược định tuyến mặc định được sử dụng.",
+    "preferredConnectionsClear": "Xóa",
+    "removeSelection": "Xóa {name}"
   },
   "auditLog": {
     "title": "Nhật ký kiểm tra",
@@ -2607,7 +2759,9 @@
     "imageToTextBridgeCta": "Cấu hình cầu Hình Ảnh→Văn Bản trong cài đặt Cầu Modality",
     "sttBridgeCta": "Cấu hình cầu Nói→Văn bản trong cài đặt Cầu Modality",
     "existingConnection": "Kết nối hiện có",
-    "openrouterSttDescription": "Mô hình chuyển đổi giọng nói thành văn bản của OpenRouter sử dụng kết nối OpenRouter đã được cấu hình của bạn. Không cần thông tin xác thực riêng biệt."
+    "openrouterSttDescription": "Mô hình chuyển đổi giọng nói thành văn bản của OpenRouter sử dụng kết nối OpenRouter đã được cấu hình của bạn. Không cần thông tin xác thực riêng biệt.",
+    "modalityTabsAria": "Loại phương tiện",
+    "serviceKindsAria": "Loại dịch vụ"
   },
   "search": {
     "searchQuery": "Truy vấn tìm kiếm",
@@ -2982,6 +3136,7 @@
       "amp": "Sử dụng khi bạn muốn các quy trình làm việc viết tắt của Amp nhưng vẫn cần áp dụng bí danh và quy tắc định tuyến của OmniRoute.",
       "hermes": "Sử dụng khi bạn cần một trợ lý AI gọn nhẹ hoạt động trực tiếp trong terminal cho các tác vụ nhanh.",
       "hermes-agent": "Sử dụng khi bạn cần Hermes Agent (do Nousresearch phát triển) với các mô hình mặc định, ủy quyền, xử lý hình ảnh và phụ trợ được định tuyến qua OmniRoute.",
+      "whycodes": "Sử dụng khi bạn muốn dùng WhyCodes làm tác nhân CLI tự trị đa năng (TUI, tác nhân có tên, bộ nhớ, swarm) trỏ tới OmniRoute.",
       "custom": "Sử dụng để triển khai công cụ tùy chỉnh hoặc cấu hình chung tương thích với OpenAI."
     },
     "toolDescriptions": {
@@ -3022,6 +3177,7 @@
       "warp": "Terminal Warp AI hỗ trợ nhà cung cấp tùy chỉnh",
       "agent-deck": "Trình điều phối đa tác nhân Agent Deck",
       "5dive": "5dive — hạm đội tác nhân lập trình tự lưu trữ; một hồ sơ xác thực trỏ tất cả về OmniRoute",
+      "whycodes": "Tác nhân CLI tự trị WhyCodes với base URL tương thích OpenAI",
       "zed": "Trình soạn thảo mã Zed — tác nhân tích hợp sẵn qua nhà cung cấp tương thích OpenAI"
     },
     "guides": {
@@ -3278,7 +3434,8 @@
     "cliproxyapiUnknown": "Không rõ",
     "cliproxyapiUpdate": "Cập nhật",
     "cliproxyapiUpdateAvailable": "Có bản cập nhật: v{current} → v{latest}",
-    "cliproxyapiVersion": "Phiên bản"
+    "cliproxyapiVersion": "Phiên bản",
+    "removeMapping": "Xóa ánh xạ"
   },
   "modelCatalog": {
     "title": "Mô hình & Combo",
@@ -3342,6 +3499,18 @@
     "maxMembersPlaceholder": "vd: 10",
     "testSelected": "Kiểm tra mục đã chọn ({count})",
     "testAllFiltered": "Kiểm tra tất cả mục đã lọc ({count})",
+    "visibility": "Hiển thị",
+    "allVisibility": "Hiển thị và đã ẩn",
+    "visibleOnly": "Đang hiển thị",
+    "hiddenOnly": "Đã ẩn",
+    "visibleColumn": "Hiển thị",
+    "hideModel": "Ẩn {name} khỏi /v1/models",
+    "showModel": "Hiện {name} trong /v1/models",
+    "hiddenBadge": "Đã ẩn",
+    "hideFiltered": "Ẩn mục đã lọc ({count})",
+    "showFiltered": "Hiện mục đã lọc ({count})",
+    "visibilityCounts": "{visible} hiển thị · {hidden} đã ẩn · tổng {total}",
+    "visibilityUpdateFailed": "Không thể cập nhật trạng thái hiển thị của mô hình",
     "cancel": "Hủy",
     "clearResults": "Xóa kết quả",
     "testing": "Đang kiểm tra...",
@@ -3400,13 +3569,13 @@
     "comboRefMember": "Combo → {name}"
   },
   "combos": {
+    "title": "Combo",
+    "description": "Tạo các combo mô hình với hỗ trợ định tuyến có trọng số và dự phòng",
+    "autoCatalogTitle": "Danh mục định tuyến tự động",
     "autoTosLoadError": "Không thể tải chính sách ToS. Hãy thử lại trước khi thay đổi.",
     "autoTosSaveError": "Không thể lưu chính sách ToS. Thiết lập trước đó vẫn được hiển thị. Hãy thử lại.",
     "autoTosIncludeLabel": "Đưa các nhà cung cấp có nhãn ToS: avoid vào auto",
     "autoTosDescription": "Mặc định tắt. Áp dụng cho mọi tổ hợp auto, không chỉ một tài khoản. Kết nối nhà cung cấp không bật tùy chọn này.",
-    "title": "Combo",
-    "description": "Tạo các combo mô hình với hỗ trợ định tuyến có trọng số và dự phòng",
-    "autoCatalogTitle": "Danh mục định tuyến tự động",
     "autoCatalogTemplateCount": "{count} mẫu",
     "autoCatalogDescription": "Các combo auto/* tích hợp sẵn được phân giải động từ các nhà cung cấp đã kết nối. Sử dụng bất kỳ ID nào trong số này làm trường mô hình — không cần thiết lập.",
     "autoCatalogExpand": "Mở rộng danh mục định tuyến tự động",
@@ -3518,6 +3687,9 @@
     "moveUp": "Di chuyển lên",
     "moveDown": "Di chuyển xuống",
     "removeModel": "Xóa",
+    "testStep": "Kiểm tra mô hình này",
+    "testStepRunning": "Đang kiểm tra…",
+    "testStepNotTestable": "Chỉ có thể kiểm tra các bước dùng một mô hình",
     "saving": "Đang lưu...",
     "liveNoProviders": "Chưa quan sát thấy nhà cung cấp nào.",
     "liveFleetDataHint": "Dữ liệu toàn cụm được nhận qua các sự kiện combo trực tiếp.",
@@ -3559,6 +3731,7 @@
     "playgroundNoCombosYet": "Chưa cấu hình combo nào.",
     "playgroundCreateFirst": "Tạo combo trước",
     "weighted": "Có trọng số",
+    "weightPercent": "Trọng số (%)",
     "leastUsed": "Ít được sử dụng nhất",
     "costOpt": "Tối ưu hóa chi phí",
     "strategyGuideTitle": "Cách sử dụng chiến lược này",
@@ -3720,6 +3893,7 @@
     "builderGlobalAccountCount": "{count, plural, one {# tài khoản} other {# tài khoản}}",
     "builderGlobalAdded": "Đã thêm",
     "builderGlobalAdd": "Thêm",
+    "clearSearch": "Xóa tìm kiếm",
     "manualModel": "Mô hình thủ công",
     "manualModelInvalid": "Nhập mô hình theo dạng nhà cung cấp/mô hình.",
     "manualModelUnknownProvider": "Tiền tố nhà cung cấp không xác định.",
@@ -3936,6 +4110,7 @@
     "builderComboRefStep": "Thêm tham chiếu combo",
     "builderPinnedAccount": "Tài khoản được ghim",
     "builderLegacyEntry": "Mục nhập cũ",
+    "builderStaleModel": "Không có trong danh mục trực tiếp",
     "reviewName": "Tên",
     "reviewStrategy": "Chiến lược",
     "reviewSteps": "Các bước",
@@ -3973,6 +4148,10 @@
     "responseValidationMinLength": "Độ dài nội dung tối thiểu (ký tự)",
     "responseValidationJsonPaths": "Các kiểm tra đường dẫn JSON",
     "responseValidationAddCheck": "+ Thêm kiểm tra",
+    "responseValidationRemoveCheck": "Xóa kiểm tra",
+    "responseValidationPath": "Đường dẫn JSON",
+    "responseValidationCondition": "Điều kiện",
+    "responseValidationValue": "Giá trị mong đợi",
     "agentFeaturesSystemMessageOverride": "Ghi đè thông báo hệ thống",
     "agentFeaturesSystemMessagePlaceholder": "Bạn là một trợ lý chuyên nghiệp...",
     "agentFeaturesSystemMessageHint": "Ghi đè thông báo hệ thống cho tác nhân",
@@ -5288,7 +5467,8 @@
         "skipped": "đã được cấu hình",
         "failed": "thất bại"
       }
-    }
+    },
+    "stepProgress": "Tiến độ thiết lập"
   },
   "providers": {
     "tosAvoidNoticeTitle": "Nhà cung cấp này mặc định bị loại khỏi auto",
@@ -5579,6 +5759,7 @@
     "allModelsAlreadyImported": "Tất cả mô hình đã được nhập",
     "noNewModelsToImport": "Không có mô hình mới để nhập — tất cả mô hình đã có trong sổ đăng ký hoặc danh sách mô hình tùy chỉnh",
     "localCatalogFallbackStatus": "Không thể lấy danh sách mô hình của nhà cung cấp — đang hiển thị danh mục tích hợp sẵn",
+    "discoveryDegradedStatus": "Khám phá mô hình thất bại {time}",
     "skippingExistingModels": "Bỏ qua {count} mô hình đã tồn tại",
     "autoSync": "Tự động đồng bộ hóa",
     "autoSyncShort": "Đồng bộ",
@@ -5797,6 +5978,7 @@
     "contextWindowOverridePlaceholder": "Ví dụ: 131072",
     "contextWindowOverrideHint": "Đặt thủ công cửa sổ ngữ cảnh thực tế của mô hình (token) khi nhà cung cấp báo sai. Giá trị này được ưu tiên hơn giá trị tự động phát hiện hoặc danh mục và ngăn định tuyến combo loại bỏ mô hình.",
     "contextWindowOverrideInvalid": "Giá trị ghi đè cửa sổ ngữ cảnh phải là số token nguyên dương",
+    "maxOutputTokenOverrideInvalid": "Giá trị ghi đè token đầu ra tối đa phải là số token nguyên dương",
     "visionCapableLabel": "Hỗ trợ thị giác",
     "visionCapableHint": "Đánh dấu thủ công mô hình là có khả năng thị giác khi metadata khám phá của nhà cung cấp không báo phương thức đầu vào hình ảnh (thường gặp ở backend tự lưu trữ hoặc cục bộ).",
     "compatParamFiltersLabel": "Bộ lọc tham số",
@@ -6055,10 +6237,10 @@
     "apiFormatLabel": "Nhãn định dạng API",
     "apiKeyOptionalHint": "Gợi ý khóa API tùy chọn",
     "apiKeyOptionalLabel": "Nhãn khóa API tùy chọn",
-    "apiRegionChina": "Khu vực API: Trung Quốc",
-    "apiRegionHint": "Gợi ý khu vực API",
-    "apiRegionInternational": "Khu vực API: Quốc tế",
-    "apiRegionLabel": "Khu vực API",
+    "apiRegionChina": "Trung Quốc đại lục",
+    "apiRegionHint": "Chọn vùng endpoint dùng để truy cập API và theo dõi hạn mức.",
+    "apiRegionInternational": "Quốc tế",
+    "apiRegionLabel": "Vùng API",
     "apikey": "Khóa API",
     "audio": "Âm thanh",
     "audioProvidersHeading": "Nhà cung cấp âm thanh",
@@ -6079,6 +6261,13 @@
     "claudeLowPriorityModeDescription": "Khi tài khoản này đạt giới hạn sử dụng 5 giờ và Anthropic cung cấp luồng có mức ưu tiên thấp hơn, OmniRoute sẽ chấp nhận và tiếp tục gửi yêu cầu với anthropic-usage-limit: slow cho đến khi khung thời gian được đặt lại, thay vì tạm ngừng kết nối. Giới hạn hằng tuần vẫn được áp dụng và phản hồi có thể phải chờ khi có dung lượng dự phòng.",
     "claudeAutoLimitResetLabel": "Tự động đặt lại giới hạn phiên (mỗi tuần một lần)",
     "claudeAutoLimitResetDescription": "Khi tài khoản này đạt giới hạn sử dụng 5 giờ và có thể đặt lại giới hạn phiên, OmniRoute sẽ tự động sử dụng lượt đặt lại đó rồi thử lại ở tốc độ tối đa. Thao tác này sử dụng lượt đặt lại mỗi tuần một lần của tài khoản và vẫn được tính vào giới hạn hằng tuần.",
+    "codexPaidCreditsShort": "Tín dụng bổ sung",
+    "codexPaidCreditsToggleTitle": "Cho phép sử dụng tín dụng trả phí của Codex sau khi hết hạn mức gói đăng ký (có thể phát sinh phí bổ sung)",
+    "codexPaidCreditsEnabled": "Đã bật tín dụng trả phí của Codex (có thể phát sinh phí bổ sung)",
+    "codexPaidCreditsDisabled": "Đã tắt tín dụng trả phí của Codex",
+    "failedUpdateCodexPaidCredits": "Không thể cập nhật chính sách tín dụng trả phí của Codex",
+    "allowCodexPaidCreditsLabel": "Cho phép tín dụng trả phí của Codex",
+    "allowCodexPaidCreditsDescription": "Cho phép tài khoản này sử dụng tín dụng trả phí sau khi hạn mức gói đăng ký đạt đến ngưỡng cắt. Yêu cầu có tín dụng khả dụng do OpenAI báo cáo; có thể phát sinh phí. Giới hạn Spark và thời gian chờ (cooldown) từ upstream vẫn được áp dụng. Tính khả dụng của tín dụng được kiểm tra ngay cả khi tính năng preflight hạn mức bị tắt.",
     "disableCoolingDescription": "Bỏ qua thời gian chờ tạm thời để kết nối này vẫn đủ điều kiện hoạt động ngay cả sau các lỗi có thể khôi phục (các trạng thái cuối cùng như bị cấm hoặc hết hạn vẫn áp dụng).",
     "disableCoolingLabel": "Vô hiệu hóa thời gian chờ cho kết nối này",
     "bulkPasteAdded": "{count, plural, one {Đã thêm 1 khóa} other {Đã thêm # khóa}}",
@@ -6532,6 +6721,7 @@
       "monsterapi": "Lấy khóa API tại monsterapi.ai",
       "moonshot": "Kết nối Kimi bằng khóa API.",
       "morph": "Gói miễn phí: 250 nghìn tín dụng/tháng, 0 USD",
+      "apmix": "Kết nối Apmix bằng khóa API từ apmix.ai/dashboard — một gói đăng ký, nhiều mô hình.",
       "nanogpt": "Kết nối NanoGPT bằng khóa API.",
       "nebius": "Khoảng 1 USD tín dụng dùng thử khi đăng ký để kiểm thử API",
       "nlpcloud": "NLP Cloud dùng API chatbot độc quyền thay cho OpenAI chat/completions. OmniRoute chuyển đổi message OpenAI thành input/context/history và cung cấp danh mục cục bộ các mô hình chatbot được hỗ trợ.",
@@ -6620,7 +6810,7 @@
       "claude": "Kết nối Claude Code bằng luồng OAuth hiện có.",
       "cline": "Kết nối Cline bằng luồng OAuth hiện có.",
       "cursor": "Kết nối Cursor IDE bằng luồng OAuth hiện có.",
-      "cursor-api": "Kết nối Cursor bằng khóa API người dùng (crsr_...) từ cursor.com/dashboard/api; không cần phiên IDE.",
+      "cursor-api": "Kết nối Cursor bằng khóa API người dùng (crsr_... hoặc grok_...) từ cursor.com/dashboard/api; không cần phiên IDE.",
       "github": "Kết nối GitHub Copilot bằng luồng OAuth hiện có.",
       "gitlab-duo": "Ứng dụng OAuth với phạm vi ai_features + read_user. Cấu hình GITLAB_DUO_OAUTH_CLIENT_ID và tùy chọn GITLAB_DUO_OAUTH_CLIENT_SECRET trên instance OmniRoute này.",
       "kilocode": "Kết nối Kilo Code bằng luồng OAuth hiện có.",
@@ -6628,8 +6818,7 @@
       "kiro": "Gói miễn phí: 50 tín dụng/tháng (khoảng 25–100 nghìn token). ⚠️ Điều khoản Kiro cấm sử dụng proxy/harness của bên thứ ba.",
       "codex": "Kết nối OpenAI Codex bằng luồng OAuth hiện có.",
       "qwen": "Kết nối Qwen Code bằng luồng OAuth hiện có.",
-      "github-models": "Tạo GitHub PAT với phạm vi 'models: read' tại github.com/settings/tokens",
-      "apmix": "Kết nối Apmix bằng khóa API từ apmix.ai/dashboard — một gói đăng ký, nhiều mô hình."
+      "github-models": "Tạo GitHub PAT với phạm vi 'models: read' tại github.com/settings/tokens"
     },
     "passthroughModelsDescription": "{provider} chấp nhận ID mô hình gốc của nhà cung cấp. Nhập từ /models hoặc thêm ID tùy chỉnh để định tuyến.",
     "bedrockModelsDescription": "Các mô hình Amazon Bedrock được giới hạn theo vùng AWS. Nhập từ /models hoặc thêm ID mô hình Bedrock được bật trong vùng đã chọn.",
@@ -6801,14 +6990,7 @@
     "rateLimitOverridesModelConcurrencyLabel": "Giới hạn đồng thời theo mô hình",
     "rateLimitOverridesModelConcurrencyPlaceholder": "glm-5=1\nglm-4.7=3",
     "rateLimitOverridesModelConcurrencyHint": "Tùy chọn: mỗi dòng một model=cap, khớp chính xác với ID mô hình của upstream. Các yêu cầu vượt mức được xếp hàng cục bộ; để trống nghĩa là không giới hạn theo mô hình.",
-    "rateLimitOverridesModelConcurrencyInvalid": "Mục đồng thời theo mô hình \"{entry}\" không hợp lệ — hãy dùng model=cap với cap là số nguyên từ 1 đến {max}.",
-    "codexPaidCreditsShort": "Tín dụng bổ sung",
-    "codexPaidCreditsToggleTitle": "Cho phép sử dụng tín dụng trả phí của Codex sau khi hết hạn mức gói đăng ký (có thể phát sinh phí bổ sung)",
-    "codexPaidCreditsEnabled": "Đã bật tín dụng trả phí của Codex (có thể phát sinh phí bổ sung)",
-    "codexPaidCreditsDisabled": "Đã tắt tín dụng trả phí của Codex",
-    "failedUpdateCodexPaidCredits": "Không thể cập nhật chính sách tín dụng trả phí của Codex",
-    "allowCodexPaidCreditsLabel": "Cho phép tín dụng trả phí của Codex",
-    "allowCodexPaidCreditsDescription": "Cho phép tài khoản này sử dụng tín dụng trả phí sau khi hạn mức gói đăng ký đạt đến ngưỡng cắt. Yêu cầu có tín dụng khả dụng do OpenAI báo cáo; có thể phát sinh phí. Giới hạn Spark và thời gian chờ (cooldown) từ upstream vẫn được áp dụng. Tính khả dụng của tín dụng được kiểm tra ngay cả khi tính năng preflight hạn mức bị tắt."
+    "rateLimitOverridesModelConcurrencyInvalid": "Mục đồng thời theo mô hình \"{entry}\" không hợp lệ — hãy dùng model=cap với cap là số nguyên từ 1 đến {max}."
   },
   "settings": {
     "title": "Cài đặt",
@@ -7104,16 +7286,6 @@
     "settingsSidebarDesc": "Chọn các mục trên thanh bên sẽ hiển thị. Thiết yếu giữ cho các công cụ nâng cao vẫn có thể tìm kiếm.",
     "hideHealthLogs": "Ẩn nhật ký kiểm tra sức khỏe",
     "hideHealthLogsDesc": "Khi BẬT, sẽ chặn các thông báo [HealthCheck] trong bảng điều khiển máy chủ",
-    "themeAccent": "Màu chủ đề",
-    "themeAccentDesc": "Chọn màu thiết lập sẵn hoặc tạo chủ đề của riêng bạn bằng một màu",
-    "themeCreate": "Tạo chủ đề",
-    "themeCustom": "Chủ đề tùy chỉnh",
-    "themeBlue": "Xanh dương",
-    "themeRed": "Đỏ",
-    "themeGreen": "Xanh lá",
-    "themeViolet": "Tím",
-    "themeOrange": "Cam",
-    "themeCyan": "Lục lam",
     "whitelabeling": "Nhận diện thương hiệu",
     "whitelabelingDesc": "Tùy chỉnh tên ứng dụng và logo",
     "appName": "Tên ứng dụng",
@@ -7254,7 +7426,7 @@
       "nextSwitchNow": "Ngay bây giờ",
       "coreConfigPath": "Tệp cấu hình lõi",
       "coreConfigPathPlaceholder": "/var/lib/omniroute/sing-box/config.json",
-      "coreConfigPathDesc": "Đường dẫn tuyệt đối đến tệp .json (phần mở rộng viết thường). Để trống = không tạo. Mỗi lần đồng bộ ghi '<path>'.generated bên cạnh tệp đã áp dụng, không bao giờ ghi vào chính tệp đó.",
+      "coreConfigPathDesc": "Đường dẫn tuyệt đối đến tệp .json/.yaml/.yml (phần mở rộng viết thường). Để trống = không tạo. Mỗi lần đồng bộ ghi '<path>'.generated bên cạnh tệp đã áp dụng, không bao giờ ghi vào chính tệp đó.",
       "lastSwitchKind": "Lý do chuyển",
       "switchKind": {
         "ip_quota_429": "hạn mức",
@@ -7265,7 +7437,8 @@
       "coreReloadAppliedBy": "Áp dụng bởi: {mode}",
       "coreBinaryPath": "Đường dẫn tệp nhị phân lõi",
       "coreBinaryPathPlaceholder": "/usr/bin/sing-box",
-      "coreBinaryPathHelp": "Tùy chọn: xác minh tệp được tạo bằng tệp nhị phân lõi trước khi thay thế tệp đã chấp nhận. Để trống để tiếp tục ghi bên cạnh. Thư mục sẽ được tạo nếu chưa tồn tại."
+      "coreBinaryPathHelp": "Tùy chọn: xác minh tệp được tạo bằng tệp nhị phân lõi trước khi thay thế tệp đã chấp nhận. Để trống để tiếp tục ghi bên cạnh. Thư mục sẽ được tạo nếu chưa tồn tại.",
+      "urlFeedlessHint": "Để trống cho gói đăng ký chỉ có bộ chọn: đặt một URL điều khiển bên dưới, không nguồn cấp dữ liệu nào được tải, làm mới hay liên kết."
     },
     "bulkHealthcheck": "Kiểm tra tình trạng hàng loạt",
     "bulkHealthcheckDesc": "Kiểm tra tất cả proxy đã cấu hình với một URL đích để xác định proxy nào hoạt động.",
@@ -7706,6 +7879,7 @@
     "configured": "đã định cấu hình",
     "none": "Không có",
     "modelOverrideValuePlaceholder": "Giá trị số",
+    "modelOverrideKey": "Khóa ghi đè",
     "modelOverrideReasoningEffortsPlaceholder": "Các giá trị tiếng Anh được phân tách bằng dấu phẩy, ví dụ: low, medium, high",
     "addKeyValue": "Thêm cặp khóa-giá trị",
     "noModelOverrides": "Không có ghi đè nào được định cấu hình cho mô hình này.",
@@ -7754,7 +7928,6 @@
     "customPricingNote": "Bạn có thể ghi đè giá mặc định cho các mô hình cụ thể. Các ghi đè tùy chỉnh được ưu tiên hơn giá được tự động phát hiện.",
     "editPricing": "Chỉnh sửa giá",
     "viewFullDetails": "Xem chi tiết đầy đủ",
-    "themeCoral": "San hô",
     "adaptiveVolumeRouting": "Định tuyến lưu lượng thích ứng",
     "adaptiveVolumeRoutingDesc": "Tự động điều chỉnh số lượng kết nối dựa trên khối lượng dữ liệu tải và áp lực thông lượng.",
     "lkgpToggleTitle": "Nhà cung cấp hoạt động tốt gần đây nhất (LKGP)",
@@ -7849,6 +8022,8 @@
     "compressionDesc": "Giảm mức sử dụng token bằng cách nén các prompt trước khi gửi đến các nhà cung cấp",
     "autoCombosTitle": "Combo tự động",
     "autoCombosDesc": "Cho phép khóa này sử dụng các combo auto/* tích hợp sẵn, vốn tự động chọn mô hình từ mọi nhà cung cấp đã cấu hình",
+    "ccDiscoveryAliasesTitle": "Bí danh khám phá Claude Code",
+    "ccDiscoveryAliasesDesc": "Hiển thị các bí danh tương thích claude/... cho những mô hình và combo mà khóa này đã có quyền truy cập",
     "compressionGuidanceFullGuideLink": "Hướng dẫn nén đầy đủ",
     "compressionGuidanceShow": "Chi tiết",
     "compressionGuidanceHide": "Ẩn chi tiết",
@@ -9034,7 +9209,8 @@
     "tomlTestPassed": "Đạt",
     "tomlTestFailed": "Không đạt",
     "tomlImportError": "Không thể xử lý tệp RTK TOML.",
-    "tomlFileReadError": "Không thể đọc tệp TOML đã chọn."
+    "tomlFileReadError": "Không thể đọc tệp TOML đã chọn.",
+    "viewMode": "Chế độ xem"
   },
   "compressionEngineConfig": {
     "loading": "Đang tải…",
@@ -9256,7 +9432,8 @@
     "languagePacksList": "Gói ngôn ngữ: {packs}",
     "dragToReorder": "Kéo để sắp xếp lại bước",
     "engine": "Bộ máy",
-    "intensity": "Cường độ"
+    "intensity": "Cường độ",
+    "compressionOverride": "Ghi đè nén"
   },
   "compressionStudio": {
     "noRun": "Chưa có lượt nén nào.",
@@ -9316,7 +9493,10 @@
     "encoderWinner": "tốt nhất: {winner}",
     "encoder": "bộ mã hóa",
     "bytes": "byte",
-    "tokensCl100k": "token (cl100k)"
+    "tokensCl100k": "token (cl100k)",
+    "routeContentType": "Route by content type (skip engines that do not apply)",
+    "contentTypeNoEngine": "Bộ định tuyến sẽ bỏ qua mọi engine đang hoạt động đối với nội dung {contentType} — hãy thêm engine xử lý loại này hoặc tắt định tuyến",
+    "studioViews": "Các chế độ xem của studio"
   },
   "omniglyph": {
     "preview": "Xem trước",
@@ -9522,7 +9702,9 @@
     "tooltipMinLength": "Tin nhắn ngắn hơn mức này sẽ không được nén. Thấp hơn = nén nhiều hơn.",
     "tooltipMinSavings": "Chỉ nén nếu tiết kiệm được ít nhất ngần này token.",
     "ultraSettings": "Cài đặt tối đa",
-    "ultraSettingsDesc": "Nén ngữ nghĩa sử dụng SLM"
+    "ultraSettingsDesc": "Nén ngữ nghĩa sử dụng SLM",
+    "defaultLanguage": "Ngôn ngữ mặc định",
+    "viewMode": "Chế độ xem"
   },
   "translator": {
     "title": "Trình dịch",
@@ -9834,6 +10016,13 @@
     "streamTransformFailed": "Không thể chuyển đổi luồng"
   },
   "usage": {
+    "healthExtraUsageBypass": "Đã hết hạn mức; cho phép sử dụng thêm nên dịch vụ vẫn tiếp tục.",
+    "healthPaidCreditsBypass": "Đã hết hạn mức; tín dụng trả phí khả dụng cho phép dịch vụ tiếp tục.",
+    "healthFilteringBypass": "Đã hết hạn mức; bộ lọc hạn mức cục bộ đã tắt nên dịch vụ vẫn tiếp tục.",
+    "codexPaidCreditsLabel": "Tín dụng trả phí Codex",
+    "codexPaidCreditsAvailable": "Khả dụng (không báo cáo số dư)",
+    "codexPaidCreditsUnavailable": "Không khả dụng hoặc đã đạt giới hạn chi tiêu",
+    "codexPaidCreditsUnlimited": "Không giới hạn",
     "title": "Mức sử dụng",
     "grokExtraUsageCredits": "Tín dụng sử dụng bổ sung",
     "grokAutoTopUp": "Tự động nạp thêm",
@@ -9997,6 +10186,8 @@
     "notAvailableSymbol": "-",
     "providerLimits": "Giới hạn của nhà cung cấp",
     "noProviders": "Không có nhà cung cấp nào được kết nối",
+    "quotaAuthRequired": "Yêu cầu xác thực - đăng nhập vào trang tổng quan",
+    "quotaAuthRequiredHint": "Không thể tải các kết nối nhà cung cấp vì phiên trang tổng quan bị thiếu hoặc đã hết hạn. Hãy đăng nhập và làm mới để xem giới hạn hạn ngạch của bạn.",
     "connectProvidersForQuota": "Kết nối với các nhà cung cấp bằng OAuth để theo dõi giới hạn hạn ngạch và mức sử dụng API của bạn.",
     "accountsCount": "{count, plural, one {# tài khoản} other {# tài khoản}}",
     "filteredFromCount": "(được lọc từ {count})",
@@ -10046,9 +10237,6 @@
     "tierLite": "Nhẹ",
     "tierUnknown": "Không xác định",
     "statTotal": "Tổng cộng",
-    "statCritical": "Nghiêm trọng",
-    "statAlert": "Cảnh báo",
-    "statHealthy": "Hoạt động tốt",
     "filterPurchaseTypeLabel": "Loại",
     "filterTierLabel": "Hạng",
     "purchaseAll": "Tất cả",
@@ -10287,10 +10475,60 @@
     "lastRefreshed": "Cập nhật lần cuối",
     "providerQuota": "Hạn ngạch nhà cung cấp",
     "providerQuotaHomeHint": "Trạng thái theo thời gian thực của các tài khoản đã kết nối",
-    "codexPaidCreditsLabel": "Tín dụng trả phí Codex",
-    "codexPaidCreditsAvailable": "Khả dụng (không báo cáo số dư)",
-    "codexPaidCreditsUnavailable": "Không khả dụng hoặc đã đạt giới hạn chi tiêu",
-    "codexPaidCreditsUnlimited": "Không giới hạn"
+    "claudeResetCreditDefaultTitle": "Đặt lại giới hạn Claude",
+    "confirmRedeemClaudeResetCredit": "Việc quy đổi sẽ ngay lập tức đặt lại các giới hạn sử dụng Claude đủ điều kiện và tiêu hao vĩnh viễn khoản tín dụng này.",
+    "claudeResetCreditsModalTitle": "Tín dụng đặt lại Claude",
+    "claudeResetCreditsModalExplainer": "Tín dụng đặt lại Claude khả dụng và lượt đặt lại phiên hàng tuần cho tài khoản này.",
+    "healthAccountHint": "Dựa trên các quan sát gần đây, không phải kiểm tra trực tiếp. Chọn tài khoản để xem chi tiết.",
+    "healthRecovery": "Thời gian khôi phục dự kiến",
+    "healthAvailable": "Khả dụng",
+    "healthRestricted": "Bị hạn chế một phần",
+    "healthUnavailable": "Không khả dụng",
+    "healthPeakHourProtection": "Bảo vệ giờ cao điểm",
+    "healthCooldown": "Thời gian chờ",
+    "healthQuotaExhausted": "Đã hết hạn mức",
+    "healthOverview": "Tổng quan",
+    "layoutFull": "Đầy đủ",
+    "layoutCompact": "Thu gọn",
+    "healthQuotaError": "Đọc hạn mức thất bại",
+    "healthNoRuntime": "Không có trạng thái hoạt động",
+    "healthPreviousSnapshot": "Lần làm mới gần nhất thất bại; hiển thị kết quả trước",
+    "healthPreviousFailure": "Yêu cầu gần nhất thất bại; thời gian chờ đã kết thúc",
+    "healthAwaitingSync": "Đã qua giờ đặt lại; đang chờ đồng bộ",
+    "healthVerdictUnavailable": "Không lấy được kết quả kiểm tra khả dụng; chỉ hiển thị mức hạn ngạch",
+    "healthSummaryFailed": "Đọc tóm tắt trạng thái thất bại; có thể thiếu thông tin khóa mô hình",
+    "healthRuntimeObserved": "Trạng thái cập nhật {time}",
+    "healthQuotaObserved": "Hạn mức được ghi nhận {time}",
+    "healthOldestQuota": "Ảnh chụp hạn mức cũ nhất: {time}",
+    "healthRecoveryUnknown": "Không rõ thời gian khôi phục",
+    "healthDetailsHint": "Nhấp để xem chi tiết và thao tác",
+    "healthFiveHour": "5 giờ",
+    "healthOverall": "Tổng thể",
+    "healthAction": "Cần xử lý",
+    "healthTitle": "Khả năng sử dụng tài khoản",
+    "healthDrag": "Kéo để sắp xếp nhà cung cấp",
+    "healthDragPosition": "{provider}, {count, plural, one {vị trí {position, number} trên #} other {vị trí {position, number} trên #}}",
+    "healthResetOrder": "Khôi phục thứ tự mặc định",
+    "healthPool": "Nhóm {name}",
+    "healthOtherPool": "Cùng tài khoản · {pool}: {status} (còn {remaining})",
+    "healthIncluded": "Gồm {count, number} tài khoản bị hạn chế một phần",
+    "healthBannerUnavailable": "Tài khoản tạm thời không dùng được: {count, number}",
+    "healthBannerAvailable": "Cả {count, number} tài khoản đều dùng được",
+    "healthLegendHide": "Ẩn chú giải",
+    "healthLegendShow": "Hiện chú giải",
+    "healthLegendOk": "Đặc = hạn mức còn lại; trong mờ = đã dùng.",
+    "healthLegendCooldown": "Hết hạn mức {window}. Đặc = thời gian đã chờ; trong mờ = thời gian chờ còn lại.",
+    "healthLegendAction": "Ủy quyền hết hạn hoặc tài khoản bị khóa; chờ không khắc phục được.",
+    "healthLegendPartial": "Vẫn dùng được. Đầu vàng = một mô hình hoặc nhóm bị hạn chế.",
+    "healthWaited": "Đã chờ {percent}",
+    "healthWait": "Còn {duration} (khôi phục lúc {time})",
+    "healthFastest": "Khôi phục sớm nhất sau {duration}",
+    "healthRatio": "{available, plural, one {# / {active, number} dùng được} other {# / {active, number} dùng được}}",
+    "healthCd5": "5 giờ · Thời gian chờ",
+    "healthCdw": "Hàng tuần · Thời gian chờ",
+    "healthRecentSuccessBypass": "Bộ định tuyến cho phép tài khoản này vì một yêu cầu đã thành công gần đây.",
+    "healthPurchasedBalanceBypass": "Số dư đã mua cho phép tiếp tục sử dụng sau khi hết hạn mức đi kèm.",
+    "healthCutoffAtRequest": "Ngưỡng hạn mức trực tiếp được kiểm tra khi định tuyến yêu cầu."
   },
   "modals": {
     "waitingAuth": "Đang chờ ủy quyền",
@@ -10516,6 +10754,47 @@
     "settingsJson": "settings.json",
     "fromDataDir": "từ thư mục dữ liệu",
     "relaunchApp": "Khởi động lại ứng dụng máy tính để bàn OmniRoute"
+  },
+  "userPortal": {
+    "loginTitle": "User sign in",
+    "loginDescription": "Sign in with your router API key. It is sent once and never stored in this browser.",
+    "apiKeyLabel": "Router API key",
+    "apiKeyPlaceholder": "Paste your router API key",
+    "loginButton": "Sign in",
+    "loggingIn": "Signing in…",
+    "loginFailed": "Sign in failed. Check the key and try again.",
+    "loginNetworkError": "Network error. Check your connection and try again.",
+    "dashboardTitle": "My models and combos",
+    "modelsSection": "Models",
+    "combosSection": "My combos",
+    "comboCreateTitle": "Create a private combo",
+    "comboNameLabel": "Combo name",
+    "comboModelsLabel": "Models in order (comma-separated)",
+    "comboModelsPlaceholder": "model-a, model-b",
+    "comboCreateButton": "Create combo",
+    "comboCreateFailed": "Could not create the combo. Check the names and try again.",
+    "logoutAll": "Sign out everywhere",
+    "loadFailed": "Could not load your dashboard. Try again.",
+    "saveFailed": "Could not save. Try again.",
+    "staleRevision": "Changed elsewhere — reloaded the latest state. Try again.",
+    "enable": "Enable",
+    "disable": "Disable",
+    "portalEnabledLabel": "User portal access",
+    "portalEnabledDesc": "Allow this key to sign in at /user/login. Requires at least one granted connection.",
+    "userCombosEnabledLabel": "Private combos",
+    "userCombosEnabledDesc": "Allow this key to create private priority combos from its allowed models.",
+    "comboEditButton": "Edit",
+    "comboSaveButton": "Save",
+    "comboCancelButton": "Cancel",
+    "comboDeleteButton": "Delete",
+    "comboEnableButton": "Enable",
+    "comboDisableButton": "Disable",
+    "comboDeleteConfirm": "Delete this combo? This cannot be undone.",
+    "comboUpdateFailed": "Could not update the combo. Try again.",
+    "comboDeleteFailed": "Could not delete the combo. Try again.",
+    "comboEditTitle": "Edit combo",
+    "portalGrantHelper": "Open Connections, turn off Allow all connections, and select the specific connection(s) this key may use. Then return here to enable portal access.",
+    "portalGoToConnections": "Go to Connections"
   },
   "landing": {
     "brandName": "OmniRoute",
@@ -11077,7 +11356,8 @@
       "message": "Tin nhắn",
       "error": "Lỗi",
       "completion": "Hoàn tất"
-    }
+    },
+    "statusFilter": "Trạng thái"
   },
   "templateNames": {
     "simple-chat": "Trò chuyện đơn giản",
@@ -11258,7 +11538,8 @@
     "minutesAgo": "{minutes} phút trước",
     "hoursAgo": "{hours} giờ trước",
     "daysAgo": "{days} ngày trước",
-    "entries": "Mục"
+    "entries": "Mục",
+    "viewSwitcherAria": "Chế độ xem bộ nhớ đệm"
   },
   "proxyConfigModal": {
     "levelGlobal": "Toàn cầu",
@@ -11446,6 +11727,7 @@
     "tableHealth": "Trạng thái hoạt động (24h)",
     "tableUsage": "Mức sử dụng",
     "tableActions": "Hành động",
+    "moreActions": "Thêm thao tác",
     "test": "Kiểm tra",
     "edit": "Chỉnh sửa",
     "delete": "Xóa",
@@ -11525,7 +11807,7 @@
     "bulkImportNoValidEntries": "Không tìm thấy mục hợp lệ nào. Hãy kiểm tra định dạng và thử lại.",
     "bulkImportSuccess": "Nhập hoàn tất: {created} đã tạo, {updated} đã cập nhật, {failed} thất bại",
     "bulkImportErrorLine": "Dòng {line}: {reason}",
-    "bulkImportMaxExceeded": "Tối đa 100 proxy cho mỗi lần nhập",
+    "bulkImportMaxExceeded": "Tối đa {max} proxy cho mỗi lần nhập",
     "bulkImportPreview": "Xem trước",
     "clearAssignment": "(xóa gán)",
     "bulkProxyAssignment": "Gán proxy hàng loạt",
@@ -11586,6 +11868,7 @@
     "poolSetAsideKindIpQuota429": "giới hạn tốc độ theo IP (429)",
     "poolSetAsideKindSlow": "phản hồi chậm",
     "poolSetAsideKindGeoBlocked": "bị chặn theo khu vực (403/451)",
+    "poolSetAsideKindOperatorReported": "sự cố do nhà vận hành báo cáo",
     "poolSetAsideUntil": "Trở lại {endsAt}",
     "poolSetAsideRepeat": "Đã tạm ngưng {count} lần",
     "poolUnknownAddress": "Địa chỉ không xác định",
@@ -11695,7 +11978,6 @@
     "exportCodeTitle": "Xuất mã",
     "exportShort": "Xuất",
     "noStateToExport": "Không có trạng thái khu thử nghiệm nào để xuất.",
-    "closeExportModal": "Đóng cửa sổ xuất",
     "close": "Đóng",
     "exportRealKeyWarning": "Cảnh báo bảo mật: đã chặn việc xuất mã — phát hiện khóa API thực trong kết quả đầu ra. Vui lòng đặt lại khóa API của bạn rồi thử lại.",
     "placeholderHintPrefix": "Thay thế",
@@ -11808,7 +12090,8 @@
       "nextButton": "Tiếp theo",
       "runButton": "Chạy",
       "promptPlaceholder": "Nhập tin nhắn của bạn… (Enter để gửi, Shift+Enter để xuống dòng)"
-    }
+    },
+    "playgroundTabs": "Chế độ playground"
   },
   "miniPlayground": {
     "endpoint": "Điểm cuối",
@@ -11879,7 +12162,8 @@
     "assistant": "Trợ lý",
     "errorLabel": "Lỗi",
     "requestFailed": "Yêu cầu thất bại",
-    "stop": "Dừng"
+    "stop": "Dừng",
+    "messageInputAria": "Tin nhắn"
   },
   "requestLogger": {
     "recording": "Đang ghi",
@@ -11941,10 +12225,10 @@
       "compressed": "Nén",
       "tps": "TPS",
       "duration": "Thời lượng",
+      "addedWait": "Thời gian chờ thêm",
       "time": "Thời gian",
       "conversation": "Cuộc trò chuyện",
-      "ttft": "TTFT",
-      "addedWait": "Thời gian chờ thêm"
+      "ttft": "TTFT"
     },
     "loadingLogs": "Đang tải nhật ký...",
     "noLogs": "Chưa có nhật ký nào. Hãy thực hiện một số cuộc gọi API để xem chúng ở đây.",
@@ -12066,8 +12350,18 @@
       "resilienceRotations": "{count} lần chuyển tài khoản",
       "resilienceRetried": "Đã thử lại lượt trống",
       "resilienceContinued": "Đã tiếp tục giữa luồng",
-      "resilienceRecovered": "Đã khôi phục bằng hành động phục hồi"
-    }
+      "resilienceRecovered": "Đã khôi phục bằng hành động phục hồi",
+      "conversationContext": "Ngữ cảnh hội thoại",
+      "goToBottom": "Xuống cuối",
+      "liveRefreshOn": "Làm mới trực tiếp: bật",
+      "liveRefreshOff": "Làm mới trực tiếp: tắt",
+      "liveRefresh": "Làm mới trực tiếp",
+      "continuesFromParent": "tiếp nối từ yêu cầu cha",
+      "continuesFrom": "Tiếp nối từ {id}",
+      "viewConversation": "xem hội thoại",
+      "openConversation": "Mở hội thoại {id}"
+    },
+    "tableLabel": "Nhật ký yêu cầu"
   },
   "proxyLogger": {
     "filterAll": "Tất cả",
@@ -12112,7 +12406,9 @@
     "colServedBy": "Được phục vụ bởi",
     "filterTraffic": "Lưu lượng",
     "filterTests": "Bài kiểm tra",
-    "filterSource": "Nguồn"
+    "filterSource": "Nguồn",
+    "tableLabel": "Nhật ký proxy",
+    "sortLogs": "Sắp xếp nhật ký"
   },
   "endpointOptions": {
     "speech": "Giọng nói",
@@ -12197,7 +12493,8 @@
     "statusExhausted": "ĐÃ CẠN KIỆT",
     "statusAlerting": "ĐANG CẢNH BÁO",
     "statusError": "LỖI",
-    "moreSuffix": "+{count} nữa"
+    "moreSuffix": "+{count} nữa",
+    "feedFilterLabel": "Lọc sự kiện"
   },
   "quotaShare": {
     "weightPercent": "Trọng số %",
@@ -12364,7 +12661,10 @@
     "ungroupedTitle": "Chưa phân nhóm",
     "ungroupedHint": "Các pool này chưa được gán cho một nhóm mà hệ thống nhận diện. Hãy chỉnh sửa một pool để chuyển pool đó vào một nhóm hợp lệ.",
     "removeFailed": "Không thể xóa nhóm này.",
-    "dismiss": "Đóng"
+    "dismiss": "Đóng",
+    "allocationsHeading": "Phân bổ",
+    "wizardRemoveDimension": "Xóa chiều hạn mức",
+    "wizardRemoveKey": "Xóa khóa"
   },
   "plugins": {
     "title": "Plugin",
@@ -12522,7 +12822,8 @@
       "settingsUpdateFailed": "Cập nhật cài đặt thất bại",
       "serviceRevealApiKey": "{actor} đã hiển thị khóa API của {target}",
       "genericEvent": "{actor} {target}"
-    }
+    },
+    "dismissError": "Bỏ qua lỗi"
   },
   "agentBridge": {
     "title": "AgentBridge",
@@ -12655,7 +12956,21 @@
       "goNow": "Đi ngay",
       "message": "MITM Proxy hiện nằm trong AgentBridge.",
       "title": "Trang này đã được di chuyển"
-    }
+    },
+    "dnsOn": "DNS bật",
+    "dnsOff": "DNS tắt",
+    "showServerSettings": "Hiện cài đặt máy chủ",
+    "hideServerSettings": "Ẩn cài đặt máy chủ",
+    "upstreamCaTesting": "Đang kiểm tra…",
+    "removeMapping": "Xóa ánh xạ",
+    "mappingSourcePlaceholder": "vd: gemini-3.6-flash-medium, hoặc * cho tất cả chưa ánh xạ",
+    "mappingWildcardHint": "Dùng * làm nguồn để định tuyến mọi mô hình chưa có ánh xạ qua OmniRoute tới đích đã chọn. Khớp chính xác luôn ưu tiên hơn *.",
+    "wizardDetectingModels": "Đang phát hiện mô hình từ lưu lượng bị chặn...",
+    "wizardDetectedModels": "Tìm thấy {count} mô hình trong lưu lượng bị chặn. Chọn những mô hình bạn muốn thêm:",
+    "wizardSelectedModels": "Đã chọn {count} mô hình. Bạn sẽ ánh xạ chúng tới mô hình OmniRoute ở màn hình tiếp theo.",
+    "wizardAddModels": "Thêm {count} mô hình",
+    "wizardNoModelsDetected": "Chưa phát hiện mô hình nào. Dùng {agent} để gửi một yêu cầu, rồi chạy lại trình hướng dẫn này để tự phát hiện mô hình từ lưu lượng.",
+    "wizardNoModelsHint": "Hoặc đóng trình hướng dẫn này và thêm ánh xạ thủ công trong thẻ tác nhân."
   },
   "providerStats": {
     "unknownError": "Lỗi không xác định",
@@ -12685,7 +13000,11 @@
     "avgTtft": "TTFT trung bình",
     "avgTotal": "Tổng thời gian trung bình",
     "requestTelemetry": "Phân tích từ xa yêu cầu",
-    "requestTelemetryDescription": "Phân tích quy trình 7 giai đoạn trong 5 phút qua"
+    "requestTelemetryDescription": "Phân tích quy trình 7 giai đoạn trong 5 phút qua",
+    "title": "Thống kê nhà cung cấp",
+    "description": "Lưu lượng, độ trễ và tỷ lệ thành công theo nhà cung cấp và mô hình",
+    "combo": "Combo",
+    "toggleModels": "Hiện các mô hình của {provider}"
   },
   "relay": {
     "title": "Relay Proxy không máy chủ",
@@ -12846,7 +13165,18 @@
     "noRequestBody": "Không có phần thân yêu cầu.",
     "noResponseBody": "Không có phần thân phản hồi.",
     "formatted": "Đã định dạng",
-    "raw": "Dữ liệu thô"
+    "raw": "Dữ liệu thô",
+    "requestCount": "{count} yêu cầu",
+    "expandList": "Mở rộng danh sách",
+    "collapseList": "Thu gọn danh sách",
+    "snippetLanguage": "Ngôn ngữ đoạn mã",
+    "headersTable": "Tiêu đề",
+    "showSecrets": "Hiện bí mật",
+    "maskSecrets": "Ẩn bí mật",
+    "llmNotAvailable": "Không có siêu dữ liệu LLM cho yêu cầu này.",
+    "llmStreamYes": "có (SSE)",
+    "llmStreamNo": "không",
+    "llmTotalTokens": "Tổng: {count} token"
   },
   "cliCommon": {
     "companion": {
@@ -13305,7 +13635,8 @@
     "colReliabilityHelp": "Tỷ lệ lệnh gọi mà nhà cung cấp này thực sự trả lời trong 24 giờ qua. Dấu gạch ngang nghĩa là lưu lượng quá ít để đưa ra tỷ lệ.",
     "reliabilitySample": "{successes} trong {requests} lệnh gọi thành công trong {hours}h qua",
     "reliabilityTooFew": "Chỉ có {requests} lệnh gọi trong {hours}h qua — quá ít để đưa ra tỷ lệ",
-    "reliabilityNoTraffic": "Không ghi nhận lệnh gọi nào trong 24h qua"
+    "reliabilityNoTraffic": "Không ghi nhận lệnh gọi nào trong 24h qua",
+    "categoryFilter": "Danh mục tác vụ"
   },
   "discovery": {
     "title": "Khám phá nhà cung cấp",
@@ -13330,7 +13661,11 @@
     "method": "Phương thức",
     "auth": "Xác thực",
     "feasibility": "Tính khả thi",
-    "models": "Mô hình"
+    "models": "Mô hình",
+    "provider": "Nhà cung cấp",
+    "status": "Trạng thái",
+    "endpoint": "Điểm cuối",
+    "actions": "Hành động"
   },
   "noAuthProvider": {
     "title": "Không cần xác thực",
@@ -13379,7 +13714,8 @@
     "ownProxy": "Proxy riêng",
     "freeTierPause": "Mô hình {model} đã tạm dừng (429), quay lại lúc {time}",
     "freeTierPauseProvider": "Đã tạm dừng (429), quay lại lúc {time}",
-    "freeTierPauseNote": "Tạm dừng trong tiến trình trên phiên bản này"
+    "freeTierPauseNote": "Tạm dừng trong tiến trình trên phiên bản này",
+    "proxyType": "Loại proxy"
   },
   "gamification": {
     "leaderboardScopes": {
@@ -13552,7 +13888,10 @@
         "description": "Một thành tích ẩn đang chờ bạn...",
         "criteria": "Hoàn thành thành tích ẩn để mở huy hiệu này."
       }
-    }
+    },
+    "leaderboardTitle": "Bảng xếp hạng",
+    "leaderboardDescription": "Xếp hạng và thành tích giữa các khóa API của bạn",
+    "badgeLocked": "Đã khóa"
   },
   "featureFlags": {
     "title": "Cờ tính năng",
@@ -13793,6 +14132,7 @@
     "latency": "Độ trễ",
     "quota": "Hạn ngạch",
     "rangeWindow": "khung {range}",
+    "timeRange": "Khoảng thời gian",
     "runtimeHealthBlend": "kết hợp runtime/tình trạng",
     "averageResponseTime": "thời gian phản hồi trung bình",
     "worstQuota": "Hạn ngạch thấp nhất",
@@ -13994,7 +14334,11 @@
     "learnMore": "Tìm hiểu thêm",
     "changelogLoadFailed": "Không thể tải lịch sử thay đổi. Vui lòng thử lại sau.",
     "retry": "Thử lại",
-    "viewFullHistory": "Xem toàn bộ lịch sử trên GitHub"
+    "viewFullHistory": "Xem toàn bộ lịch sử trên GitHub",
+    "title": "Tin tức và nhật ký thay đổi",
+    "description": "Thông báo từ nhóm OmniRoute và ghi chú phát hành mới nhất",
+    "viewLabel": "Chế độ xem",
+    "loadingNews": "Đang tải thông báo..."
   },
   "reasoningRouting": {
     "editor": {
@@ -14545,7 +14889,9 @@
       "circuitBreakerState": "Trạng thái circuit breaker của provider",
       "lastUpdate": "Cập nhật lần cuối: {timestamp}",
       "uptimeMinutes": "{minutes} phút",
-      "uptimeHoursMinutes": "{hours} giờ {minutes} phút"
+      "uptimeHoursMinutes": "{hours} giờ {minutes} phút",
+      "breakerClosed": "Đóng",
+      "breakerNotClosed": "Mở hoặc nửa mở"
     },
     "statusPages": {
       "400": {
@@ -14620,6 +14966,9 @@
         "primaryAction": "Chi tiết bảo trì",
         "secondaryAction": "Trạng thái hệ thống"
       }
+    },
+    "miniapp": {
+      "askAnything": "Hỏi bất cứ điều gì…"
     }
   },
   "kiroAuthModal": {
@@ -14810,7 +15159,20 @@
     "mcp": "MCP",
     "mcpTool": "Công cụ MCP",
     "scope": "Phạm vi",
-    "apiKey": "Khóa API"
+    "apiKey": "Khóa API",
+    "visibleCount": "{visible} hiển thị / {total} tổng",
+    "modeLabel": "Chế độ xem",
+    "jumpToNow": "Về thời điểm hiện tại, vạch HIỆN TẠI trở về vị trí {position}%",
+    "laneReuse": "Tái dùng làn",
+    "laneReuseLabel": "Khoảng tái dùng làn (phút)",
+    "laneReuseHint": "Các yêu cầu cùng mã hội thoại ở lại cùng một hàng trên dòng thời gian khi khoảng cách giữa chúng nhỏ hơn số phút này.",
+    "laneReuseUnit": "phút",
+    "autoRefresh": "Tự động làm mới",
+    "autoRefreshLabel": "Chu kỳ tự động làm mới (giây)",
+    "autoRefreshHint": "Tần suất dòng thời gian tải lại danh sách yêu cầu từ máy chủ.",
+    "autoRefreshUnit": "giây",
+    "zoomOut": "Thu nhỏ",
+    "zoomIn": "Phóng to"
   },
   "metadata": {
     "compressionTitle": "Nén",
@@ -15073,5 +15435,8 @@
     "importButton": "Nhập",
     "importFailed": "Nhập thất bại.",
     "importSuccess": "Đã nhập {connections} tài khoản và {nodes} nút nhà cung cấp; bỏ qua {skipped}."
+  },
+  "logExport": {
+    "startFromCurrentPosition": "Bắt đầu từ vị trí hiện tại (bỏ qua nhật ký hiện có)"
   }
 }

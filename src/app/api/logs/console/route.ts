@@ -225,7 +225,15 @@ export async function GET(req: NextRequest) {
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
     const minLevel = LEVEL_ORDER[levelFilter] || 0;
 
-    const size = fs.statSync(logPath).size;
+    // A directory (or other non-regular file) exists but is not a readable log:
+    // surface a 500 read error instead of silently returning []. Missing paths
+    // still return [] above; this gate only fires for present-but-unreadable
+    // targets (EISDIR would otherwise short-circuit on size-0 dirs).
+    const stat = fs.statSync(logPath);
+    if (!stat.isFile()) {
+      throw new Error(`Not a readable log file: ${logPath}`);
+    }
+    const size = stat.size;
     const lines = readTailLines(logPath, size, limit, minLevel, componentFilter, oneHourAgo);
 
     const entries: any[] = [];

@@ -8,6 +8,7 @@ import {
 } from "../../../../src/app/api/v1/relay/chat/completions/relaySecurity.ts";
 import { getDbInstance } from "../../../../src/lib/db/core.ts";
 import { getRelayLogs } from "../../../../src/lib/db/relayProxies.ts";
+import { resetAdaptiveAdmissionRuntimeForTests } from "../../../../open-sse/services/admission/runtime.ts";
 
 // ─── Relay completions route: Bifrost upstream error normalization ──────────
 //
@@ -23,6 +24,49 @@ const ORIGINAL_BIFROST_TIMEOUT = process.env.BIFROST_TIMEOUT_MS;
 const ORIGINAL_BIFROST_STREAMING = process.env.BIFROST_STREAMING_ENABLED;
 const ORIGINAL_RELAY_BACKEND = process.env.OMNIROUTE_RELAY_BACKEND;
 const ORIGINAL_FETCH = globalThis.fetch;
+
+// Warm the route module graph ONCE at load: the first tsx compile+evaluate of
+// the relay route takes ~6s and fires background version-check fetches
+// (npm/GitHub metadata). Pay that cost here under a network-blocking stub so
+// no per-test mock can be stolen or raced by module-init fetches.
+globalThis.fetch = async () =>
+  new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+await import("../../../../src/app/api/v1/relay/chat/completions/route.ts?warm=relay-completions-errors");
+globalThis.fetch = ORIGINAL_FETCH;
+
+// URL-scoped Bifrost mock: only the Bifrost upstream URL gets the scripted
+// status/body; background version/discovery fetches get neutral JSON and can
+// never consume or steal the scripted response. Records the Bifrost URL so
+// each test asserts the route actually called Bifrost (no false-pass where
+// every fetch 404s and the status coincidentally matches).
+let lastBifrostUrl: string | null = null;
+function mockBifrostFetch(
+  status: number,
+  body: string,
+  contentType: string,
+  extraHeaders: Record<string, string> = {}
+) {
+  const base = process.env.BIFROST_BASE_URL ?? "http://bifrost.test.local:8080";
+  lastBifrostUrl = null;
+  globalThis.fetch = async (url: unknown) => {
+    const u = String(url);
+    if (u.startsWith(base)) {
+      lastBifrostUrl = u;
+      return new Response(body, {
+        status,
+        headers: { "content-type": contentType, ...extraHeaders },
+      });
+    }
+    return new Response("{}", {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+}
+function assertBifrostCalled() {
+  assert.ok(lastBifrostUrl, "route must call the Bifrost upstream");
+  assert.match(lastBifrostUrl!, /\/v1\/chat\/completions$/);
+}
 
 function seedRelayToken(rawToken: string) {
   const id = `rl_test_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -82,17 +126,15 @@ function setupBifrostEnv() {
 }
 
 test("relay route: normalizes plain-text Bifrost 404 into JSON error (Issue #1)", async () => {
+  resetAdaptiveAdmissionRuntimeForTests();
   setupBifrostEnv();
   const relayToken = seedRelayToken(`relay_err_${Date.now()}`);
 
   // Bifrost sidecar returns a raw HTML/plain-text non-OK response — the exact
   // "invalid character 'd'" scenario behind client JSON parse failures.
-  globalThis.fetch = async () => {
-    return new Response("<html><body>404 page not found</body></html>", {
-      status: 404,
-      headers: { "content-type": "text/html" },
-    });
-  };
+  // URL-scoped mock: only the Bifrost upstream URL returns the scripted 404;
+  // background version/discovery fetches get neutral JSON and cannot steal it.
+  mockBifrostFetch(404, "<html><body>404 page not found</body></html>", "text/html");
 
   const { POST } = await import(
     `../../../../src/app/api/v1/relay/chat/completions/route.ts?case=${Date.now()}-${Math.random()}`
@@ -111,6 +153,7 @@ test("relay route: normalizes plain-text Bifrost 404 into JSON error (Issue #1)"
   const res = await POST(req);
   // Status preserved from upstream (404), but body is valid JSON, not HTML.
   assert.equal(res.status, 404);
+  assertBifrostCalled();
   assert.equal(res.headers.get("content-type"), "application/json");
   // The critical fix: the client receives parseable JSON, NOT a raw HTML body
   // (which previously caused "invalid character 'd'" JSON.parse failures).
@@ -127,12 +170,11 @@ test("relay route: normalizes HTML 502 from Bifrost into JSON error (Issue #1)",
   setupBifrostEnv();
   const relayToken = seedRelayToken(`relay_err_${Date.now()}`);
 
-  globalThis.fetch = async () => {
-    return new Response(
-      "<!doctype html><title>502 Bad Gateway</title><pre>invalid character 'd'</pre>",
-      { status: 502, headers: { "content-type": "text/html" } }
-    );
-  };
+  mockBifrostFetch(
+    502,
+    "<!doctype html><title>502 Bad Gateway</title><pre>invalid character 'd'</pre>",
+    "text/html"
+  );
 
   const { POST } = await import(
     `../../../../src/app/api/v1/relay/chat/completions/route.ts?case=${Date.now()}-${Math.random()}`
@@ -150,6 +192,7 @@ test("relay route: normalizes HTML 502 from Bifrost into JSON error (Issue #1)",
 
   const res = await POST(req);
   assert.equal(res.status, 502);
+  assertBifrostCalled();
   assert.equal(res.headers.get("content-type"), "application/json");
   const body = await res.json();
   assert.ok(body?.error?.message);
@@ -171,18 +214,12 @@ test("relay route: strips stale upstream content-length before serializing JSON 
   // body. Once the route replaces that body with a freshly-serialized JSON error,
   // a stale content-length copied verbatim onto the outgoing Response would
   // mismatch the real byte length of the new body.
-  globalThis.fetch = async () => {
-    const html = "<html><body>404 page not found, upstream sidecar unreachable</body></html>";
-    return new Response(html, {
-      status: 404,
-      headers: {
-        "content-type": "text/html",
-        "content-length": String(Buffer.byteLength(html)),
-        "content-encoding": "gzip",
-        "transfer-encoding": "chunked",
-      },
-    });
-  };
+  const staleHtml = "<html><body>404 page not found, upstream sidecar unreachable</body></html>";
+  mockBifrostFetch(404, staleHtml, "text/html", {
+    "content-length": String(Buffer.byteLength(staleHtml)),
+    "content-encoding": "gzip",
+    "transfer-encoding": "chunked",
+  });
 
   const { POST } = await import(
     `../../../../src/app/api/v1/relay/chat/completions/route.ts?case=${Date.now()}-${Math.random()}`
@@ -200,8 +237,17 @@ test("relay route: strips stale upstream content-length before serializing JSON 
 
   const res = await POST(req);
   assert.equal(res.status, 404);
-  assert.equal(res.headers.get("content-encoding"), null, "stale content-encoding must be stripped");
-  assert.equal(res.headers.get("transfer-encoding"), null, "stale transfer-encoding must be stripped");
+  assertBifrostCalled();
+  assert.equal(
+    res.headers.get("content-encoding"),
+    null,
+    "stale content-encoding must be stripped"
+  );
+  assert.equal(
+    res.headers.get("transfer-encoding"),
+    null,
+    "stale transfer-encoding must be stripped"
+  );
 
   const raw = await res.text();
   const declaredLength = res.headers.get("content-length");
@@ -220,12 +266,7 @@ test("relay route: upstream 401 recorded as analytics error not success (Issue #
   setupBifrostEnv();
   const relayToken = seedRelayToken(`relay_err_${Date.now()}`);
 
-  globalThis.fetch = async () => {
-    return new Response(JSON.stringify({ error: { message: "unauthorized" } }), {
-      status: 401,
-      headers: { "content-type": "application/json" },
-    });
-  };
+  mockBifrostFetch(401, JSON.stringify({ error: { message: "unauthorized" } }), "application/json");
 
   const { POST } = await import(
     `../../../../src/app/api/v1/relay/chat/completions/route.ts?case=${Date.now()}-${Math.random()}`
@@ -243,6 +284,7 @@ test("relay route: upstream 401 recorded as analytics error not success (Issue #
 
   const res = await POST(req);
   assert.equal(res.status, 401);
+  assertBifrostCalled();
 
   const logs = getRelayLogs(relayToken.id, 10);
   assert.equal(logs.length, 1);

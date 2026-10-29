@@ -82,7 +82,7 @@ test("--plan binds the changelog gate to the requested base inside the detached 
   );
   assert.match(
     stdout,
-    /env CHANGELOG_BASE_REF=origin\/release\/v3\.8\.50 node scripts\/check\/check-changelog-integrity\.mjs/,
+    /CHANGELOG_BASE_REF=origin\/release\/v3\.8\.50 node scripts\/check\/check-changelog-integrity\.mjs/,
     "the gate must not fall back to a different numerically highest release branch"
   );
 });
@@ -100,7 +100,7 @@ test("--plan shell-quotes a hostile base before the gate command is evaluated", 
     const { code, stdout } = await run(["--plan", base, "11326"]);
     assert.equal(code, 0);
 
-    const gateLine = stdout.split("\n").find((line) => line.includes("env CHANGELOG_BASE_REF="));
+    const gateLine = stdout.split("\n").find((line) => line.includes("CHANGELOG_BASE_REF="));
     assert.ok(gateLine, "the plan must include the changelog gate command");
     const plannedGate = gateLine.replace(/^\[merge-train\] \d+\. /, "");
     assert.ok(

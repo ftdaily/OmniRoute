@@ -35,6 +35,7 @@ const AGGRESSIVENESS: Record<string, number> = {
   off: 0,
   "session-dedup": 10, // stackPriority 3 — lossless cross-turn dedup
   ccr: 15, // stackPriority 4 — reversible retrieval marker, only if it shrinks
+  "tool-schema": 21, // stackPriority 6 — tool-call arg trimming, after lite, before rtk
   rtk: 20, // stackPriority 10 — command-output filtering
   "codex-responses": 22, // stackPriority 12 (#8010) — conservative Responses tool-output compression
   ionizer: 25, // stackPriority 13 — tabular row sampling (lighter than headroom)
@@ -64,6 +65,7 @@ export function aggressivenessOf(engineOrMode: string): number {
 const REDUCTION_FACTOR: Record<string, number> = {
   "session-dedup": 0.95,
   ccr: 0.9, // conservative: only replaces a block when the marker is shorter than it
+  "tool-schema": 0.86, // arg trimming, gentler than rtk's output filtering
   rtk: 0.85,
   "codex-responses": 0.84, // stackPriority 12 (#8010) — lossless-first, bounded diagnostic trims
   ionizer: 0.83, // row sampling, lighter than headroom's full tabular compaction

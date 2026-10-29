@@ -61,9 +61,8 @@ async function createConnection(name: string): Promise<string> {
 async function countUpstream(connectionId: string): Promise<number> {
   const rows = await callLogsDb.getCallLogs({ limit: 200 });
   if (!Array.isArray(rows)) return 0;
-  return rows.filter(
-    (row: { connectionId?: string | null }) => row?.connectionId === connectionId
-  ).length;
+  return rows.filter((row: { connectionId?: string | null }) => row?.connectionId === connectionId)
+    .length;
 }
 
 function chatReq(rawKey: string | null, model: string = MODEL) {
@@ -113,15 +112,148 @@ test("retired key: warm chat -> regenerate -> old 401s silent, new 200s", async 
   const newRaw = (full1 as unknown as { key: string }).key;
   assert.ok(newRaw && newRaw !== oldRaw);
 
+  // Tombstone assertion: rotated-out hash recorded, new hash not retired.
+  const tombDb = core.getDbInstance();
+  assert.equal(
+    apiKeysDb.isRetiredApiKeyHash(tombDb, await apiKeysDb.hashKey(oldRaw)),
+    true,
+    "rotated-out hash must be tombstoned"
+  );
+  assert.equal(
+    apiKeysDb.isRetiredApiKeyHash(tombDb, await apiKeysDb.hashKey(newRaw)),
+    false,
+    "live hash must not be tombstoned"
+  );
+
   // Old key: 401 immediately, no new upstream dispatch.
   const retired = await handleChat(chatReq(oldRaw));
   assert.equal(retired.status, 401);
   assert.equal(await countUpstream(conn), 1, "retired key must not dispatch upstream");
 
+  // REQUIRE_API_KEY=false: retired key still 401, never anonymous.
+  process.env.REQUIRE_API_KEY = "false";
+  try {
+    const retiredAnon = await handleChat(chatReq(oldRaw));
+    assert.equal(retiredAnon.status, 401, "retired key must 401 even with REQUIRE_API_KEY=false");
+  } finally {
+    delete process.env.REQUIRE_API_KEY;
+  }
+
   // New key: 200 + dispatch.
   const fresh = await handleChat(chatReq(newRaw));
   assert.equal(fresh.status, 200);
   assert.equal(await countUpstream(conn), 2);
+});
+
+test("rotation rolls back when the tombstone write fails (no lost trace)", async (t) => {
+  const restore = installRecordingFetch();
+  t.after(() => {
+    restore();
+    core.resetDbInstance();
+  });
+  const conn = await createConnection("rollback-conn");
+  const created = (await apiKeysDb.createApiKey("rollback-key", "machine-test")) as {
+    id: string;
+    key: string;
+  };
+  await apiKeysDb.updateApiKeyPermissions(created.id, {
+    allowedConnections: [conn],
+    allowedModels: [MODEL],
+    allowedCombos: ["combo/*"],
+  });
+  const before = (await apiKeysDb.getApiKeyById(created.id)) as unknown as { key: string };
+  assert.ok(before?.key);
+
+  // Fault-inject the tombstone INSERT only: every other statement passes.
+  const db = core.getDbInstance() as unknown as {
+    prepare: (sql: string) => { run: (...a: unknown[]) => unknown };
+  };
+  const realPrepare = db.prepare.bind(db);
+  (db as { prepare: unknown }).prepare = ((sql: string) => {
+    const stmt = realPrepare(sql);
+    if (typeof sql === "string" && sql.includes("retired_api_key_hashes")) {
+      return {
+        ...stmt,
+        run: () => {
+          throw new Error("injected tombstone failure");
+        },
+      };
+    }
+    return stmt;
+  }) as typeof db.prepare;
+  let threw = false;
+  try {
+    await apiKeysDb.regenerateApiKey(created.id);
+  } catch (e) {
+    threw = true;
+    assert.match(String(e), /injected tombstone failure/);
+  } finally {
+    (db as { prepare: unknown }).prepare = realPrepare;
+  }
+  assert.equal(threw, true, "rotation must throw when the tombstone write fails");
+
+  // Rollback proof: live secret unchanged, old secret validates, no tombstone.
+  const after = (await apiKeysDb.getApiKeyById(created.id)) as unknown as { key: string };
+  assert.equal(after.key, before.key, "failed rotation must leave the live secret unchanged");
+  assert.equal(
+    await apiKeysDb.validateApiKey(before.key),
+    true,
+    "pre-rotation secret must still validate"
+  );
+  assert.equal(
+    apiKeysDb.isRetiredApiKeyHash(core.getDbInstance(), await apiKeysDb.hashKey(before.key)),
+    false,
+    "no tombstone may exist for a rotation that rolled back"
+  );
+});
+
+test("tombstone lookup failure → 503, never anonymous (REQUIRE_API_KEY=false)", async (t) => {
+  const restore = installRecordingFetch();
+  t.after(() => {
+    restore();
+    core.resetDbInstance();
+  });
+  const conn = await createConnection("scope503-conn");
+  const created = (await apiKeysDb.createApiKey("scope503-key", "machine-test")) as {
+    id: string;
+    key: string;
+  };
+  await apiKeysDb.updateApiKeyPermissions(created.id, {
+    allowedConnections: [conn],
+    allowedModels: [MODEL],
+    allowedCombos: ["combo/*"],
+  });
+  const full = (await apiKeysDb.getApiKeyById(created.id)) as unknown as { key: string };
+  const oldRaw = full.key;
+  await apiKeysDb.regenerateApiKey(created.id);
+
+  // Break the tombstone lookup: getApiKeyMetadata(old) → null, then the
+  // tombstone SELECT throws → enforceApiKeyPolicy must map to 503 (its catch),
+  // never anonymous, even with REQUIRE_API_KEY=false.
+  const db = core.getDbInstance() as unknown as {
+    prepare: (sql: string) => { get: (...a: unknown[]) => unknown };
+  };
+  const realPrepare = db.prepare.bind(db);
+  (db as { prepare: unknown }).prepare = ((sql: string) => {
+    const stmt = realPrepare(sql);
+    if (typeof sql === "string" && sql.includes("retired_api_key_hashes")) {
+      return {
+        ...stmt,
+        get: () => {
+          throw new Error("injected tombstone read failure");
+        },
+      };
+    }
+    return stmt;
+  }) as typeof db.prepare;
+  process.env.REQUIRE_API_KEY = "false";
+  try {
+    const res = await handleChat(chatReq(oldRaw));
+    assert.equal(res.status, 503, "tombstone lookup failure must 503, never anonymous");
+  } finally {
+    delete process.env.REQUIRE_API_KEY;
+    (db as { prepare: unknown }).prepare = realPrepare;
+  }
 });
 
 test("local anonymous (no key) still reaches local/session path unchanged", async (t) => {

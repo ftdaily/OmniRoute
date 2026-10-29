@@ -7,6 +7,7 @@ import {
   toolCharBudget,
   type LitePasses,
 } from "./litePasses.ts";
+import { isResponsesToolOutputMessage } from "./bodyAdapter.ts";
 
 interface Message {
   role: string;
@@ -216,7 +217,19 @@ export function compressToolResults(
   // what the model asked for this turn. Cutting them makes it re-read the same
   // file forever, since every re-read is cut again.
   const lastAssistant = body.messages.findLastIndex((msg) => msg.role === "assistant");
-  const currentTurnStart = lastAssistant === -1 ? body.messages.length : lastAssistant + 1;
+  // An OpenAI Responses API tool turn carries no assistant message — the call and its
+  // output arrive as top-level items — so the trailing Responses outputs are this turn's.
+  let trailingToolStart = body.messages.length;
+  while (
+    trailingToolStart > 0 &&
+    isResponsesToolOutputMessage(body.messages[trailingToolStart - 1])
+  ) {
+    trailingToolStart -= 1;
+  }
+  const currentTurnStart = Math.min(
+    lastAssistant === -1 ? body.messages.length : lastAssistant + 1,
+    trailingToolStart
+  );
   let applied = false;
   const messages = body.messages.map((msg, index) => {
     if (index >= currentTurnStart) return msg;

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createManagementSessionToken } from "../helpers/managementSession.ts";
 
 /**
  * POST /api/cli-tools/apply writes host CLI config files. Inside a container
@@ -11,7 +12,35 @@ import { pathToFileURL } from "node:url";
  * must refuse with a structured 422 instead of reporting success.
  */
 
+/**
+ * Base dir for temp fixtures that must classify as container-ephemeral: the
+ * container guard treats any path under a real (non-tmpfs) mount as
+ * bind-mounted, so fixtures under os.tmpdir() inherit the OUTER env's TMPDIR
+ * (e.g. a Hermes session TMPDIR under /home, itself a btrfs subvolume mount)
+ * and the 422 refusal never fires. /tmp is a real tmpfs mount (skipped by
+ * NON_HOST_FS_TYPES), so fixtures there stay ephemeral on Linux; elsewhere
+ * fall back to os.tmpdir().
+ */
+function ephemeralTmpBase(): string {
+  if (process.platform !== "win32") {
+    try {
+      if (fs.existsSync("/tmp")) return "/tmp";
+    } catch {
+      // fall through
+    }
+  }
+  return os.tmpdir();
+}
+
 const routePath = path.join(process.cwd(), "src/app/api/cli-tools/apply/route.ts");
+// These routes require a dashboard session in every mode (login enabled or not).
+const SESSION_COOKIE = `auth_token=${await createManagementSessionToken()}`;
+function authed(url: string, init: RequestInit = {}): Request {
+  const headers = new Headers(init.headers);
+  headers.set("cookie", SESSION_COOKIE);
+  return new Request(url, { ...init, headers });
+}
+// Captured after the session secret is set, so the per-test env restore keeps it.
 const originalEnv = { ...process.env };
 const tempDirs = new Set<string>();
 
@@ -43,7 +72,7 @@ test.after(async () => {
 });
 
 function applyRequest(body: Record<string, unknown>) {
-  return new Request("http://localhost:20128/api/cli-tools/apply", {
+  return authed("http://localhost:20128/api/cli-tools/apply", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ toolId: "codex", apiKey: "sk-test", ...body }),
@@ -53,7 +82,7 @@ function applyRequest(body: Record<string, unknown>) {
 test("refuses with 422 and does not write when the target is container-ephemeral", async () => {
   // OMNIROUTE_CONTAINER forces detection; the fake HOME has no bind mount, so
   // the target classifies as ephemeral.
-  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "or-apply-ephemeral-"));
+  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-ephemeral-"));
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
@@ -74,7 +103,7 @@ test("refuses with 422 and does not write when the target is container-ephemeral
 });
 
 test("the 422 body carries no stack trace", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "or-apply-stack-"));
+  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-stack-"));
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
@@ -88,7 +117,7 @@ test("the 422 body carries no stack trace", async () => {
 });
 
 test("dry-run still previews the config inside a container", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "or-apply-dry-"));
+  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-dry-"));
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
@@ -103,7 +132,7 @@ test("dry-run still previews the config inside a container", async () => {
 });
 
 test("OMNIROUTE_ALLOW_CONTAINER_CONFIG_WRITE lets the write through", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "or-apply-override-"));
+  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-override-"));
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.OMNIROUTE_ALLOW_CONTAINER_CONFIG_WRITE = "true";
@@ -120,7 +149,7 @@ test("OMNIROUTE_ALLOW_CONTAINER_CONFIG_WRITE lets the write through", async () =
 });
 
 test("the dashboard's guide-settings writer refuses the same way", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "or-guide-ephemeral-"));
+  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-guide-ephemeral-"));
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
@@ -134,7 +163,7 @@ test("the dashboard's guide-settings writer refuses the same way", async () => {
   const { POST } = await import(`${pathToFileURL(guideRoute).href}?case=guide-${Date.now()}`);
 
   const response = await POST(
-    new Request("http://localhost:20128/api/cli-tools/guide-settings/continue", {
+    authed("http://localhost:20128/api/cli-tools/guide-settings/continue", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ baseUrl: "http://localhost:20128/v1", model: "glm/glm-5.2" }),
@@ -150,7 +179,7 @@ test("the dashboard's guide-settings writer refuses the same way", async () => {
 });
 
 test("a host environment applies the config normally", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "or-apply-host-"));
+  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-host-"));
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "0";
   process.env.HOME = fakeHome;

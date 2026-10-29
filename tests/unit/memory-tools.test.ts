@@ -16,6 +16,7 @@ const { invalidateMemorySettingsCache } = await import("../../src/lib/memory/set
 
 function resetStorage() {
   core.resetDbInstance();
+  invalidateMemorySettingsCache();
   fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   fs.mkdirSync(tmpDir, { recursive: true });
   core.getDbInstance();

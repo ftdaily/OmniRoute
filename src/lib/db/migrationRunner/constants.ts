@@ -10,6 +10,12 @@
 
 export const RENAMED_MIGRATION_COMPATIBILITY = [
   {
+    fromVersion: "213",
+    fromName: "user_portal_flags_prefs_combos",
+    toVersion: "217",
+    toName: "user_portal_flags_prefs_combos",
+  },
+  {
     fromVersion: "022",
     fromName: "call_logs_summary_storage",
     toVersion: "025",
@@ -165,6 +171,45 @@ export const RENAMED_MIGRATION_COMPATIBILITY = [
     fromName: "inspector_custom_hosts",
     toVersion: "081",
     toName: "inspector_custom_hosts",
+  },
+  // PR #10409 circulated through these draft slots before the current release
+  // claimed them. The name guard is mandatory: canonical migrations using the
+  // same numbers must never be rehomed as Team state.
+  {
+    fromVersion: "153",
+    fromName: "team_cost_centers",
+    toVersion: "215",
+    toName: "team_cost_centers",
+  },
+  {
+    fromVersion: "154",
+    fromName: "team_cost_centers",
+    toVersion: "215",
+    toName: "team_cost_centers",
+  },
+  {
+    fromVersion: "155",
+    fromName: "team_cost_centers",
+    toVersion: "215",
+    toName: "team_cost_centers",
+  },
+  {
+    fromVersion: "161",
+    fromName: "team_cost_centers",
+    toVersion: "215",
+    toName: "team_cost_centers",
+  },
+  {
+    fromVersion: "163",
+    fromName: "team_cost_centers",
+    toVersion: "215",
+    toName: "team_cost_centers",
+  },
+  {
+    fromVersion: "164",
+    fromName: "team_cost_centers",
+    toVersion: "215",
+    toName: "team_cost_centers",
   },
   {
     fromVersion: "134",

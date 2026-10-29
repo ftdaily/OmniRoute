@@ -74,6 +74,16 @@ curl -i \
 
 A non-manage key (or no Bearer) returns `403 LOCAL_ONLY`. The sibling prefix `/api/cli-tools/runtime/*` is intentionally NOT bypassable — see [Route Guard Tiers — Manage-scope carve-out](../security/ROUTE_GUARD_TIERS.md#manage-scope-carve-out).
 
+### Origin validation
+
+After authentication, every request to `/api/mcp/*` — the transports and the management routes such as `status`, `tools`, `audit` and `restart` — has its `Origin` header validated, whatever the caller (API key, CLI token, dashboard session, or anonymous loopback with login disabled). This is the DNS-rebinding protection the MCP Streamable HTTP spec requires.
+
+- **No `Origin` header** → allowed. The OmniRoute CLI, SDK and IDE clients do not send one.
+- **Allowed `Origin`** → `localhost`, `127.0.0.1` or `[::1]` on any port, or OmniRoute's own public origin: `OMNIROUTE_PUBLIC_BASE_URL` / `NEXT_PUBLIC_BASE_URL` / `NEXT_PUBLIC_APP_URL`, a trusted reverse proxy's forwarded origin (`OMNIROUTE_TRUST_PROXY`, only when no base URL is set), or a direct loopback/LAN IP host. The `Host` header alone never makes an origin trusted.
+- **Any other `Origin`, including `null`** → `403` with a JSON-RPC error body: `id: null`, `error.code: -32000`, `error.data.code: "INVALID_ORIGIN"`. A dashboard session that presents a valid CSRF token is still accepted, as for other dashboard writes.
+
+A browser MCP client served behind a reverse proxy needs `OMNIROUTE_PUBLIC_BASE_URL`; there is no allow-list for other origins. CORS preflight (`OPTIONS`) is not Origin-checked; the request that follows is.
+
 ## IDE Configuration
 
 See [MCP Client Configuration](../guides/SETUP_GUIDE.md#mcp-client-configuration) for Claude Desktop,
@@ -125,28 +135,28 @@ Cursor, Cline, and compatible MCP client setup.
 
 ## Compression Tools (20)
 
-| Tool                                | Scopes              | Description                                                                                                              |
-| :---------------------------------- | :------------------ | :----------------------------------------------------------------------------------------------------------------------- |
-| `omniroute_compression_status`      | `read:compression`  | Compression settings, analytics summary, and cache-aware stats (includes `analytics.mcpDescriptionCompression` metadata) |
-| `omniroute_compression_configure`   | `write:compression` | Configure compression mode, threshold, target ratio, system-prompt preservation, MCP description compression toggle      |
-| `omniroute_set_compression_engine`  | `write:compression` | Pick the active engine (off/caveman/rtk/stacked) and Caveman/RTK intensity                                               |
-| `omniroute_list_compression_combos` | `read:compression`  | List named compression combos and their engine pipelines                                                                 |
-| `omniroute_compression_combo_stats` | `read:compression`  | Analytics grouped by compression combo and engine                                                                        |
-| `omniroute_ccr_store`               | `write:compression` | Store caller-isolated content in the bounded in-memory CCR store and return a marker plus `ccr://` reference             |
-| `omniroute_ccr_retrieve`            | `read:compression`  | Retrieve CCR content in full or with head, tail, lines, grep, and stats modes                                            |
-| `omniroute_ccr_inspect`             | `read:compression`  | Inspect caller-owned CCR metadata without returning content                                                              |
-| `omniroute_ccr_list`                | `read:compression`  | List paginated metadata for caller-owned CCR blocks                                                                      |
-| `omniroute_ccr_delete`              | `write:compression` | Delete a caller-owned CCR block                                                                                          |
-| `omniroute_ccr_stats`               | `read:compression`  | Report caller-scoped memory usage, lifecycle counters, and store limits                                                  |
-| `omniroute_rtk_discover`            | `read:compression`  | Discover recurring noise in opt-in RTK output samples                                                                    |
-| `omniroute_rtk_learn`               | `read:compression`  | Generate a reviewable RTK filter draft from opt-in samples                                                               |
-| `omniroute_list_compression_engines` | `read:compression` | List all registered compression engines with config schemas and runtime enabled/config state                              |
-| `omniroute_get_compression_engine`  | `read:compression`  | Get a single compression engine's metadata, config schema, and runtime enabled/config state                               |
-| `omniroute_update_compression_engine` | `write:compression` | Update a compression engine at runtime (registry enabled flag and/or validated config)                                   |
-| `omniroute_list_compression_rules`  | `read:compression`  | List caveman rule metadata, optionally filtered by intensity                                                             |
-| `omniroute_list_compression_language_packs` | `read:compression` | List supported compression languages and installed caveman rule packs                                           |
-| `omniroute_compression_preview`     | `read:compression`  | Dry-run compression on text (Studio play view): token counts, savings, techniques, compressed text                       |
-| `omniroute_compression_compare`     | `read:compression`  | A/B-compare compression engines on text (Studio compare view), best-first summary table                                   |
+| Tool                                        | Scopes              | Description                                                                                                              |
+| :------------------------------------------ | :------------------ | :----------------------------------------------------------------------------------------------------------------------- |
+| `omniroute_compression_status`              | `read:compression`  | Compression settings, analytics summary, and cache-aware stats (includes `analytics.mcpDescriptionCompression` metadata) |
+| `omniroute_compression_configure`           | `write:compression` | Configure compression mode, threshold, target ratio, system-prompt preservation, MCP description compression toggle      |
+| `omniroute_set_compression_engine`          | `write:compression` | Pick the active engine (off/caveman/rtk/stacked) and Caveman/RTK intensity                                               |
+| `omniroute_list_compression_combos`         | `read:compression`  | List named compression combos and their engine pipelines                                                                 |
+| `omniroute_compression_combo_stats`         | `read:compression`  | Analytics grouped by compression combo and engine                                                                        |
+| `omniroute_ccr_store`                       | `write:compression` | Store caller-isolated content in the bounded in-memory CCR store and return a marker plus `ccr://` reference             |
+| `omniroute_ccr_retrieve`                    | `read:compression`  | Retrieve CCR content in full or with head, tail, lines, grep, and stats modes                                            |
+| `omniroute_ccr_inspect`                     | `read:compression`  | Inspect caller-owned CCR metadata without returning content                                                              |
+| `omniroute_ccr_list`                        | `read:compression`  | List paginated metadata for caller-owned CCR blocks                                                                      |
+| `omniroute_ccr_delete`                      | `write:compression` | Delete a caller-owned CCR block                                                                                          |
+| `omniroute_ccr_stats`                       | `read:compression`  | Report caller-scoped memory usage, lifecycle counters, and store limits                                                  |
+| `omniroute_rtk_discover`                    | `read:compression`  | Discover recurring noise in opt-in RTK output samples                                                                    |
+| `omniroute_rtk_learn`                       | `read:compression`  | Generate a reviewable RTK filter draft from opt-in samples                                                               |
+| `omniroute_list_compression_engines`        | `read:compression`  | List all registered compression engines with config schemas and runtime enabled/config state                             |
+| `omniroute_get_compression_engine`          | `read:compression`  | Get a single compression engine's metadata, config schema, and runtime enabled/config state                              |
+| `omniroute_update_compression_engine`       | `write:compression` | Update a compression engine at runtime (registry enabled flag and/or validated config)                                   |
+| `omniroute_list_compression_rules`          | `read:compression`  | List caveman rule metadata, optionally filtered by intensity                                                             |
+| `omniroute_list_compression_language_packs` | `read:compression`  | List supported compression languages and installed caveman rule packs                                                    |
+| `omniroute_compression_preview`             | `read:compression`  | Dry-run compression on text (Studio play view): token counts, savings, techniques, compressed text                       |
+| `omniroute_compression_compare`             | `read:compression`  | A/B-compare compression engines on text (Studio compare view), best-first summary table                                  |
 
 CCR entries are in-memory only and disappear on restart. Each block is limited to 2 MiB, each
 principal to 16 MiB, and the global store to 64 MiB. Entries default to a 24-hour TTL (maximum

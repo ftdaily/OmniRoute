@@ -389,11 +389,8 @@ function runCompression(
     return adapter.adapted ? { ...result, body: adapter.restore(result.body) } : result;
   }
   if (mode === "stacked") {
-    const result = applyStackedCompression(
-      compressionBody,
-      options?.config?.stackedPipeline,
-      options
-    );
+    const selected = markSelectedStepsEnabled(options?.config?.stackedPipeline);
+    const result = applyStackedCompression(compressionBody, selected, options);
     return adapter.adapted ? { ...result, body: adapter.restore(result.body) } : result;
   }
   if (mode === "standard") {
@@ -615,11 +612,8 @@ async function runCompressionAsync(
       options?.compressionStage === "post-translation"
         ? { body, adapted: false, restore: (next: Record<string, unknown>) => next }
         : adaptBodyForCompression(body, options?.config?.codexResponsesConfig?.preserveToolNames);
-    const result = await applyStackedCompressionAsync(
-      adapter.body,
-      options?.config?.stackedPipeline,
-      options
-    );
+    const selected = markSelectedStepsEnabled(options?.config?.stackedPipeline);
+    const result = await applyStackedCompressionAsync(adapter.body, selected, options);
     return adapter.adapted ? { ...result, body: adapter.restore(result.body) } : result;
   }
   // Ultra's optional SLM (model) tier is async — route it here when a model is configured.
@@ -834,6 +828,26 @@ function resolveStackSteps(
   ];
 }
 
+/**
+ * Dashboard selection is itself the enablement signal (ba6feca6d): a persisted
+ * global/detail `enabled:false` must not silently turn a selected pipeline step
+ * into a no-op. Mark each selected step enabled:true (unless it carries an
+ * explicit per-step opt-out) so the stacked runner's registry check honors the
+ * selection. Direct applyStackedCompression callers bypass this and honor the
+ * toggle.
+ */
+function markSelectedStepsEnabled(
+  pipeline: Array<CompressionPipelineStep | string> | undefined
+): CompressionPipelineStep[] {
+  return (pipeline ?? []).map((step) =>
+    typeof step === "string"
+      ? ({ engine: step, config: { enabled: true } } as CompressionPipelineStep)
+      : step.config?.enabled === false
+        ? step
+        : { ...step, config: { ...(step.config ?? {}), enabled: true } }
+  );
+}
+
 function buildStepOptions(
   step: CompressionPipelineStep,
   options?: StackOptions
@@ -983,7 +997,6 @@ function runStackedCompression(
   options?: StackOptions
 ): CompressionResult {
   const steps = resolveStackSteps(pipeline, options?.config);
-  const explicitlySelected = Array.isArray(pipeline) && pipeline.length > 0;
   registerBuiltinCompressionEngines();
 
   let currentBody = body;
@@ -1015,11 +1028,15 @@ function runStackedCompression(
       );
       continue;
     }
-    // An explicit pipeline is itself an enablement signal; only the step's own
-    // config can opt it out. Derived/default pipelines still honor the registry kill switch.
+    // Registry toggle: a disabled engine is skipped UNLESS the pipeline step
+    // itself carries an explicit selection (config present and not an
+    // `enabled:false` opt-out — markSelectedStepsEnabled stamps exactly that
+    // for dashboard-selected steps). A bare engine name honors
+    // setEngineEnabled; a step-local `enabled:false` always opts out.
+    // Sync/async lockstep.
     if (
       getEngineEntry(step.engine)?.enabled === false &&
-      (!explicitlySelected || step.config?.enabled === false)
+      (step.config === undefined || step.config?.enabled === false)
     ) {
       acc.validationWarnings.add(`${step.engine}: skipped (engine disabled in registry)`);
       continue;
@@ -1113,7 +1130,6 @@ async function runStackedCompressionAsync(
   options?: StackOptions
 ): Promise<CompressionResult> {
   const steps = resolveStackSteps(pipeline, options?.config);
-  const explicitlySelected = Array.isArray(pipeline) && pipeline.length > 0;
   registerBuiltinCompressionEngines();
 
   let currentBody = body;
@@ -1145,11 +1161,13 @@ async function runStackedCompressionAsync(
       );
       continue;
     }
-    // Explicit pipelines override the registry default; an explicit per-step
-    // enabled:false remains the local opt-out. Keep sync/async loops in lockstep.
+    // Registry toggle: a disabled engine is skipped UNLESS the pipeline step
+    // itself carries an explicit selection (config present and not an
+    // `enabled:false` opt-out — markSelectedStepsEnabled stamps exactly that
+    // for dashboard-selected steps). Lockstep with the sync loop above.
     if (
       getEngineEntry(step.engine)?.enabled === false &&
-      (!explicitlySelected || step.config?.enabled === false)
+      (step.config === undefined || step.config?.enabled === false)
     ) {
       acc.validationWarnings.add(`${step.engine}: skipped (engine disabled in registry)`);
       continue;

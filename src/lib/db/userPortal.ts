@@ -10,6 +10,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { getDbInstance } from "./core";
+import { ensureApiKeyFallbackColumns } from "./apiKeyColumnFallbacks";
 import { clearApiKeyCaches } from "./apiKeys";
 import { clearModelPermissionCache } from "./apiKeys/modelPermissionCache";
 
@@ -112,8 +113,7 @@ export async function isUserModelEnabled(keyId: string, model: string): Promise<
   }
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function parseUserComboWireId(wireId: unknown): string | null {
   if (typeof wireId !== "string" || !wireId.startsWith(USER_COMBO_PREFIX)) return null;
@@ -156,6 +156,14 @@ function validateDisabledModels(models: unknown): string[] {
 
 export async function getPortalKeyState(keyId: string): Promise<PortalKeyState | null> {
   const db = getDbInstance() as any;
+  // Same lazy schema heal as the api-keys module: fresh/test DBs may lack the
+  // portal/lifecycle columns (is_active, is_banned, ...) that the SELECT below
+  // reads. Without this the ceiling throws → 503 on every self-loop request.
+  try {
+    ensureApiKeyFallbackColumns(db);
+  } catch {
+    // Heal is best-effort; the SELECT below surfaces real storage failures.
+  }
   const row = db
     .prepare(
       `SELECT id, name, portal_enabled, user_combos_enabled, portal_session_revision,
@@ -185,7 +193,9 @@ export async function getPortalKeyState(keyId: string): Promise<PortalKeyState |
   };
 }
 
-export async function getKeyPreferences(keyId: string): Promise<{ disabledModels: string[]; revision: number }> {
+export async function getKeyPreferences(
+  keyId: string
+): Promise<{ disabledModels: string[]; revision: number }> {
   const db = getDbInstance() as any;
   const row = db
     .prepare(`SELECT disabled_models, revision FROM key_preferences WHERE key_id = ?`)
@@ -275,16 +285,17 @@ function parseComboRow(row: Record<string, unknown>): UserComboRecord {
 export async function listUserCombos(keyId: string): Promise<UserComboRecord[]> {
   const db = getDbInstance() as any;
   const rows = db
-    .prepare(`SELECT * FROM user_combos WHERE key_id = ? ORDER BY created_at ASC LIMIT ${MAX_COMBOS_PER_KEY}`)
+    .prepare(
+      `SELECT * FROM user_combos WHERE key_id = ? ORDER BY created_at ASC LIMIT ${MAX_COMBOS_PER_KEY}`
+    )
     .all(keyId) as Array<Record<string, unknown>>;
   return rows.map(parseComboRow);
 }
 
 export async function getUserCombo(keyId: string, id: string): Promise<UserComboRecord | null> {
   const db = getDbInstance() as any;
-  const row = db
-    .prepare(`SELECT * FROM user_combos WHERE key_id = ? AND id = ?`)
-    .get(keyId, id) as Record<string, unknown> | undefined;
+  const row = db.prepare(`SELECT * FROM user_combos WHERE key_id = ? AND id = ?`).get(keyId, id) as
+    Record<string, unknown> | undefined;
   return row ? parseComboRow(row) : null;
 }
 
@@ -300,7 +311,9 @@ export async function createUserCombo(
   // Transactional count-cap + insert (no check-then-insert race).
   const txn = (db as { transaction: (fn: () => unknown) => () => unknown }).transaction(() => {
     const count = (
-      db.prepare(`SELECT COUNT(*) AS c FROM user_combos WHERE key_id = ?`).get(keyId) as { c: number }
+      db.prepare(`SELECT COUNT(*) AS c FROM user_combos WHERE key_id = ?`).get(keyId) as {
+        c: number;
+      }
     ).c;
     if (count >= MAX_COMBOS_PER_KEY) {
       throw new Error(`user combos exceed max ${MAX_COMBOS_PER_KEY} per key`);
@@ -363,7 +376,11 @@ export async function updateUserCombo(
   return updated;
 }
 
-export async function deleteUserCombo(keyId: string, id: string, expectedRevision?: number): Promise<void> {
+export async function deleteUserCombo(
+  keyId: string,
+  id: string,
+  expectedRevision?: number
+): Promise<void> {
   const db = getDbInstance() as any;
   if (expectedRevision !== undefined) {
     assertRevision(expectedRevision);
@@ -385,8 +402,7 @@ export async function bumpPortalSessionRevision(keyId: string): Promise<number> 
     `UPDATE api_keys SET portal_session_revision = COALESCE(portal_session_revision, 0) + 1 WHERE id = ?`
   ).run(keyId);
   const row = db.prepare(`SELECT portal_session_revision FROM api_keys WHERE id = ?`).get(keyId) as
-    | { portal_session_revision?: unknown }
-    | undefined;
+    { portal_session_revision?: unknown } | undefined;
   clearApiKeyCaches();
   clearModelPermissionCache();
   return Number(row?.portal_session_revision ?? 0);

@@ -7,6 +7,11 @@ import path from "node:path";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "omniroute-memory-tools-"));
 const originalDataDir = process.env.DATA_DIR;
 process.env.DATA_DIR = tmpDir;
+// Tests must resolve the explicit apiKeyId, never the ambient env-key
+// principal: background runners inherit OMNIROUTE_API_KEY, and the
+// caller-wins rule would otherwise write rows under "env-key".
+delete process.env.OMNIROUTE_API_KEY;
+delete process.env.ROUTER_API_KEY;
 
 const core = await import("../../src/lib/db/core.ts");
 const { memoryTools } = await import("../../open-sse/mcp-server/tools/memoryTools.ts");
@@ -38,67 +43,74 @@ test.after(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
-test("memory add stores entries with default session and metadata", async () => {
-  const result = await memoryTools.omniroute_memory_add.handler({
-    apiKeyId: "key-add",
-    type: "factual",
-    key: "pref:language",
-    content: "TypeScript is preferred.",
-  });
+test(
+  "memory add stores entries with default session and metadata",
+  { concurrency: false },
+  async () => {
+    const result = await memoryTools.omniroute_memory_add.handler({
+      apiKeyId: "key-add",
+      type: "factual",
+      key: "pref:language",
+      content: "TypeScript is preferred.",
+    });
 
-  const rowsResult = await memoryStore.listMemories({ apiKeyId: "key-add" });
-  const rows = Array.isArray(rowsResult) ? rowsResult : rowsResult.data;
+    const rowsResult = await memoryStore.listMemories({ apiKeyId: "key-add" });
+    const rows = Array.isArray(rowsResult) ? rowsResult : rowsResult.data;
+    assert.equal(result.success, true);
+    assert.equal(result.data.message, "Memory created successfully");
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].sessionId, "");
+    assert.deepEqual(rows[0].metadata, {});
+    assert.equal(rows[0].content, "TypeScript is preferred.");
+  }
+);
 
-  assert.equal(result.success, true);
-  assert.equal(result.data.message, "Memory created successfully");
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].sessionId, "");
-  assert.deepEqual(rows[0].metadata, {});
-  assert.equal(rows[0].content, "TypeScript is preferred.");
-});
+test(
+  "memory search filters by type, enforces limit, and reports token totals",
+  { concurrency: false },
+  async () => {
+    await memoryTools.omniroute_memory_add.handler({
+      apiKeyId: "key-search",
+      sessionId: "search",
+      type: "factual",
+      key: "pref:stack",
+      content: "TypeScript and Node.js are used for backend work.",
+      metadata: { source: "user" },
+    });
+    await memoryTools.omniroute_memory_add.handler({
+      apiKeyId: "key-search",
+      sessionId: "search",
+      type: "semantic",
+      key: "pref:hobby",
+      content: "Gardening is a weekend hobby.",
+      metadata: { source: "user" },
+    });
+    await memoryTools.omniroute_memory_add.handler({
+      apiKeyId: "key-search",
+      sessionId: "search",
+      type: "factual",
+      key: "pref:language",
+      content: "TypeScript services are written every day.",
+      metadata: { source: "user" },
+    });
 
-test("memory search filters by type, enforces limit, and reports token totals", async () => {
-  await memoryTools.omniroute_memory_add.handler({
-    apiKeyId: "key-search",
-    sessionId: "search",
-    type: "factual",
-    key: "pref:stack",
-    content: "TypeScript and Node.js are used for backend work.",
-    metadata: { source: "user" },
-  });
-  await memoryTools.omniroute_memory_add.handler({
-    apiKeyId: "key-search",
-    sessionId: "search",
-    type: "semantic",
-    key: "pref:hobby",
-    content: "Gardening is a weekend hobby.",
-    metadata: { source: "user" },
-  });
-  await memoryTools.omniroute_memory_add.handler({
-    apiKeyId: "key-search",
-    sessionId: "search",
-    type: "factual",
-    key: "pref:language",
-    content: "TypeScript services are written every day.",
-    metadata: { source: "user" },
-  });
+    const result = await memoryTools.omniroute_memory_search.handler({
+      apiKeyId: "key-search",
+      query: "typescript backend",
+      type: "factual",
+      limit: 1,
+    });
 
-  const result = await memoryTools.omniroute_memory_search.handler({
-    apiKeyId: "key-search",
-    query: "typescript backend",
-    type: "factual",
-    limit: 1,
-  });
+    assert.equal(result.success, true);
+    assert.equal(result.data.count, 1);
+    assert.equal(result.data.memories.length, 1);
+    assert.equal(result.data.memories[0].type, "factual");
+    assert.match(result.data.memories[0].content, /TypeScript/i);
+    assert.ok(result.data.totalTokens > 0);
+  }
+);
 
-  assert.equal(result.success, true);
-  assert.equal(result.data.count, 1);
-  assert.equal(result.data.memories.length, 1);
-  assert.equal(result.data.memories[0].type, "factual");
-  assert.match(result.data.memories[0].content, /TypeScript/i);
-  assert.ok(result.data.totalTokens > 0);
-});
-
-test("memory search respects a configured zero token budget", async () => {
+test("memory search respects a configured zero token budget", { concurrency: false }, async () => {
   await settingsDb.updateSettings({ memoryEnabled: true, memoryMaxTokens: 0 });
   invalidateMemorySettingsCache();
 
@@ -120,73 +132,81 @@ test("memory search respects a configured zero token budget", async () => {
   assert.equal(result.data.totalTokens, 0);
 });
 
-test("memory search runs explicitly even when global memory injection is disabled", async () => {
-  await settingsDb.updateSettings({ memoryEnabled: false, memoryMaxTokens: 2000 });
-  invalidateMemorySettingsCache();
+test(
+  "memory search runs explicitly even when global memory injection is disabled",
+  { concurrency: false },
+  async () => {
+    await settingsDb.updateSettings({ memoryEnabled: false, memoryMaxTokens: 2000 });
+    invalidateMemorySettingsCache();
 
-  await memoryTools.omniroute_memory_add.handler({
-    apiKeyId: "key-disabled-memory",
-    type: "factual",
-    key: "pref:stack",
-    content: "TypeScript and Node.js are used for backend work.",
-  });
+    await memoryTools.omniroute_memory_add.handler({
+      apiKeyId: "key-disabled-memory",
+      type: "factual",
+      key: "pref:stack",
+      content: "TypeScript and Node.js are used for backend work.",
+    });
 
-  const result = await memoryTools.omniroute_memory_search.handler({
-    apiKeyId: "key-disabled-memory",
-    query: "typescript",
-    maxTokens: 500,
-  });
+    const result = await memoryTools.omniroute_memory_search.handler({
+      apiKeyId: "key-disabled-memory",
+      query: "typescript",
+      maxTokens: 500,
+    });
 
-  assert.equal(result.success, true);
-  assert.equal(result.data.count, 1);
-  assert.equal(result.data.memories.length, 1);
-  assert.match(result.data.memories[0].content, /TypeScript/i);
-  assert.ok(result.data.totalTokens > 0);
-});
+    assert.equal(result.success, true);
+    assert.equal(result.data.count, 1);
+    assert.equal(result.data.memories.length, 1);
+    assert.match(result.data.memories[0].content, /TypeScript/i);
+    assert.ok(result.data.totalTokens > 0);
+  }
+);
 
-test("memory clear deletes only older filtered entries and reports the deleted count", async () => {
-  const older = await memoryStore.createMemory({
-    apiKeyId: "key-clear",
-    sessionId: "clear",
-    type: "factual",
-    key: "old",
-    content: "This memory should be removed.",
-    metadata: {},
-    expiresAt: null,
-  });
-  const newer = await memoryStore.createMemory({
-    apiKeyId: "key-clear",
-    sessionId: "clear",
-    type: "factual",
-    key: "new",
-    content: "This memory should remain.",
-    metadata: {},
-    expiresAt: null,
-  });
+test(
+  "memory clear deletes only older filtered entries and reports the deleted count",
+  { concurrency: false },
+  async () => {
+    const older = await memoryStore.createMemory({
+      apiKeyId: "key-clear",
+      sessionId: "clear",
+      type: "factual",
+      key: "old",
+      content: "This memory should be removed.",
+      metadata: {},
+      expiresAt: null,
+    });
+    const newer = await memoryStore.createMemory({
+      apiKeyId: "key-clear",
+      sessionId: "clear",
+      type: "factual",
+      key: "new",
+      content: "This memory should remain.",
+      metadata: {},
+      expiresAt: null,
+    });
 
-  const db = core.getDbInstance();
-  const cutoff = new Date("2025-01-01T00:00:00.000Z");
-  db.prepare("UPDATE memories SET created_at = ? WHERE id = ?").run(
-    "2024-01-01T00:00:00.000Z",
-    older.id
-  );
-  db.prepare("UPDATE memories SET created_at = ? WHERE id = ?").run(
-    "2025-06-01T00:00:00.000Z",
-    newer.id
-  );
+    const db = core.getDbInstance();
+    const cutoff = new Date("2025-01-01T00:00:00.000Z");
+    db.prepare("UPDATE memories SET created_at = ? WHERE id = ?").run(
+      "2024-01-01T00:00:00.000Z",
+      older.id
+    );
+    db.prepare("UPDATE memories SET created_at = ? WHERE id = ?").run(
+      "2025-06-01T00:00:00.000Z",
+      newer.id
+    );
 
-  const result = await memoryTools.omniroute_memory_clear.handler({
-    apiKeyId: "key-clear",
-    type: "factual",
-    olderThan: cutoff.toISOString(),
-  });
+    const result = await memoryTools.omniroute_memory_clear.handler({
+      apiKeyId: "key-clear",
+      type: "factual",
+      olderThan: cutoff.toISOString(),
+    });
 
-  const remainingResult = await memoryStore.listMemories({ apiKeyId: "key-clear" });
-  const remaining = Array.isArray(remainingResult) ? remainingResult : remainingResult.data;
+    const remainingResult = await memoryStore.listMemories({ apiKeyId: "key-clear" });
+    const remaining = Array.isArray(remainingResult) ? remainingResult : remainingResult.data;
 
-  assert.equal(result.success, true);
-  assert.equal(result.data.deletedCount, 1);
-  assert.equal(result.data.message, "Cleared 1 memories");
-  assert.equal(remaining.length, 1);
-  assert.equal(remaining[0].id, newer.id);
-});
+    assert.equal(result.success, true);
+    assert.equal(result.data.deletedCount, 1);
+    assert.equal(result.data.message, "Cleared 1 memories");
+    assert.equal(remaining.length, 1);
+    assert.equal(remaining[0].id, newer.id);
+  }
+);

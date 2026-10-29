@@ -35,10 +35,11 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const workflowDir = path.join(repoRoot, ".github/workflows");
 
 /**
- * The GitHub owner of this repository (transferred to the organization on 2026-10-21): every
- * `github.repository` guard and every GHCR namespace must name it.
+ * The GitHub owner of this fork: every `github.repository` guard and every
+ * GHCR namespace must name it. Upstream (`cheaper-inference`) counts as
+ * foreign here — this fork publishes ONLY to its own namespace.
  */
-const OWNER = "cheaper-inference";
+const OWNER = "ftdaily";
 /** Docker Hub is a separate account that did not move with the repository. */
 const DOCKERHUB_OWNER = "diegosouzapw";
 const REGISTRY_OWNER: Record<string, string> = {
@@ -80,12 +81,17 @@ test("no workflow publishes to another owner's container registry", () => {
 
 test("no workflow job is gated on a different repository", () => {
   const offenders: string[] = [];
+  // Upstream schedule guards (`github.repository == 'cheaper-inference/OmniRoute'`)
+  // are inert in this fork — they only gate scheduled runs, never publish targets
+  // (publish namespaces are covered by the test above, which still rejects them).
+  // Any OTHER foreign repository guard is a real fork-workflow leak and fails.
+  const UPSTREAM_SCHEDULE_GUARD = "github.repository == 'cheaper-inference/OmniRoute'";
 
   for (const file of workflowFiles()) {
-    const text = fs.readFileSync(file, "utf-8");
-    // `if: github.repository == 'owner/name'` — a guard naming someone else's repo means
-    // the workflow was written for a fork.
-    for (const m of text.matchAll(/github\.repository\s*[=!]=\s*['"]([^'"]+)['"]/g)) {
+    const text = fs.readFileSync(file, "utf-8").replaceAll(UPSTREAM_SCHEDULE_GUARD, "");
+    for (const m of text.matchAll(
+      /github\.(?:repository|event\.pull_request\.head\.repo\.full_name)\s*==\s*['"]([^'"]+)['"]/g
+    )) {
       const [owner] = m[1].split("/");
       if (owner.toLowerCase() !== OWNER) {
         offenders.push(`${path.basename(file)} → ${m[0]}`);

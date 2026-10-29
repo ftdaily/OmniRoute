@@ -11,6 +11,8 @@
  */
 import { NextResponse } from "next/server";
 import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
+import { agentPortsCreateSchema } from "@/shared/validation/schemas/misc";
+import { isValidationFailure, validateBody } from "@/shared/validation/helpers";
 import {
   listEndpoints,
   createEndpoint,
@@ -29,7 +31,10 @@ export const dynamic = "force-dynamic";
 
 function toPublic(ep: Awaited<ReturnType<typeof listEndpoints>>[number]) {
   // C5: single mapping source — error status preserved, keys referenced by ID only
-  return toPublicEndpoint(ep, listRunningListeners().some((l) => l.id === ep.id && l.status === "running"));
+  return toPublicEndpoint(
+    ep,
+    listRunningListeners().some((l) => l.id === ep.id && l.status === "running")
+  );
 }
 
 export async function GET(request: Request) {
@@ -43,12 +48,19 @@ export async function POST(request: Request) {
   const authError = await requireManagementAuth(request);
   if (authError) return authError;
   try {
-    const body = (await request.json()) as {
-      name?: unknown;
-      port?: unknown;
-      apiKeyId?: unknown;
-      enabled?: unknown;
-    };
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    // t06: Zod envelope (shape only — semantic checks stay in the strict
+    // validators below so error strings are preserved verbatim).
+    const validation = validateBody(agentPortsCreateSchema, rawBody);
+    if (isValidationFailure(validation)) {
+      return NextResponse.json({ error: validation.error.message }, { status: 400 });
+    }
+    const body = validation.data;
     if (typeof body.apiKeyId !== "string" || !body.apiKeyId.trim()) {
       return NextResponse.json({ error: "apiKeyId is required" }, { status: 400 });
     }
@@ -60,7 +72,10 @@ export async function POST(request: Request) {
     const { getApiKeyById } = await import("@/lib/db/apiKeys");
     const keyRow = await getApiKeyById(body.apiKeyId.trim());
     if (!keyRow) {
-      return NextResponse.json({ error: `API key ${body.apiKeyId.trim()} does not exist` }, { status: 400 });
+      return NextResponse.json(
+        { error: `API key ${body.apiKeyId.trim()} does not exist` },
+        { status: 400 }
+      );
     }
     // validate against reserved ports BEFORE insert (actual-bind conflict still authoritative below)
     validatePort(body.port as number, reservedAgentPortSet());
@@ -82,12 +97,12 @@ export async function POST(request: Request) {
         await setEndpointStatus(
           id,
           "error",
-          /EADDRINUSE/.test(sMsg) ? `${sMsg} (port occupied at create)` : sMsg,
+          /EADDRINUSE/.test(sMsg) ? `${sMsg} (port occupied at create)` : sMsg
         );
         const status = /EADDRINUSE/i.test(sMsg) ? 409 : 422;
         return NextResponse.json(
           { error: sMsg, endpoint: toPublic((await getEndpoint(id))!) },
-          { status },
+          { status }
         );
       }
     }

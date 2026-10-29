@@ -169,6 +169,9 @@ const EXPECTED: Record<InventoryKind, Record<string, number>> = {
     "src/app/(dashboard)/dashboard/tools/agent-bridge/page.tsx": 1,
     "src/app/api/cloud/auth/route.ts": 1,
     "src/app/api/cloud/credentials/update/route.ts": 1,
+    // Grant-gate validation: PATCH rejects unknown connection ids in the
+    // allowedConnections grant — an existence read, never selection/dispatch.
+    "src/app/api/keys/[id]/route.ts": 1,
     "src/app/api/models/route.ts": 1,
     // #13487 (61198da9e): Test-all reads the provider's rows once only to reject
     // with 409 when every connection is disabled — a state read behind the
@@ -306,6 +309,9 @@ const EXPECTED: Record<InventoryKind, Record<string, number>> = {
     "src/lib/usage/resetCreditCooldownRelease.ts": 1,
     "src/lib/usage/resilienceExplain.ts": 1,
     "src/lib/usage/usageStats.ts": 1,
+    // Portal grant catalog: lists reachable model ids per granted connection —
+    // a filtered catalog read, never credential selection or dispatch.
+    "src/lib/userPortalPolicy.ts": 1,
     "src/lib/vncSession/service.ts": 2,
     // #17360 moved the two VS Code tag routes' connection read here (same read-only listing).
     "src/lib/vscode/tagModels.ts": 1,

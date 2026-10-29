@@ -151,6 +151,31 @@ export const dbBackupRestoreSchema = z.object({
   backupId: z.string().trim().min(1, "backupId is required"),
 });
 
+// Agent Ports management API (src/app/api/agent-ports/*): Zod envelope (t06
+// requires request.json() be validated via validateBody/.safeParse). Only the
+// JSON-BODY SHAPE is checked here — strict .strict(): unknown keys fail 400.
+// Semantic validation (reserved-port range, key-row existence, bind conflicts)
+// stays in the existing strict validators + applyEndpointMutation, unchanged,
+// so error strings the agent-ports suite asserts on are preserved verbatim.
+export const agentPortsCreateSchema = z
+  .object({
+    name: z.unknown().optional(),
+    port: z.unknown(),
+    apiKeyId: z.string().trim().min(1, "apiKeyId is required"),
+    enabled: z.boolean({ message: "enabled must be a boolean" }).optional(),
+  })
+  .strict();
+
+export const agentPortsMutationSchema = z
+  .object({
+    action: z.enum(["start", "stop"]).optional(),
+    name: z.unknown().optional(),
+    port: z.unknown().optional(),
+    apiKeyId: z.unknown().optional(),
+    enabled: z.unknown().optional(),
+  })
+  .strict();
+
 export const accessScheduleSchema = z.object({
   enabled: z.boolean(),
   from: z.string().regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format"),

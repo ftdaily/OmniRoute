@@ -16,7 +16,6 @@ import {
   isComboNameAllowedForKey as isComboNameAllowedInDbForKey,
   getApiKeyById,
 } from "@/lib/db/apiKeys";
-import { getComboByName } from "@/lib/db/combos";
 import { getCachedComboByName, getCachedComboForModel } from "@/lib/db/readCache";
 import { isDashboardSessionAuthenticated } from "./apiAuth";
 import { isRequireApiKeyEnabled } from "./featureFlags";
@@ -1098,6 +1097,25 @@ export async function resolvePolicyApiKey(request: Request): Promise<string | nu
 }
 
 /**
+ * Whether the request's presented credential actually validated (env master or
+ * DB lifecycle gate). #14481/#670: with REQUIRE_API_KEY=false an UNVALIDATED
+ * explicit credential (unknown Bearer, revoked x-api-key + session cookie)
+ * must 401 — it is NOT anonymous. Only no-credential callers get local mode.
+ */
+export async function isPresentedKeyValidated(request: Request): Promise<boolean> {
+  const resolved = await resolveClientApiKey(request);
+  // resolveClientApiKey already checks every candidate (Bearer, x-api-key,
+  // x-goog-api-key, URL token) against env master + validateApiKey. But a bare
+  // x-api-key/x-goog-api-key is only reachable via the ungated extractor, so
+  // validate those explicitly too — the resolved.valid flag never saw them.
+  if (resolved.valid) return true;
+  const ungated = extractApiKey(request) ?? extractUngatedClientApiKey(request);
+  if (!ungated) return false;
+  const { isValidApiKey } = await import("@/sse/services/auth");
+  return isValidApiKey(ungated);
+}
+
+/**
  * Authorization-only view of the key policy, for side paths that make an
  * upstream call on the key's behalf without dispatching a chat request (e.g.
  * `/v1/messages/count_tokens`). Checks key status, endpoint category and the
@@ -1251,12 +1269,55 @@ export async function enforceApiKeyPolicy(
   // (revoked/expired/banned → keyState "invalid") is always denied — even with
   // REQUIRE_API_KEY=false (#13881 single lifecycle gate). DB errors still
   // fail closed with 503 above, never anonymous.
+  //
+  // #670/#14481: the #7785 exception applies ONLY to a no-credential caller.
+  // An EXPLICIT credential that fails validation (unknown Bearer, revoked
+  // x-api-key + session cookie widening) must 401 — never anonymous local
+  // mode, even with REQUIRE_API_KEY=false. The session cookie authenticates
+  // the dashboard operator, not the presented key.
   if (!apiKeyInfo && !isRequireApiKeyEnabled()) {
     // Scoped self-loop with an unresolvable key must NEVER become anonymous —
     // check the scoped rejection BEFORE any anonymous return.
     const scopedRejection = unresolvedScopedKeyRejection(selfLoopScope);
     if (scopedRejection) {
       return { apiKey, apiKeyInfo: null, rejection: scopedRejection };
+    }
+    if (apiKey && !(await isPresentedKeyValidated(request))) {
+      // A tombstone lookup that throws must surface BEFORE this 401: a
+      // retired key whose tombstone read fails is 503 (fault test), and a
+      // retired key whose tombstone reads clean is "retired" → 401 below.
+      // Only a key with NO tombstone row at all is an unknown → 401 here.
+      // getApiKeyRequestScope throws on tombstone-read failure (never
+      // swallows), so probe the tombstone state first when the throw path
+      // is possible — i.e. whenever the presented key is not validated.
+      let tombstoneKnown = false;
+      let tombstoneFailed = false;
+      try {
+        const { hashKey, isRetiredApiKeyHash } = await import("@/lib/db/apiKeys");
+        const { getDbInstance } = await import("@/lib/db/core");
+        tombstoneKnown = isRetiredApiKeyHash(
+          getDbInstance() as unknown as Parameters<typeof isRetiredApiKeyHash>[0],
+          await hashKey(apiKey)
+        );
+      } catch {
+        tombstoneFailed = true;
+      }
+      if (tombstoneFailed) {
+        return {
+          apiKey,
+          apiKeyInfo: null,
+          rejection: errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, "API key policy unavailable"),
+        };
+      }
+      if (!tombstoneKnown) {
+        return {
+          apiKey,
+          apiKeyInfo: null,
+          rejection: errorResponse(HTTP_STATUS.UNAUTHORIZED, "Invalid API key"),
+        };
+      }
+      // Retired: fall through to the scopeKeyState retired → 401 path below,
+      // preserving the exact retired-vs-unknown distinction.
     }
     let scopeKeyState: string | null = null;
     try {

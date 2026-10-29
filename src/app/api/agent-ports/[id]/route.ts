@@ -9,6 +9,8 @@
  */
 import { NextResponse } from "next/server";
 import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
+import { agentPortsMutationSchema } from "@/shared/validation/schemas/misc";
+import { isValidationFailure, validateBody } from "@/shared/validation/helpers";
 import { getEndpoint, deleteEndpoint } from "@/lib/agentPorts/store";
 import {
   stopAgentListener,
@@ -23,7 +25,10 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 function toPublicWithRuntime(ep: NonNullable<Awaited<ReturnType<typeof getEndpoint>>>) {
-  return toPublicEndpoint(ep, listRunningListeners().some((l) => l.id === ep.id && l.status === "running"));
+  return toPublicEndpoint(
+    ep,
+    listRunningListeners().some((l) => l.id === ep.id && l.status === "running")
+  );
 }
 
 function errorStatus(err: unknown): number {
@@ -31,7 +36,12 @@ function errorStatus(err: unknown): number {
   if (/not found/i.test(msg)) return 404;
   if (err instanceof StartBlockedError) return 422; // key gate: create/fix assignment first
   if (/EADDRINUSE|EACCES/i.test(msg)) return 409; // actual bind conflict
-  if (/Invalid port|reserved|must be a boolean|must be a string|must be a non-empty|already assigned|already has a running/i.test(msg)) return 400;
+  if (
+    /Invalid port|reserved|must be a boolean|must be a string|must be a non-empty|already assigned|already has a running/i.test(
+      msg
+    )
+  )
+    return 400;
   return 400;
 }
 
@@ -45,11 +55,26 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (authError) return authError;
   const { id } = await ctx.params;
   try {
-    const body = (await request.json()) as Record<string, unknown>;
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    // t06: Zod envelope (shape only — unknown action/fields still fail here
+    // before the strict C1-C4 handling below, with the same 400 semantics).
+    const validation = validateBody(agentPortsMutationSchema, rawBody);
+    if (isValidationFailure(validation)) {
+      return NextResponse.json({ error: validation.error.message }, { status: 400 });
+    }
+    const body = validation.data as Record<string, unknown>;
 
     // Strict action enum (C4): unknown actions rejected, never silently ignored
     if (body.action !== undefined && body.action !== "start" && body.action !== "stop") {
-      return NextResponse.json({ error: `Unknown action ${JSON.stringify(body.action)}; expected "start" | "stop"` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Unknown action ${JSON.stringify(body.action)}; expected "start" | "stop"` },
+        { status: 400 }
+      );
     }
 
     // C1: desired state follows the action; C2/C3: fields validated inside the

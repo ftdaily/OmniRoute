@@ -4,7 +4,6 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useProviderNodeMap, resolveProviderName } from "@/lib/display/useProviderNodeMap";
 import { Checkbox } from "@omniroute/ui-kit/checkbox";
-import { getProviderDisplayName } from "@/lib/display/names";
 import Button from "@/shared/components/Button";
 import Icon from "@/shared/components/Icon";
 import Input from "@/shared/components/Input";

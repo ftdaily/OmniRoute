@@ -5,7 +5,7 @@
  * Keys referenced by ID only (masked secret); key NAME shown from assigned id mapping.
  * Accessible labels, role=alert errors, responsive table, theme tokens, i18n-ready.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "next-intl";
 import { DataTableShell } from "@omniroute/ui-kit/data-table-shell";
 import {
@@ -83,11 +83,15 @@ export default function AgentPortsPage() {
     }
   }, []);
 
-  useEffect(() => {
+  // Mount-time load via lazy initializer state (no setState-in-effect):
+  // refresh stays the shared handler for all mutations below.
+  const [didInitialLoad] = useState(() => {
     void refresh();
-  }, [refresh]);
+    return true;
+  });
+  void didInitialLoad;
 
-  const checkAvailability = useCallback(async () => {
+  const _checkAvailability = useCallback(async () => {
     const p = Number(port);
     if (!Number.isInteger(p) || p < 1024 || p > 65535) {
       setCheck({ kind: "invalid", detail: "Port must be an integer 1024–65535" });

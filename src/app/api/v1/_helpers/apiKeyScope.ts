@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getApiKeyMetadata, validateApiKey } from "@/lib/db/apiKeys";
 import { extractApiKey } from "@/sse/services/auth";
 import { isDashboardSessionAuthenticated } from "@/shared/utils/apiAuth";
@@ -189,7 +188,7 @@ export type OwnedListScope =
   | { mode: "rejected"; response: Response };
 
 function unauthorized(message: string): Response {
-  return NextResponse.json(buildErrorBody(401, message), { status: 401, headers: CORS_HEADERS });
+  return Response.json(buildErrorBody(401, message), { status: 401, headers: CORS_HEADERS });
 }
 
 /**

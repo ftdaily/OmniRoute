@@ -22,6 +22,9 @@ const VERIFIERS = [
 const ALLOWED_JWT_VERIFY_FILES = [
   "src/shared/utils/dashboardSessionToken.ts",
   "src/app/api/auth/oidc/callback/route.ts",
+  // user-portal session uses a separate cookie (user_auth_token), issuer, audience
+  // and HMAC-derived key context — never the dashboard auth_token domain.
+  "src/lib/userPortalAuth.ts",
 ];
 
 for (const rel of VERIFIERS) {
@@ -39,6 +42,19 @@ test("the helper itself is the only src file that calls jwtVerify on the dashboa
   );
   assert.match(helper, /\bjwtVerify\s*\(/);
   assert.match(helper, /=== true/);
+});
+
+test("user-portal session verifier rejects the admin auth domain", () => {
+  const src = fs.readFileSync(path.join(ROOT, "src/lib/userPortalAuth.ts"), "utf8");
+  // Pinned: fork verifyUserPortalSessionToken must never qualify an admin
+  // session — authenticated:true, wrong kind, missing sub, or revision drift
+  // all return null (fail-closed, never throws, never trusts admin tokens).
+  assert.match(src, /\.authenticated\s*===\s*true/);
+  assert.match(src, /payload\.kind\s*!==\s*USER_PORTAL_KIND/);
+  assert.match(src, /USER_PORTAL_ISSUER/);
+  assert.match(src, /USER_PORTAL_AUDIENCE/);
+  assert.match(src, /USER_PORTAL_COOKIE/);
+  assert.doesNotMatch(src, /readCookie\(request,\s*["']auth_token["']\)/);
 });
 
 test("only allowlisted files call jwtVerify from jose", () => {

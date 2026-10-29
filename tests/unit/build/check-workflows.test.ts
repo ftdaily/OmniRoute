@@ -478,7 +478,9 @@ test("readBaselineZizmorValue: invalid JSON returns null (does not throw)", () =
 
 test("quality admission covers both bases and delegates required build/package checks to CI", () => {
   const source = readQualityWorkflow();
-  assert.match(source, /pull_request:\n\s+branches: \[main, "release\/\*\*"\]/);
+  // Fork `mine` is an explicit, permanent base (push + PR both gate it —
+  // the fork publishes its own `mine` image channel from that branch).
+  assert.match(source, /pull_request:\n\s+#[^\n]*\n\s+branches: \[main, mine, "release\/\*\*"\]/);
   assert.match(source, /merge_group:\n\s+types: \[checks_requested\]/);
   assert.doesNotMatch(source, /\n  build:\n/, "no permanently skipped duplicate build job");
   const ci = fs.readFileSync(new URL("../../../.github/workflows/ci.yml", import.meta.url), "utf8");

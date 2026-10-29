@@ -23,7 +23,8 @@
     "delete": "__MISSING__:Delete",
     "newPortValue": "__MISSING__:New port",
     "reassignKey": "__MISSING__:Reassign key",
-    "save": "__MISSING__:Save"
+    "save": "__MISSING__:Save",
+    "bindAuthoritative": "__MISSING__:The actual bind at start decides"
   },
   "teamCosts": {
     "title": "Custos da equipe",

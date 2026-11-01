@@ -440,7 +440,9 @@ test("errorFrame option overrides the default Anthropic-style event: error frame
   // The real upstream error body ("rate limited") is forwarded verbatim, framed as a
   // plain data: line (matching errorFrame's format) instead of the generic fallback
   // message — this is the dynamic real-body branch, distinct from the static default.
-  assert.match(body, /"error":\{"message":"rate limited","type":"rate_limit"\}/);
+  // The known HTTP status rides inside the frame so a 200-SSE consumer can recover
+  // it without regexing the message.
+  assert.match(body, /"error":\{"message":"rate limited","type":"rate_limit","status":429\}/);
 });
 
 // #2544: a fast rejection must propagate so the route's normal error handling runs —

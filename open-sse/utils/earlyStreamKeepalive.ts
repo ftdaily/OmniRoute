@@ -712,7 +712,7 @@ export async function withEarlyStreamKeepalive(
             // change. Frame the (already-sanitized) body as an in-band error event
             // instead of forwarding raw JSON, which would be malformed SSE.
             const text = response.body ? await response.text().catch(() => "") : "";
-            const dataLine =
+            let dataLine =
               errorFrameFormat === "responses"
                 ? buildResponsesErrorDataLine(text, {
                     status: response.status,
@@ -720,6 +720,28 @@ export async function withEarlyStreamKeepalive(
                   })
                 : text.trim() ||
                   JSON.stringify({ error: { message: "stream_error", type: "stream_error" } });
+            if (
+              errorFrameFormat !== "responses" &&
+              response.status >= 400 &&
+              response.status <= 599
+            ) {
+              try {
+                const body = JSON.parse(dataLine) as Record<string, unknown>;
+                if (
+                  body &&
+                  typeof body === "object" &&
+                  !Array.isArray(body) &&
+                  body.error &&
+                  typeof body.error === "object" &&
+                  !Array.isArray(body.error)
+                ) {
+                  (body.error as Record<string, unknown>).status = response.status;
+                  dataLine = JSON.stringify(body);
+                }
+              } catch {
+                /* keep original line */
+              }
+            }
             const framed =
               errorFrameFormat === "anthropic"
                 ? `event: error\ndata: ${dataLine}\n\n`

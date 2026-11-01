@@ -212,6 +212,40 @@ test("failed selected account never falls back to another account", async () => 
   assert.equal((await db.getProviderConnectionById(selected.id))?.isActive, true);
 });
 
+test("429 stays 429 JSON and a 502 is extracted as provider text", async () => {
+  await connection("sk-first-429");
+  const selected = await connection("sk-selected-429");
+  await settingsDb.updateSettings({ hidePaidModels: false });
+  let calls = 0;
+  let mode: "limited" | "gateway" = "limited";
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("/chat/completions")) {
+      calls++;
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer sk-selected-429");
+      return mode === "limited"
+        ? Response.json({ error: { message: "Too many requests" } }, { status: 429 })
+        : new Response("<html>Bad Gateway</html>", {
+            status: 502,
+            statusText: "Bad Gateway",
+            headers: { "content-type": "text/html" },
+          });
+    }
+    return Response.json({ choices: [{ message: { role: "assistant", content: "2" } }] });
+  };
+  const limited = await route.POST(await request(selected.id, "POST"), context(selected.id));
+  const limitedBody = await limited.json();
+  assert.equal(limited.status, 429);
+  assert.equal(limitedBody.error.message, "[429]: Too many requests");
+
+  mode = "gateway";
+  const badGateway = await route.POST(await request(selected.id, "POST"), context(selected.id));
+  const badBody = await badGateway.json();
+  assert.equal(badGateway.status, 502);
+  assert.match(badBody.error.message, /Bad Gateway/);
+  // 429 POST = 1 + 2 intra-URL retries (RETRY_CONFIG maxAttempts), 502 POST = 1.
+  assert.equal(calls, 4);
+});
+
 test("Edit Connection persists, preserves and clears the shared test model", async () => {
   const editRoute = await import("../../src/app/api/providers/[id]/route.ts");
   const selected = await connection("sk-edit-connection-test", {

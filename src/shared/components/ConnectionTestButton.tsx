@@ -19,7 +19,12 @@ type Props = {
 };
 
 async function readResponse(response: Response) {
-  const data = await response.json();
+  const data = await response.json().catch((error) => {
+    if (response.ok) throw error;
+    throw new Error(
+      `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`
+    );
+  });
   if (!response.ok) throw new Error(data.error?.message || data.error || response.statusText);
   return data;
 }

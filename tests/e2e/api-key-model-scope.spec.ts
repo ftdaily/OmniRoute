@@ -254,7 +254,16 @@ test.describe("API key model scope", () => {
       name: /ollama[- ]?cloud/i,
     });
     await expect(ollamaProviderCheckbox).toBeVisible({ timeout: UI_STABILITY_TIMEOUT_MS });
-    await ollamaProviderCheckbox.check();
+    const providerCheckboxBox = await ollamaProviderCheckbox
+      .locator("..")
+      .locator(".ci-checkbox__box")
+      .boundingBox();
+    expect(providerCheckboxBox).not.toBeNull();
+    await page.mouse.click(
+      providerCheckboxBox!.x + providerCheckboxBox!.width / 2,
+      providerCheckboxBox!.y + providerCheckboxBox!.height / 2
+    );
+    await expect(ollamaProviderCheckbox).toBeChecked();
 
     // Exact OpenAI model selection coexists with the provider scope.
     await modelSearch.fill("openai/gpt-4.1");

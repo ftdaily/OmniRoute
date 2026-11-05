@@ -17,11 +17,20 @@ import { invalidate as invalidateCache } from "../../src/lib/memory/embedding/ca
 // Row 2 (world):  [0.0, 1.0, 0.0, 0.0]
 
 function makeMockModel(): PotionModel {
-  const vocab: Record<string, number> = { "[UNK]": 0, "hello": 1, "world": 2 };
+  const vocab: Record<string, number> = { "[UNK]": 0, hello: 1, world: 2 };
   const matrix = new Float32Array([
-    0.0, 0.0, 0.0, 0.0,  // row 0 = [UNK]
-    1.0, 0.0, 0.0, 0.0,  // row 1 = hello
-    0.0, 1.0, 0.0, 0.0,  // row 2 = world
+    0.0,
+    0.0,
+    0.0,
+    0.0, // row 0 = [UNK]
+    1.0,
+    0.0,
+    0.0,
+    0.0, // row 1 = hello
+    0.0,
+    1.0,
+    0.0,
+    0.0, // row 2 = world
   ]);
   return { vocab, matrix, dim: 4, vocabSize: 3, unkIdx: 0 };
 }
@@ -53,6 +62,53 @@ describe("memory-embedding-static-potion tokenizer", () => {
     // tokenizeWordPiece lowercases input
     const ids = tokenizeWordPiece("Hello World", mock.vocab);
     assert.deepStrictEqual(ids, [1, 2]);
+  });
+
+  it("word of 101 codepoints yields [UNK] (spec max_input_chars_per_word=100)", () => {
+    // Model tokenizer.json: type=WordPiece, unk_token=[UNK], prefix=##.
+    const vocabAA: Record<string, number> = { "[UNK]": 0, a: 1, "##a": 2 };
+    const ids = tokenizeWordPiece("a".repeat(101), vocabAA);
+    assert.deepStrictEqual(ids, [0]);
+  });
+
+  it("overlong vocab entry still capped (cap precedes exact match)", () => {
+    const vocabLong: Record<string, number> = { "[UNK]": 0, ["a".repeat(101)]: 7 };
+    assert.deepStrictEqual(tokenizeWordPiece("a".repeat(101), vocabLong), [0]);
+  });
+
+  it("word of exactly 100 codepoints still greedily splits (boundary)", () => {
+    const vocabAA: Record<string, number> = { "[UNK]": 0, a: 1, "##a": 2 };
+    const ids = tokenizeWordPiece("a".repeat(100), vocabAA);
+    assert.strictEqual(ids.length, 100);
+    assert.strictEqual(ids[0], 1);
+  });
+
+  it("astral word of 101 codepoints yields [UNK] (codepoint, not UTF-16-unit count)", () => {
+    const vocabAstral: Record<string, number> = { "[UNK]": 0, "😀": 1, "##😀": 2 };
+    const ids = tokenizeWordPiece("😀".repeat(101), vocabAstral);
+    assert.deepStrictEqual(ids, [0]);
+  });
+
+  it("astral word of 100 codepoints greedily splits (codepoint boundary)", () => {
+    const vocabAstral: Record<string, number> = { "[UNK]": 0, "😀": 1, "##😀": 2 };
+    const ids = tokenizeWordPiece("😀".repeat(100), vocabAstral);
+    assert.strictEqual(ids.length, 100);
+    assert.strictEqual(ids[0], 1);
+  });
+
+  it("'a' x 100 completes fast (quadratic guard)", () => {
+    const vocabAA: Record<string, number> = { "[UNK]": 0, a: 1, "##a": 2 };
+    const t0 = performance.now();
+    tokenizeWordPiece("a".repeat(100), vocabAA);
+    assert.ok(performance.now() - t0 < 100, "100-char greedy must stay <100ms");
+  });
+
+  it("4000-char word returns [UNK] without entering greedy loop", () => {
+    const vocabAA: Record<string, number> = { "[UNK]": 0, a: 1, "##a": 2 };
+    const t0 = performance.now();
+    const ids = tokenizeWordPiece("a".repeat(4000), vocabAA);
+    assert.deepStrictEqual(ids, [0]);
+    assert.ok(performance.now() - t0 < 100, "capped word must not scale with length");
   });
 });
 
@@ -130,9 +186,7 @@ describe("memory-embedding-static-potion embedStatic with mock", () => {
     const prevCacheDir = process.env.MEMORY_STATIC_CACHE_DIR;
     process.env.MEMORY_STATIC_CACHE_DIR = `/dev/null/potion-load-fail-${process.pid}-${Date.now()}`;
     try {
-      const { embedStatic } = await import(
-        "../../src/lib/memory/embedding/staticPotion"
-      );
+      const { embedStatic } = await import("../../src/lib/memory/embedding/staticPotion");
       const result = await embedStatic("hello world");
       assert.ok(
         !("vector" in result),

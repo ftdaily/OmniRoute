@@ -31,11 +31,19 @@ import {
 import { getCustomModelVisionOverride, getSyncedAvailableModelVision } from "@/lib/db/models";
 import type { ModelCapabilityResolutionSnapshot } from "@/lib/modelCapabilityResolutionSnapshot";
 import { resolveAudioCapability, resolveVideoCapability } from "@/lib/modelCapabilityModalities";
+import {
+  describeLimitSources,
+  pickContextWindow,
+  pickMaxInputTokens,
+  pickMaxOutputTokens,
+  type ModelLimitSources,
+} from "@/lib/modelCapabilityLimits";
 import { getNoAuthHydrationProviderIds } from "@/sse/services/noAuthProviderSiblings";
 
 export type { ModelCapabilityResolutionSnapshot } from "@/lib/modelCapabilityResolutionSnapshot";
 export { createModelCapabilityResolutionSnapshot } from "@/lib/modelCapabilityResolutionSnapshot";
 export { resolveAudioCapability } from "@/lib/modelCapabilityModalities";
+export type { ModelLimitSources } from "@/lib/modelCapabilityLimits";
 import { isVisionModelId } from "@/shared/constants/visionModels";
 import { getUnsupportedParams } from "@omniroute/open-sse/config/providerRegistry.ts";
 import {
@@ -130,6 +138,8 @@ type SyncedCapabilities = ReturnType<typeof getSyncedCapability>;
  */
 export interface ResolveModelCapabilitiesOptions {
   persistedOverrides?: boolean;
+  /** Diagnostic collector: when passed, filled with each limit's provenance. */
+  limitSources?: Partial<ModelLimitSources>;
 }
 
 export interface ResolvedModelCapabilities {
@@ -886,9 +896,11 @@ export function getResolvedModelCapabilities(
   // silently reorders it behind models with confirmed capabilities. Resolve
   // the variant's capabilities from its base model when every direct source
   // misses.
+  let effortBaseModelId: string | null = null;
   if (!spec && !registryModel && !synced && resolved.provider && resolved.model) {
     const baseModelId = stripKnownEffortSuffix(resolved.model);
     if (baseModelId && baseModelId !== resolved.model) {
+      effortBaseModelId = baseModelId;
       spec = getStaticSpec(baseModelId, resolved.rawModel);
       registryModel = getRegistryModel(resolved.provider, baseModelId);
       synced = getSyncedCapabilityForResolved(
@@ -948,18 +960,14 @@ export function getResolvedModelCapabilities(
   );
   // A persisted context-window override (operator-set or auto-discovered)
   // reflects the real *total* window and wins over every static/synced source.
-  // `maxInputTokens` still follows its own precedence chain; only when that
-  // chain has no narrower source does it naturally fall back to this window.
+  // It also replaces stale catalog/synced input hints. A separately configured
+  // max_input_tokens override remains the operator's input-only ceiling.
   const persistedContextWindow = usePersistedOverrides
     ? getContextOverride(resolved, snapshot)
     : null;
-  const contextWindow =
-    persistedContextWindow ??
-    authoritativeContextWindow ??
-    synced?.limit_context ??
-    (typeof registryModel?.contextLength === "number" ? registryModel.contextLength : null) ??
-    spec?.contextWindow ??
-    null;
+  const limitRows = { synced, registryModel, spec, authoritativeContextWindow };
+  const contextLimit = pickContextWindow(limitRows, persistedContextWindow);
+  const contextWindow = contextLimit.value;
 
   const maxInputOverride = !usePersistedOverrides
     ? null
@@ -971,6 +979,23 @@ export function getResolvedModelCapabilities(
     : usePersistedOverrides
       ? getOutputTokenCapabilityOverride(resolved)
       : null;
+
+  const inputLimit = pickMaxInputTokens(
+    limitRows,
+    maxInputOverride,
+    contextLimit,
+    persistedContextWindow
+  );
+  const outputLimit = pickMaxOutputTokens(limitRows, maxTokenOverride);
+  if (options?.limitSources) {
+    Object.assign(
+      options.limitSources,
+      describeLimitSources(
+        { contextWindow: contextLimit, maxInputTokens: inputLimit, maxOutputTokens: outputLimit },
+        { ...resolved, effortBaseModelId }
+      )
+    );
+  }
 
   // Vision consults leaf static metadata for path-shaped ids; other capability
   // fields keep using the non-leaf `spec` from getStaticSpec() above.
@@ -1056,28 +1081,10 @@ export function getResolvedModelCapabilities(
     structuredOutput: synced?.structured_output ?? null,
     temperature: synced?.temperature ?? null,
     contextWindow,
-    maxInputTokens: (() => {
-      // Input cap is input-only. An explicit `max_input_tokens` override wins;
-      // otherwise fall back to the existing per-source input limits, then to the
-      // total window. The effective cap can never exceed the total window
-      // (input + output), so clamp it — but never double-count a requested
-      // output against this input cap.
-      const candidate =
-        maxInputOverride ??
-        (typeof registryModel?.maxInputTokens === "number" ? registryModel.maxInputTokens : null) ??
-        authoritativeContextWindow ??
-        synced?.limit_input ??
-        contextWindow;
-      return candidate !== null && contextWindow !== null
-        ? Math.min(candidate, contextWindow)
-        : candidate;
-    })(),
-    maxOutputTokens:
-      maxTokenOverride ??
-      synced?.limit_output ??
-      (typeof registryModel?.maxOutputTokens === "number" ? registryModel.maxOutputTokens : null) ??
-      spec?.maxOutputTokens ??
-      null,
+    // Input-only cap, clamped to the total window — never double-counts a requested
+    // output against it (see pickMaxInputTokens).
+    maxInputTokens: inputLimit.value,
+    maxOutputTokens: outputLimit.value,
     defaultThinkingBudget: spec?.defaultThinkingBudget ?? 0,
     thinkingBudgetCap: spec?.thinkingBudgetCap ?? null,
     thinkingOverhead: spec?.thinkingOverhead ?? null,
@@ -1097,6 +1104,19 @@ export function getResolvedModelCapabilities(
 }
 
 /**
+ * Same resolution as `getResolvedModelCapabilities`, plus which source supplied each
+ * token limit (diagnostics only — the resolved capabilities are identical).
+ */
+export function getResolvedModelCapabilitiesWithLimitSources(
+  input: CapabilityInput,
+  snapshot?: ModelCapabilityResolutionSnapshot | null
+): { capabilities: ResolvedModelCapabilities; limitSources: ModelLimitSources } {
+  const limitSources: Partial<ModelLimitSources> = {};
+  const capabilities = getResolvedModelCapabilities(input, { limitSources }, snapshot);
+  return { capabilities, limitSources: limitSources as ModelLimitSources };
+}
+
+/**
  * Input cap enforced at the request-time hard gate, with explicit combo semantics.
  *
  * Feature 5004 lets a raw, exact `model_context_overrides` entry supersede a
@@ -1111,8 +1131,9 @@ export function getResolvedModelCapabilities(
  *   must never be bypassed by a context-window override.
  * - Otherwise, for a COMBO request with an exact persisted context override, that
  *   context override is the input cap (it reflects the real window; the smaller
- *   catalog hint does not apply). Direct requests ignore this branch.
- * - Otherwise the canonical `maxInputTokens` chain applies (registry input hint →
+ *   catalog hint does not apply). Direct requests use the same override through
+ *   the canonical maxInputTokens resolver below.
+ * - Otherwise the canonical `maxInputTokens` chain applies (context override → registry input hint →
  *   authoritative window → synced limit_input → total window), clamped to the
  *   total window.
  *

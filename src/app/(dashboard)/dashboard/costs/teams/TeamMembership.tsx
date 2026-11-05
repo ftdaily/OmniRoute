@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
 import Input from "@/shared/components/Input";
-import { Select } from "@/shared/components";
+import Select from "@/shared/components/Select";
 import { matchesSearch } from "@/shared/utils/turkishText";
 import type { Detail, TeamKeyOption } from "./helpers";
 
@@ -39,7 +39,7 @@ function KeyAssigner({
       <div className="flex flex-col sm:flex-row gap-2">
         <Select
           aria-label={t("chooseKey")}
-          className="min-w-0 flex-1 rounded-control border border-border bg-bg p-2 text-sm"
+          className="min-w-0 flex-1"
           value={selected?.id ?? ""}
           onChange={(e) => setChosen(e.target.value)}
         >

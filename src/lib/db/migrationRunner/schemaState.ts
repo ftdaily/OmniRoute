@@ -181,11 +181,11 @@ export function reconcileRenumberedMigrations(db: SqliteAdapter, files: Migratio
       );
     }
 
-    // 213->217 (fork portal renumber): only remap when the FULL portal shape
-    // already exists. A columns-only partial keeps its 213 row so 217 stays
-    // pending and the 217 dispatch heals the missing tables.
+    // 213->226 (fork portal renumber, direct): only remap when the FULL portal shape
+    // already exists. A columns-only partial keeps its 213 row so 226 stays
+    // pending and the 226 dispatch heals the missing tables.
     const isPortal213Compat =
-      compatibility.fromVersion === "213" && compatibility.toVersion === "217";
+      compatibility.fromVersion === "213" && compatibility.toVersion === "226";
     const portalShapeComplete =
       !isPortal213Compat ||
       (hasColumn(db, "api_keys", "portal_enabled") &&
@@ -194,10 +194,10 @@ export function reconcileRenumberedMigrations(db: SqliteAdapter, files: Migratio
         hasTable(db, "key_preferences") &&
         hasTable(db, "user_combos"));
     if (isPortal213Compat && !portalShapeComplete) {
-      // Partial portal shape: remap the legacy 213 row to 217 to free the
-      // 213 slot for the upstream 213 file, then drop the 217 marker so 217
-      // stays pending — the 217 dispatch heals the missing tables via
-      // applyMigrationSkippingExistingColumns and writes the real 217 row.
+      // Partial portal shape: remap the legacy 213 row to 226 to free the
+      // 213 slot for the upstream 213 file, then drop the 226 marker so 226
+      // stays pending — the 226 dispatch heals the missing tables via
+      // applyMigrationSkippingExistingColumns and writes the real 226 row.
       db.transaction(() => {
         db.prepare(
           "UPDATE _omniroute_migrations SET version = ?, name = ? WHERE version = ? AND name = ?"

@@ -12,8 +12,37 @@ export const RENAMED_MIGRATION_COMPATIBILITY = [
   {
     fromVersion: "213",
     fromName: "user_portal_flags_prefs_combos",
-    toVersion: "217",
+    toVersion: "226",
     toName: "user_portal_flags_prefs_combos",
+  },
+  // 2026-11-05 collision repair: fork 217/218 and upstream 217/218 shared
+  // numeric slots. Fork portal pair moves to 226/227, upstream quota/mirror
+  // pair moves to 228/229 (byte-identical renames). Ledger rows recorded
+  // under EITHER old name reconcile to the new number; the reconcile helper
+  // only remaps after confirming the other occupant does not own the slot.
+  {
+    fromVersion: "217",
+    fromName: "user_portal_flags_prefs_combos",
+    toVersion: "226",
+    toName: "user_portal_flags_prefs_combos",
+  },
+  {
+    fromVersion: "218",
+    fromName: "retired_api_key_hashes",
+    toVersion: "227",
+    toName: "retired_api_key_hashes",
+  },
+  {
+    fromVersion: "217",
+    fromName: "quota_recovery_tickets",
+    toVersion: "228",
+    toName: "quota_recovery_tickets",
+  },
+  {
+    fromVersion: "218",
+    fromName: "proxy_subscription_mirror_urls",
+    toVersion: "229",
+    toName: "proxy_subscription_mirror_urls",
   },
   {
     fromVersion: "022",

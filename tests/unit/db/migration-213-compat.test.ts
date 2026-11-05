@@ -22,14 +22,14 @@ function readDisk(name: string): string {
 function pre213Files(): Record<string, string> {
   // MINIMAL chain: 001 base (api_keys + usage_history) only. Later migrations
   // have cross-deps on core.getDbInstance healers (e.g. 127 needs healer-built
-  // columns); the compat under test is 213 <-> 217 only.
+  // columns); the compat under test is 213 <-> 226 only.
   const out: Record<string, string> = {};
   out["001_initial_schema.sql"] = readDisk("001_initial_schema.sql");
   return out;
 }
-// 217 content MUST be byte-identical to the old fork 213 (rename, not rewrite).
+// 226 content MUST be byte-identical to the old fork 213 (rename, not rewrite).
 function forkSql(): string {
-  return readDisk("217_user_portal_flags_prefs_combos.sql");
+  return readDisk("226_user_portal_flags_prefs_combos.sql");
 }
 function upstreamSql(): string {
   return readDisk("213_api_key_preferred_connections.sql");
@@ -132,25 +132,25 @@ test("213-compat RED: duplicate 213 files throw before any migration runs", asyn
   });
 });
 
-test("213-compat FRESH: upstream 213 + fork 217 both apply with all objects", async () => {
+test("213-compat FRESH: upstream 213 + fork 226 both apply with all objects", async () => {
   const files = { ...pre213Files() };
   files["213_api_key_preferred_connections.sql"] = upstreamSql();
-  files["217_user_portal_flags_prefs_combos.sql"] = forkSql();
+  files["226_user_portal_flags_prefs_combos.sql"] = forkSql();
   await withFreshRunner(files, (runner) => {
     const r = runner as unknown as { runMigrations: (d: unknown, o: unknown) => number };
     const db = new Database(":memory:") as unknown as Db;
     withMockedMigrationFs(files, () => r.runMigrations(db, { isNewDb: true }));
     const c = cols(db, "api_keys");
     assert.ok(c.includes("preferred_connections"), "upstream 213 column present");
-    assert.ok(c.includes("portal_enabled"), "fork 217 portal_enabled present");
-    assert.ok(c.includes("user_combos_enabled"), "fork 217 user_combos_enabled present");
-    assert.ok(c.includes("portal_session_revision"), "fork 217 portal_session_revision present");
+    assert.ok(c.includes("portal_enabled"), "fork 226 portal_enabled present");
+    assert.ok(c.includes("user_combos_enabled"), "fork 226 user_combos_enabled present");
+    assert.ok(c.includes("portal_session_revision"), "fork 226 portal_session_revision present");
     const t = tableNames(db);
     assert.ok(t.includes("key_preferences"), "key_preferences table present");
     assert.ok(t.includes("user_combos"), "user_combos table present");
     const applied = appliedVersions(db);
     assert.equal(applied.get("213"), "api_key_preferred_connections");
-    assert.equal(applied.get("217"), "user_portal_flags_prefs_combos");
+    assert.equal(applied.get("226"), "user_portal_flags_prefs_combos");
     const n = withMockedMigrationFs(files, () => r.runMigrations(db, { isNewDb: false }));
     assert.equal(n, 0, "rerun applies nothing");
   });
@@ -159,11 +159,11 @@ test("213-compat FRESH: upstream 213 + fork 217 both apply with all objects", as
 test("213-compat LEGACY (Tencent): 213/fork-name row + portal DATA migrate, gain upstream col", async () => {
   const files = { ...pre213Files() };
   files["213_api_key_preferred_connections.sql"] = upstreamSql();
-  files["217_user_portal_flags_prefs_combos.sql"] = forkSql();
+  files["226_user_portal_flags_prefs_combos.sql"] = forkSql();
   await withFreshRunner(files, (runner) => {
     const r = runner as unknown as { runMigrations: (d: unknown, o: unknown) => number };
     const db = new Database(":memory:") as unknown as Db;
-    // TRUE legacy state WITHOUT the 217 file and WITHOUT upstream 213:
+    // TRUE legacy state WITHOUT the 226 file and WITHOUT upstream 213:
     const legacyFiles = { ...pre213Files() };
     legacyFiles["213_user_portal_flags_prefs_combos.sql"] = forkSql();
     withMockedMigrationFs(legacyFiles, () => r.runMigrations(db, { isNewDb: true }));
@@ -179,11 +179,11 @@ test("213-compat LEGACY (Tencent): 213/fork-name row + portal DATA migrate, gain
       !cols(db, "api_keys").includes("preferred_connections"),
       "precondition: no upstream col"
     );
-    // PATCHED fileset: reconcile UPDATEs ledger 213->217, then upstream 213 applies
+    // PATCHED fileset: reconcile UPDATEs ledger 213->226, then upstream 213 applies
     withMockedMigrationFs(files, () => r.runMigrations(db, { isNewDb: false }));
     const applied = appliedVersions(db);
     assert.equal(applied.get("213"), "api_key_preferred_connections", "upstream 213 now recorded");
-    assert.equal(applied.get("217"), "user_portal_flags_prefs_combos", "legacy row moved to 217");
+    assert.equal(applied.get("226"), "user_portal_flags_prefs_combos", "legacy row moved to 226");
     assert.ok(cols(db, "api_keys").includes("preferred_connections"), "gained upstream column");
     const row = db
       .prepare("SELECT portal_enabled, user_combos_enabled FROM api_keys WHERE id=?")
@@ -197,10 +197,10 @@ test("213-compat LEGACY (Tencent): 213/fork-name row + portal DATA migrate, gain
   });
 });
 
-test("213-compat UPSTREAM-APPLIED: 217 EXECUTES (not skip) on DB without portal cols", async () => {
+test("213-compat UPSTREAM-APPLIED: 226 EXECUTES (not skip) on DB without portal cols", async () => {
   const files = { ...pre213Files() };
   files["213_api_key_preferred_connections.sql"] = upstreamSql();
-  files["217_user_portal_flags_prefs_combos.sql"] = forkSql();
+  files["226_user_portal_flags_prefs_combos.sql"] = forkSql();
   await withFreshRunner(files, (runner) => {
     const r = runner as unknown as { runMigrations: (d: unknown, o: unknown) => number };
     const db = new Database(":memory:") as unknown as Db;
@@ -210,14 +210,14 @@ test("213-compat UPSTREAM-APPLIED: 217 EXECUTES (not skip) on DB without portal 
     withMockedMigrationFs(upFiles, () => r.runMigrations(db, { isNewDb: true }));
     assert.ok(!cols(db, "api_keys").includes("portal_enabled"), "precondition: no portal cols");
     assert.equal(appliedVersions(db).get("213"), "api_key_preferred_connections");
-    // Patched run: compat must NOT map (fromName mismatch), 217 must EXECUTE
+    // Patched run: compat must NOT map (fromName mismatch), 226 must EXECUTE
     withMockedMigrationFs(files, () => r.runMigrations(db, { isNewDb: false }));
     const c = cols(db, "api_keys");
-    assert.ok(c.includes("portal_enabled"), "217 EXECUTED portal_enabled");
-    assert.ok(c.includes("portal_session_revision"), "217 EXECUTED portal_session_revision");
+    assert.ok(c.includes("portal_enabled"), "226 EXECUTED portal_enabled");
+    assert.ok(c.includes("portal_session_revision"), "226 EXECUTED portal_session_revision");
     const t = tableNames(db);
-    assert.ok(t.includes("key_preferences"), "217 EXECUTED key_preferences");
-    assert.ok(t.includes("user_combos"), "217 EXECUTED user_combos");
+    assert.ok(t.includes("key_preferences"), "226 EXECUTED key_preferences");
+    assert.ok(t.includes("user_combos"), "226 EXECUTED user_combos");
     assert.equal(
       appliedVersions(db).get("213"),
       "api_key_preferred_connections",
@@ -226,10 +226,10 @@ test("213-compat UPSTREAM-APPLIED: 217 EXECUTES (not skip) on DB without portal 
   });
 });
 
-test("213-compat PARTIAL: 3 cols but no tables -> 217 heals (tables created, loud log)", async () => {
+test("213-compat PARTIAL: 3 cols but no tables -> 226 heals (tables created, loud log)", async () => {
   const files = { ...pre213Files() };
   files["213_api_key_preferred_connections.sql"] = upstreamSql();
-  files["217_user_portal_flags_prefs_combos.sql"] = forkSql();
+  files["226_user_portal_flags_prefs_combos.sql"] = forkSql();
   await withFreshRunner(files, (runner) => {
     const r = runner as unknown as { runMigrations: (d: unknown, o: unknown) => number };
     const db = new Database(":memory:") as unknown as Db;
@@ -238,17 +238,17 @@ test("213-compat PARTIAL: 3 cols but no tables -> 217 heals (tables created, lou
     legacyFiles["213_user_portal_flags_prefs_combos.sql"] = forkSql();
     withMockedMigrationFs(legacyFiles, () => r.runMigrations(db, { isNewDb: true }));
     db.exec("DROP TABLE key_preferences; DROP TABLE user_combos;");
-    // Guard (cols+tables) returns false -> 217 re-executes -> duplicate-column ->
+    // Guard (cols+tables) returns false -> 226 re-executes -> duplicate-column ->
     // existing applyMigrationSkippingExistingColumns heals: strips pre-existing
-    // cols, creates missing tables, records 217 LOUDLY. Assert healed state.
+    // cols, creates missing tables, record 226 LOUDLY. Assert healed state.
     withMockedMigrationFs(files, () => r.runMigrations(db, { isNewDb: false }));
     const t = tableNames(db);
     assert.ok(t.includes("key_preferences"), "healed: key_preferences created");
     assert.ok(t.includes("user_combos"), "healed: user_combos created");
     assert.equal(
-      appliedVersions(db).get("217"),
+      appliedVersions(db).get("226"),
       "user_portal_flags_prefs_combos",
-      "217 recorded after heal"
+      "226 recorded after heal"
     );
     const c = cols(db, "api_keys");
     assert.ok(
@@ -262,7 +262,7 @@ test("213-compat PARTIAL: 3 cols but no tables -> 217 heals (tables created, lou
 test("213-compat UNKNOWN-NAME: 213 under foreign name is NOT remapped (mismatch logged)", async () => {
   const files = { ...pre213Files() };
   files["213_api_key_preferred_connections.sql"] = upstreamSql();
-  files["217_user_portal_flags_prefs_combos.sql"] = forkSql();
+  files["226_user_portal_flags_prefs_combos.sql"] = forkSql();
   await withFreshRunner(files, (runner) => {
     const r = runner as unknown as { runMigrations: (d: unknown, o: unknown) => number };
     const db = new Database(":memory:") as unknown as Db;
@@ -272,7 +272,7 @@ test("213-compat UNKNOWN-NAME: 213 under foreign name is NOT remapped (mismatch 
     // Foreign 213 occupies the version slot: upstream 213 stays pending-skipped,
     // so preferred_connections is MISSING. The runner MUST surface this loudly
     // (detectNameMismatches CRITICAL log) — never silently claim healthy.
-    // Fail-closed here = boot loudly complains AND 217 does not pretend to fix it.
+    // Fail-closed here = boot loudly complains AND 226 does not pretend to fix it.
     withMockedMigrationFs(files, () => r.runMigrations(db, { isNewDb: false }));
     const applied = appliedVersions(db);
     assert.equal(applied.get("213"), "something_else_entirely", "foreign 213 row never rewritten");
@@ -281,12 +281,12 @@ test("213-compat UNKNOWN-NAME: 213 under foreign name is NOT remapped (mismatch 
       !c.includes("preferred_connections"),
       "upstream 213 content correctly ABSENT under foreign slot (operator must resolve manually)"
     );
-    // 217 is an independent version — applies normally (portal content), but does
+    // 226 is an independent version — applies normally (portal content), but does
     // NOT mask the missing upstream column above. Both facts asserted together.
     assert.equal(
-      applied.get("217"),
+      applied.get("226"),
       "user_portal_flags_prefs_combos",
-      "217 applies as fresh version"
+      "226 applies as fresh version"
     );
   });
 });

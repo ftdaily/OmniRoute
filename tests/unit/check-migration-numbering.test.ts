@@ -118,6 +118,22 @@ test("frozen allowlists match the documented legacy and stacked-series gaps", ()
   assert.equal((KNOWN_GAPS as Set<string>).has("148"), false);
   // 149 left the gap list when 149_api_key_combo_access.sql landed (#10066).
   assert.equal((KNOWN_GAPS as Set<string>).has("149"), false);
+  // 217/218 left the sequence on 2026-11-05: collision repair moved fork 217/218
+  // -> 226/227 and upstream 217/218 -> 228/229 (byte-identical renames).
+  // Legitimate gap allowlist: all four SQL bodies still ship, so
+  // KNOWN_DUPLICATE_VERSIONS must NOT absorb them (that would drop files).
+  assert.ok((KNOWN_GAPS as Set<string>).has("217"));
+  assert.ok((KNOWN_GAPS as Set<string>).has("218"));
+  const migDir = path.resolve(import.meta.dirname, "../../src/lib/db/migrations");
+  const migFiles = fs.readdirSync(migDir).filter((f) => f.endsWith(".sql"));
+  for (const n of ["226", "227", "228", "229"]) {
+    assert.ok(
+      migFiles.some((f) => f.startsWith(`${n}_`)),
+      `forward migration ${n}_*.sql must exist on disk`
+    );
+  }
+  assert.equal((KNOWN_DUPLICATE_VERSIONS as Set<string>).has("217"), false);
+  assert.equal((KNOWN_DUPLICATE_VERSIONS as Set<string>).has("218"), false);
   // "041" was removed from KNOWN_DUPLICATE_VERSIONS in 6A.3 (stale: no physical
   // duplicate for that prefix on disk anymore — only 041_compression_receipts.sql exists).
   assert.equal((KNOWN_DUPLICATE_VERSIONS as Set<string>).has("041"), false);

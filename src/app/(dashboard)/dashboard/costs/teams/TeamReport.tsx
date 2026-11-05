@@ -1,6 +1,5 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
-import { DataTableShell } from "@omniroute/ui-kit/data-table-shell";
 import {
   Table,
   TableBody,
@@ -10,7 +9,7 @@ import {
   TableRow,
 } from "@omniroute/ui-kit/table";
 import Card from "@/shared/components/Card";
-import { Select } from "@/shared/components";
+import Select from "@/shared/components/Select";
 import { money, type Report, type Period } from "./helpers";
 
 type Translate = ReturnType<typeof useTranslations>;
@@ -27,20 +26,17 @@ function PeriodSelect({
   t: Translate;
 }) {
   return (
-    <label className="text-sm">
-      {t("reportPeriod")}
-      <Select
-        aria-label={t("reportPeriod")}
-        className="ml-2 rounded-control border border-border bg-bg p-2"
-        value={period}
-        disabled={pending}
-        onChange={(e) => onPeriod(e.target.value as Period)}
-      >
-        <option value="7d">{t("day7")}</option>
-        <option value="30d">{t("day30")}</option>
-        <option value="all">{t("allTime")}</option>
-      </Select>
-    </label>
+    <Select
+      label={t("reportPeriod")}
+      compact
+      value={period}
+      disabled={pending}
+      onChange={(e) => onPeriod(e.target.value as Period)}
+    >
+      <option value="7d">{t("day7")}</option>
+      <option value="30d">{t("day30")}</option>
+      <option value="all">{t("allTime")}</option>
+    </Select>
   );
 }
 
@@ -57,36 +53,40 @@ function Breakdown({
 }) {
   if (!report.byApiKey.length) return <p className="text-sm text-text-muted">{t("noUsage")}</p>;
   return (
-    <DataTableShell loading={false} loadingLabel={t("reportTitle")}>
-      <Table className="text-sm">
-        <TableHeader>
-          <TableRow>
-            {["keyName", "requests", "tokens", "reportSpend"].map((key) => (
-              <TableHead key={key}>{t(key)}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {report.byApiKey.map((key) => (
-            <TableRow key={key.apiKeyId ?? "deleted"}>
-              <TableCell className="max-w-64 break-words">
-                {key.apiKeyName || t("unnamedKey")}
-              </TableCell>
-              <TableCell className="tabular-nums">{count(key.requests)}</TableCell>
-              <TableCell className="tabular-nums">
-                {count(key.inputTokens + key.outputTokens)}
-              </TableCell>
-              <TableCell className="tabular-nums whitespace-nowrap">
-                {money(key.estimatedListCostUsd, locale)}
-                {key.hasUnpricedUsage && (
-                  <span className="block text-xs text-warning">{t("unpriced")}</span>
-                )}
-              </TableCell>
-            </TableRow>
+    <Table
+      className="text-sm"
+      containerClassName="rounded-none border-0"
+      scrollbarLabel={t("breakdown")}
+    >
+      <TableHeader>
+        <TableRow>
+          {["keyName", "requests", "tokens", "reportSpend"].map((key) => (
+            <TableHead key={key} className="font-medium">
+              {t(key)}
+            </TableHead>
           ))}
-        </TableBody>
-      </Table>
-    </DataTableShell>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {report.byApiKey.map((key) => (
+          <TableRow key={key.apiKeyId ?? "deleted"}>
+            <TableCell className="max-w-64 break-words">
+              {key.apiKeyName || t("unnamedKey")}
+            </TableCell>
+            <TableCell className="tabular-nums">{count(key.requests)}</TableCell>
+            <TableCell className="tabular-nums">
+              {count(key.inputTokens + key.outputTokens)}
+            </TableCell>
+            <TableCell className="tabular-nums whitespace-nowrap">
+              {money(key.estimatedListCostUsd, locale)}
+              {key.hasUnpricedUsage && (
+                <span className="block text-xs text-warning">{t("unpriced")}</span>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 

@@ -15,8 +15,7 @@ import type { EmbeddingResult, EmbeddingError } from "./types";
 
 const MODEL_ID = "minishlab/potion-base-8M";
 const MODEL_NAME = "potion-base-8M";
-const HF_BASE =
-  process.env.HF_HUB_ENDPOINT || "https://huggingface.co";
+const HF_BASE = process.env.HF_HUB_ENDPOINT || "https://huggingface.co";
 
 function getModelDir(): string {
   const staticCacheDir = process.env.MEMORY_STATIC_CACHE_DIR;
@@ -26,8 +25,8 @@ function getModelDir(): string {
 }
 
 export interface PotionModel {
-  vocab: Record<string, number>;       // token → index
-  matrix: Float32Array;                // flat row-major [vocab_size × dim]
+  vocab: Record<string, number>; // token → index
+  matrix: Float32Array; // flat row-major [vocab_size × dim]
   dim: number;
   vocabSize: number;
   unkIdx: number;
@@ -218,6 +217,13 @@ export function tokenizeWordPiece(text: string, vocab: Record<string, number>): 
 
   for (const word of words) {
     if (!word) continue;
+
+    // HF WordPiece: words over max_input_chars_per_word=100 become [UNK].
+    // Codepoint count; checked before vocab lookup so overlong entries cap too.
+    if ([...word].length > 100) {
+      tokenIds.push(unkId);
+      continue;
+    }
     if (vocab[word] !== undefined) {
       tokenIds.push(vocab[word]);
       continue;
@@ -231,7 +237,8 @@ export function tokenizeWordPiece(text: string, vocab: Record<string, number>): 
     while (remaining.length > 0) {
       let found = false;
       for (let end = remaining.length; end > 0; end--) {
-        const candidate = subTokens.length === 0 ? remaining.slice(0, end) : `##${remaining.slice(0, end)}`;
+        const candidate =
+          subTokens.length === 0 ? remaining.slice(0, end) : `##${remaining.slice(0, end)}`;
         if (vocab[candidate] !== undefined) {
           subTokens.push(vocab[candidate]);
           remaining = remaining.slice(end);
@@ -258,7 +265,13 @@ export function tokenizeWordPiece(text: string, vocab: Record<string, number>): 
 /**
  * Mean pooling over token vectors.
  */
-export function meanPool(tokenIds: number[], matrix: Float32Array, dim: number, vocabSize: number, unkIdx: number): Float32Array {
+export function meanPool(
+  tokenIds: number[],
+  matrix: Float32Array,
+  dim: number,
+  vocabSize: number,
+  unkIdx: number
+): Float32Array {
   const result = new Float32Array(dim);
   let validCount = 0;
 

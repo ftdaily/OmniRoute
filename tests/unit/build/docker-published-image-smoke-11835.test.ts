@@ -52,9 +52,11 @@ test("latest promotion preserves every published image flavor", () => {
     );
 
   assert.ok(promotion, "latest promotion must exist");
-  assert.match(promotion[0], /promote_tag ""/);
-  assert.match(promotion[0], /promote_tag "-web"/);
-  assert.match(promotion[0], /for suffix in -bun -web-bun/);
-  assert.match(promotion[0], /imagetools inspect/);
+  assert.match(promotion[0], /for suffix in "" -web/);
+  assert.match(promotion[0], /promote_tag "\$suffix"/);
+  assert.match(promotion[0], /add_bun_alias/);
+  assert.match(promotion[0], /PUBLISH_BUN_BASE/);
+  assert.match(promotion[0], /PUBLISH_BUN_WEB/);
+  assert.match(workflow, /imagetools inspect/);
   assert.match(workflow, /Promote GHCR latest tags/);
 });

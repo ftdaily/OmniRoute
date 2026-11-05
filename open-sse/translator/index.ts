@@ -2,6 +2,7 @@ import { FORMATS } from "./formats.ts";
 import {
   ensureToolCallIds,
   fixMissingToolResponses,
+  repairDisplacedToolResults,
   stripOrphanedToolResults,
 } from "./helpers/toolCallHelper.ts";
 import {
@@ -46,6 +47,7 @@ import {
 } from "../services/reasoningCache.ts";
 import {
   normalizeResponsesReasoningEffort,
+  REASONING_SUMMARY_OPT_OUT_MARKER,
   RESPONSES_STORE_MARKER,
 } from "./request/openai-responses/helpers.ts";
 import { applyReasoningInputPolicy } from "../services/reasoningInputPolicy.ts";
@@ -434,6 +436,7 @@ export function translateRequest(
   ensureToolCallIds(result, { use9CharId });
 
   // Fix missing tool responses (insert empty tool_result if needed)
+  repairDisplacedToolResults(result);
   fixMissingToolResponses(result);
 
   // Claude reconciliation preserves orphaned tool output as labelled user text.
@@ -566,6 +569,21 @@ export function translateRequest(
                 }
               : credentials;
           result = toOpenAI(model, result, stream, step1Credentials);
+          // Responses creates messages after the initial role pass; normalize before
+          // Gemini targets consume the pivot and discard unsupported developer turns.
+          if (
+            sourceFormat === FORMATS.OPENAI_RESPONSES &&
+            (targetFormat === FORMATS.GEMINI || targetFormat === FORMATS.ANTIGRAVITY) &&
+            Array.isArray(result.messages)
+          ) {
+            result.messages = normalizeRoles(
+              result.messages,
+              provider || "",
+              model || "",
+              targetFormat,
+              preserveDeveloperRole
+            );
+          }
           // Log OpenAI intermediate format
           reqLogger?.logOpenAIRequest?.(result);
         }
@@ -621,6 +639,10 @@ export function translateRequest(
                           options.signatureNamespace,
                           model
                         ),
+                        // Raw connection id (chatCore threads the serving connection as
+                        // signatureNamespace): openai-to-claude binds the Claude signed-
+                        // thinking restore on it (#17324 — signatures are org-scoped).
+                        _connectionId: options.signatureNamespace,
                       }
                     : {}),
                   ...(hasPreCompression ? { _preCompressionBody: options.preCompressionBody } : {}),
@@ -753,6 +775,7 @@ export function translateRequest(
 
   // Ensure unique tool_call ids on final payload (translators may have introduced duplicates)
   ensureToolCallIds(result, { use9CharId });
+  repairDisplacedToolResults(result);
   fixMissingToolResponses(result);
   stripOrphanedToolResults(result);
 
@@ -906,6 +929,12 @@ export function translateRequest(
   // `store` value would have already read the marker before this point.
   if (RESPONSES_STORE_MARKER in result) {
     delete result[RESPONSES_STORE_MARKER];
+  }
+
+  // #18124: only the Codex executor understands the reasoning-summary opt-out
+  // marker; any other provider would forward it verbatim to its upstream.
+  if (REASONING_SUMMARY_OPT_OUT_MARKER in result && provider !== "codex") {
+    delete result[REASONING_SUMMARY_OPT_OUT_MARKER];
   }
 
   // #7293 follow-up: the pre-translation hoist above normalizes the *source*

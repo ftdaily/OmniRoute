@@ -6,6 +6,7 @@ import {
   TRUNCATED_STREAM_FINISH_REASON,
   TRUNCATED_STREAM_RESPONSES_INCOMPLETE_REASON,
   hasSseDoneMarker,
+  markTruncatedStreamBody,
   isCompleteToolCallArguments,
   withholdCutToolCalls,
 } from "./sseParser/truncation.ts";
@@ -336,7 +337,7 @@ export function parseSSEToOpenAIResponse(rawSSE, fallbackModel) {
     result.usage = usage;
   }
 
-  return result;
+  return markTruncatedStreamBody(result, streamCut);
 }
 
 /**
@@ -550,19 +551,22 @@ export function parseSSEToClaudeResponse(rawSSE, fallbackModel) {
   // #18460 follow-up — a tool_use cut mid input_json_delta must not reach the client.
   const keptToolUses = withholdCutToolCalls(streamCut, toolUseCompleteness, Boolean);
 
-  return {
-    id: messageId || `msg_${Date.now()}`,
-    type: "message",
-    role,
-    model,
-    content:
-      keptToolUses.length === toolUseCompleteness.length
-        ? content
-        : content.filter((block) => block.type !== "tool_use"),
-    stop_reason: stopReason,
-    ...(stopSequence ? { stop_sequence: stopSequence } : {}),
-    ...(Object.keys(usage).length > 0 ? { usage } : {}),
-  };
+  return markTruncatedStreamBody(
+    {
+      id: messageId || `msg_${Date.now()}`,
+      type: "message",
+      role,
+      model,
+      content:
+        keptToolUses.length === toolUseCompleteness.length
+          ? content
+          : content.filter((block) => block.type !== "tool_use"),
+      stop_reason: stopReason,
+      ...(stopSequence ? { stop_sequence: stopSequence } : {}),
+      ...(Object.keys(usage).length > 0 ? { usage } : {}),
+    },
+    streamCut
+  );
 }
 
 /**
@@ -1013,27 +1017,28 @@ export function parseSSEToResponsesOutput(rawSSE, fallbackModel) {
     responsesOutputHasContent(chosenOutput)
   );
   // #18460 follow-up — a function_call cut mid arguments must not reach the client.
-  const finalOutput = withholdCutResponsesFunctionCalls(
-    !terminalResponse && terminalStatus.status === "incomplete",
-    chosenOutput
-  );
+  const streamCut = !terminalResponse && terminalStatus.status === "incomplete";
+  const finalOutput = withholdCutResponsesFunctionCalls(streamCut, chosenOutput);
 
-  return {
-    id: picked.id != null ? String(picked.id) : `resp_${Date.now()}`,
-    object: picked.object || "response",
-    model: picked.model || fallbackModel || "unknown",
-    output: finalOutput.map((item) => {
-      const record = toRecord(item);
-      return {
-        ...record,
-        id: record.id != null ? String(record.id) : record.id,
-        call_id: record.call_id != null ? String(record.call_id) : record.call_id,
-      };
-    }),
-    usage: picked.usage || null,
-    ...terminalStatus,
-    ...(picked.error != null ? { error: picked.error } : {}),
-    created_at: picked.created_at || Math.floor(Date.now() / 1000),
-    metadata: picked.metadata || {},
-  };
+  return markTruncatedStreamBody(
+    {
+      id: picked.id != null ? String(picked.id) : `resp_${Date.now()}`,
+      object: picked.object || "response",
+      model: picked.model || fallbackModel || "unknown",
+      output: finalOutput.map((item) => {
+        const record = toRecord(item);
+        return {
+          ...record,
+          id: record.id != null ? String(record.id) : record.id,
+          call_id: record.call_id != null ? String(record.call_id) : record.call_id,
+        };
+      }),
+      usage: picked.usage || null,
+      ...terminalStatus,
+      ...(picked.error != null ? { error: picked.error } : {}),
+      created_at: picked.created_at || Math.floor(Date.now() / 1000),
+      metadata: picked.metadata || {},
+    },
+    streamCut
+  );
 }

@@ -619,9 +619,13 @@ function isSchemaAlreadyApplied(
       // would answer for another migration's schema and skip it.
       return hasColumn(db, "proxy_logs", "attempt_number");
     case "194":
-      // Same shape as 179/181/183/184/187: ensureProxyLogsColumns may have
-      // added headers_ms at boot. Keyed by version only.
-      return hasColumn(db, "proxy_logs", "headers_ms");
+      // 194 adds TWO timing columns. Boot-time ensureProxyLogsColumns can
+      // independently install either one; the presence of headers_ms alone
+      // must not mark first_chunk_ms as migrated. The migration runner can
+      // replay only the missing ADD COLUMN via stripExistingAddColumns.
+      return (
+        hasColumn(db, "proxy_logs", "headers_ms") && hasColumn(db, "proxy_logs", "first_chunk_ms")
+      );
     case "212":
       // Provider-reported cost columns (#16087, renumbered 206 -> 212: the 206 slot
       // went to 206_codex_wakeup_tasks first). A DB that already applied the old
@@ -630,14 +634,14 @@ function isSchemaAlreadyApplied(
         hasColumn(db, "usage_history", "provider_credits") &&
         hasColumn(db, "usage_history", "provider_cost_usd")
       );
-    case "217":
-      // Fork 213 renumbered to 217 (upstream took 213): Tencent applied the old
-      // number, so skip re-execution only when the FULL portal shape exists —
-      // all three api_keys columns AND both tables. A columns-only partial DB
-      // flows to the 217 dispatch below, which heals via
+    case "226":
+      // Portal pair moved 217 -> 226 (2026-11-05 collision repair, upstream
+      // took 217): skip re-execution only when FULL portal shape exists —
+      // all three api_keys columns plus both tables. Columns-only partial DBs
+      // flow to the 226 dispatch below, which heals via
       // applyMigrationSkippingExistingColumns (skips landed ADD COLUMNs, runs
       // CREATE TABLE IF NOT EXISTS for the missing tables). Exact schema
-      // match — never skip on version alone.
+      // match only, never skip on version alone.
       return (
         hasColumn(db, "api_keys", "portal_enabled") &&
         hasColumn(db, "api_keys", "user_combos_enabled") &&
@@ -1145,12 +1149,12 @@ export function runMigrations(
           `[Migration] Skipped executing ${migration.version}_${migration.name} as schema changes are already present (Idempotency check).`
         );
       } else if (
-        migration.version === "217" &&
+        migration.version === "226" &&
         migration.name === "user_portal_flags_prefs_combos"
       ) {
         // Partial-shape heal ONLY when some portal column already landed: skip
         // those ADD COLUMNs, run the rest (CREATE TABLE IF NOT EXISTS covers
-        // missing tables). The helper writes the 217 ledger row itself.
+        // missing tables). The helper writes the 226 ledger row itself.
         // Fresh DBs (no portal cols) use the normal exec + shared ledger path
         // — the helper's comment-adjacent ALTER parsing drops statements on
         // pristine runs. Full legacy DBs skip earlier via isSchemaAlreadyApplied.

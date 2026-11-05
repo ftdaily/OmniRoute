@@ -46,6 +46,29 @@ export function hasSseDoneMarker(rawSSE: unknown): boolean {
 }
 
 /**
+ * Parsed bodies that carry the cut-stream verdict above (#18460 follow-up). A WeakSet,
+ * so the marker never reaches a serialized response body and dies with the object. It
+ * separates a cut stream from a `length` / `max_tokens` / `incomplete` the upstream sent
+ * itself, which a client sees the same way; `parseNonStreamingResponseBody` moves it onto
+ * the upstream Response (`truncatedStreamPolicy.ts`) so combos can fail over.
+ */
+const truncatedStreamBodies = new WeakSet<object>();
+
+/**
+ * Tag `body` (a parser result) as the product of a stream cut before its terminal signal.
+ * `cut: false` leaves it untagged, so parsers can pass their verdict straight through.
+ */
+export function markTruncatedStreamBody<T>(body: T, cut = true): T {
+  if (cut && body && typeof body === "object") truncatedStreamBodies.add(body);
+  return body;
+}
+
+/** True when `body` was produced from a stream cut before its terminal signal. */
+export function isTruncatedStreamBody(body: unknown): boolean {
+  return !!body && typeof body === "object" && truncatedStreamBodies.has(body);
+}
+
+/**
  * True when a buffered tool call's accumulated `arguments` is a complete JSON object
  * (#18460 follow-up). Function-call arguments are always a JSON object, so a cut in the
  * middle of the call leaves text that either fails to parse or is empty. Empty text counts

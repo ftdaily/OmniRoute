@@ -556,6 +556,7 @@ const ProviderCard = forwardRef<ProviderCardHandle, ProviderCardProps>(function 
                   hasFree={provider.hasFree === true}
                   label={dotLabels[authType] || t("apiKeyLabel")}
                   freeLabel={t("hasFreeTooltip")}
+                  announce
                 />
               </div>
             </div>
@@ -642,7 +643,7 @@ const ProviderCard = forwardRef<ProviderCardHandle, ProviderCardProps>(function 
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {Number(stats.total || 0) > 0 && (
+                {(Number(stats.total || 0) > 0 || authType === "no-auth") && (
                   <div onClick={handleToggle}>
                     <Toggle
                       size="xs"

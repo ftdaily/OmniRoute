@@ -342,12 +342,14 @@ export const liteEngine: CompressionEngine = {
       typeof rawMaxTokens === "number" && Number.isFinite(rawMaxTokens) && rawMaxTokens > 0
         ? rawMaxTokens
         : undefined;
-    const stepCompressToolResults = options?.stepConfig?.compressToolResults;
+    const _stepCompressToolResults = options?.stepConfig?.compressToolResults;
     const stepMaxToolLength = options?.stepConfig?.maxToolLength;
     const configMaxToolLength = options?.config?.lite?.maxToolLength;
     const result = applyLiteCompression(adapter.body, {
       ...options,
       preserveSystemPrompt: options?.config?.preserveSystemPrompt !== false,
+      // Request-scoped safe plans preserve tool bytes independently of clipping settings.
+      preserveToolWhitespace: options?.stepConfig?.preserveToolWhitespace === true,
       // buildStepOptions() already merges global config.lite with explicit step.config
       // (step wins) into stepConfig, so consume that single effective value instead of
       // AND-ing root and step values — an explicit step `true` must override a global `false`.

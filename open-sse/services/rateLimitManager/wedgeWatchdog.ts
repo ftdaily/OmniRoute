@@ -16,6 +16,7 @@ interface LimiterWedgeWatchdogDependencies {
   limiterLastUsed: Map<string, number>;
   limiterEffectiveSettings: WeakMap<Bottleneck, Bottleneck.ConstructorOptions>;
   // boundedMap in production (LRU-capped), plain Map in some tests — the
+  // boundedMap in production (LRU-capped), plain Map in some tests — the
   // watchdog only reads and writes entries; the manager also iterates,
   // deletes, and clears. BoundedMap provides exactly this method set.
   preservedReplacementSettings: Pick<

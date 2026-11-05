@@ -43,6 +43,7 @@ export const COMBO_SKIP_REASONS = [
   "auto_resilience_filter",
   "auto_strict_zero_cost",
   "auto_constraint_filter",
+  "key_policy_denied",
   "cliproxy_management_health",
 ] as const;
 

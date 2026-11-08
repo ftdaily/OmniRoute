@@ -24,6 +24,10 @@ import type {
 import { bufferedResponsesFailure } from "./bufferedResponsesFailure.ts";
 import { translateNonStreamingClientResponse } from "./nonStreamingClientTranslate.ts";
 import { parseNonStreamingResponseBody, isJsonRecord } from "./nonStreamingResponseParse.ts";
+import {
+  NonStreamingResponseTooLargeError,
+  readResponseTextWithinCap,
+} from "./nonStreamingResponseBody.ts";
 import { restoreNonStreamingToolNames } from "./passthroughToolNames.ts";
 import { extractUsageFromResponse } from "../usageExtractor.ts";
 import { sanitizeUsagePayloadForRequest } from "../../utils/usageTracking.ts";
@@ -474,12 +478,15 @@ export async function runNonStreamingProviderLeg(
               outcome.result.status,
               formatted,
               undefined,
-              null,
+              // Keep the upstream retry hint on the sanitized response.
+              outcome.result.response ? parseRetryAfterMs(outcome.result.response) : null,
               outcome.result.errorCode,
               outcome.result.errorType,
               { passthrough: input.sourceFormat === "claude" }
             ),
-            response: outcome.result.response,
+            // Never relay the raw upstream Response (body, Set-Cookie, other headers) to the
+            // client: legError() above built the sanitized one. Upstream headers stay on
+            // `upstreamHeaders` for server-side classification only.
             rawMessage: outcome.result.rawMessage || outcome.result.error,
             upstreamErrorBody: outcome.result.upstreamErrorBody,
             upstreamHeaders: outcome.result.upstreamHeaders ?? outcome.result.response?.headers,
@@ -618,7 +625,7 @@ export async function runNonStreamingProviderLeg(
     let parsedErrorBody: Record<string, unknown> = {};
 
     try {
-      const errorBodyText = await providerResponse.text();
+      const errorBodyText = await readResponseTextWithinCap(providerResponse);
       try {
         parsedErrorBody = JSON.parse(errorBodyText) as Record<string, unknown>;
       } catch {
@@ -632,8 +639,11 @@ export async function runNonStreamingProviderLeg(
         "Provider request failed";
       upstreamErrorCode = typeof errObj?.code === "string" ? errObj.code : undefined;
       upstreamErrorType = typeof errObj?.type === "string" ? errObj.type : undefined;
-    } catch {
-      message = "Provider request failed";
+    } catch (readErr) {
+      message =
+        readErr instanceof NonStreamingResponseTooLargeError
+          ? "Provider error body exceeded response size limit"
+          : "Provider request failed";
     }
 
     // Parse Retry-After from upstream response headers

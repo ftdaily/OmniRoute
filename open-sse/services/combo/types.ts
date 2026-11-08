@@ -109,6 +109,8 @@ export function modelAvailabilitySkipReason(
 
 export type ComboRelayOptions = {
   sessionId?: string | null;
+  /** Caller's API key id; scopes session-keyed handoff and model-history rows. */
+  apiKeyId?: string | null;
   config?: Record<string, unknown> | null;
   bypassProviderQuotaPolicy?: boolean;
   /** Per-request X-OmniRoute-Mode value (auto-combo preset / mode-pack name) — #6024/#6025. */

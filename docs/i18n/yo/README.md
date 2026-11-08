@@ -71,7 +71,7 @@
 
 <div align="center">
 
-|                                    |        v3.8.50         | **v3.8.51** |       `v3.8.53+`       |
+|                                    |        v3.8.50         | **v3.8.51** |       `v3.8.54+`       |
 | ---------------------------------- | :--------------------: | :---------: | :--------------------: |
 | 🌐 Àwọn olùpèsè                    |          352           |   **358**   |          380           |
 | 🧠 Àwọn ID àwòṣe ìjíròrò aláìlẹ́gbẹ́ |          1320          |  **1374**   |          1491          |
@@ -589,7 +589,7 @@ tẹlifíṣọ̀nù lílò, tàbí ipò ìkọ̀sílẹ̀ ìkéde abẹ́lẹ̀
 
 </div>
 
-> Àwọn àfojúsùn pàtàkì láti **v3.8.20 → v3.8.53**. Wo ìtàn kíkún nínú [`CHANGELOG.md`](CHANGELOG.md).
+> Àwọn àfojúsùn pàtàkì láti **v3.8.20 → v3.8.54**. Wo ìtàn kíkún nínú [`CHANGELOG.md`](CHANGELOG.md).
 
 - **⚖️ Ìtọ́kasí `quota-weighted`** — ọgbọ́n àkópọ̀ 20th máa ń fo àwọn àkọọ́lẹ̀ tí quota wọn ti tán, lẹ́yìn náà ó yan láàárín àwọn tó kù ní ìbámu pẹ̀lú quota tó ṣẹ́kù ÷ ẹrù tó ń lọ, ní mímú kí àwọn ìjíròrò tó wà tẹ́lẹ̀ dúró lórí àkọọ́lẹ̀ wọn. → [Auto-Combo](docs/routing/AUTO-COMBO.md)
 - **🧰 Àyè headless** — `omniroute serve --headless` (tàbí `OMNIROUTE_HEADLESS=1`) máa ń ṣiṣẹ́ ẹ́ńjìnnì aṣojú `/v1/*` nìkan, pẹ̀lú dasibodu àti àwọn ètò abẹ́lẹ̀ tó jẹ́ ti dasibodu nìkan tí a ti pa. → [Headless Mode](docs/guides/HEADLESS.md)
@@ -1024,7 +1024,7 @@ omniroute
 ```
 
 > 💡 Rí i `npm warn ERESOLVE` tàbí ìkìlọ̀ peer-dep? [Wọ́n jẹ́ àlàáfíà](docs/guides/TROUBLESHOOTING.md#npm-install-warnings-eresolve--peer--deprecated).
-> **Ṣe o ń lò npm 11 tàbí tó tẹ̀lé e?** npm lè dá àwọn ìwà-ọgbọ́n ìgbé-ìṣàkóso àpò dúró àyàfi tí a bá fọwọ́sí wọn. `postinstall` ti OmniRoute (`node scripts/build/postinstall.mjs`) pọn dandan láti mú kí àwọn fáìlì ìṣiṣẹ́ àdábàbà rẹ̀ ṣeédájú. Fọwọ́sí àwọn àpò tí orúkọ wọn wà nínú ìkìlọ̀ npm náà nígbà tí o bá ń fi wọ́n sílẹ̀ láàárín àwọn ìlú. Fún àṣẹ àpò tí OmniRoute 3.8.53 sọ̀rọ̀:
+> **Ṣe o ń lò npm 11 tàbí tó tẹ̀lé e?** npm lè dá àwọn ìwà-ọgbọ́n ìgbé-ìṣàkóso àpò dúró àyàfi tí a bá fọwọ́sí wọn. `postinstall` ti OmniRoute (`node scripts/build/postinstall.mjs`) pọn dandan láti mú kí àwọn fáìlì ìṣiṣẹ́ àdábàbà rẹ̀ ṣeédájú. Fọwọ́sí àwọn àpò tí orúkọ wọn wà nínú ìkìlọ̀ npm náà nígbà tí o bá ń fi wọ́n sílẹ̀ láàárín àwọn ìlú. Fún àṣẹ àpò tí OmniRoute 3.8.54 sọ̀rọ̀:
 >
 > ```bash
 > npm install -g --allow-scripts=omniroute,keytar,onnxruntime-node,@parcel/watcher,@swc/core,protobufjs,esbuild omniroute
@@ -1300,24 +1300,24 @@ port kan, nítorí náà kò sí package CLI-nìkan lọ́tọ̀ ní báyìí.
 </div>
 
 <table>
-  <tr><th align="left">Ìpele</th><th align="left">Ìmọ̀-ẹ̀rọ</th></tr>
-  <tr><td nowrap><b>Àkókò Ṣíṣe</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
-  <tr><td nowrap><b>Èdè</b></td><td>TypeScript 6.0 — <b>100% TypeScript</b> káàkiri <code>src/</code> àti <code>open-sse/</code> (kò sí <code>any</code> rárá nínú ẹ̀yà-àkọ́kọ́ láti v2.0)</td></tr>
-  <tr><td nowrap><b>Ìlànà-iṣẹ́</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
-  <tr><td nowrap><b>Ìbùdó Dátà</b></td><td>better-sqlite3 (SQLite, ìkọsílẹ̀ WAL) + LowDB (JSON àtijọ́) — àwọn modulu ìkápá 147, àwọn migrations 222</td></tr>
-  <tr><td nowrap><b>Ìrántilẹ́</b></td><td>àwáàrí kíkún-ọ̀rọ̀ SQLite FTS5 + àwọn vector embeddings tí a dín kù sí int8, ìdínkù oní-ìru</td></tr>
-  <tr><td nowrap><b>Àwọn Àpẹẹrẹ</b></td><td>Zod 4 — ìjẹ̀rìsí I/O irinṣẹ́ MCP + àwọn àdéhùn API</td></tr>
-  <tr><td nowrap><b>Àwọn Ìlànà Ìbánisọ̀rọ̀</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
-  <tr><td nowrap><b>Ṣíṣàn</b></td><td>Server-Sent Events (SSE) + afárá WebSocket (<code>/v1/ws</code>)</td></tr>
-  <tr><td nowrap><b>Ìfùnpọ̀</b></td><td>ìlà-iṣẹ́ ẹ́rọ mẹ́jìlá — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
-  <tr><td nowrap><b>Ìfàṣẹsí àti Ààbò</b></td><td>OAuth 2.0 (PKCE) + JWT + Àwọn Kọ́kọ́rọ́ API + ìfàṣẹsí MCP oní-ìdíwọ́ · AES-256-GCM ní ìpamọ́ · DOMPurify</td></tr>
-  <tr><td nowrap><b>Ìfárápamọ́</b></td><td>wreq-js — ìfarada ìdámọ̀ọ́ TLS JA3 / JA4, proxy oní-ìpele mẹ́ta</td></tr>
-  <tr><td nowrap><b>Ìfaradà</b></td><td>Circuit breaker, exponential backoff, anti-thundering-herd, ìwòsàn-fúnrarẹ̀ auto-combo</td></tr>
-  <tr><td nowrap><b>Ìkọsílẹ̀</b></td><td>pino — àwọn àkọsílẹ̀ JSON oní-ìlànà pẹ̀lú àyíká ìbéèrè</td></tr>
-  <tr><td nowrap><b>Ìdánwò</b></td><td>Node.js test runner + Vitest — <b>àwọn ìkéde ìdánwò ìdúró 60,000</b> káàkiri àwọn fáìlì ìdánwò tí wọ́n ń tọpinpin 8,400 (unit, integration, E2E, ààbò, àyíká-ìbáṣepọ̀)</td></tr>
-  <tr><td nowrap><b>Àwọn Pẹpẹ</b></td><td>Kòǹpútà Tábìlì (Electron) · Android (Termux) · PWA (browser kankan)</td></tr>
-  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — ìtẹ̀jáde npm fúnrarẹ̀ + Docker Hub nígbà ìtúpalẹ̀</td></tr>
-  <tr><td nowrap><b>Àwọn Ìsopọ̀</b></td><td><a href="https://omniroute.online">Ìbùdó Ayélujára</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
+  <tr><th align="left">Àpá</th><th align="left">Ìmọ̀-ẹ̀rọ</th></tr>
+  <tr><td nowrap><b>Àkókò ìṣiṣẹ́</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
+  <tr><td nowrap><b>Èdè</b></td><td>TypeScript 6.0 — <b>100% TypeScript</b> ní gbogbo <code>src/</code> àti <code>open-sse/</code> (àìsí <code>any</code> nínú mojú-kókó láti v2.0)</td></tr>
+  <tr><td nowrap><b>Framework</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
+  <tr><td nowrap><b>Àkójọpọ̀ data</b></td><td>better-sqlite3 (SQLite, ìkọ̀wé WAL) + LowDB (JSON ogún àtijọ́) — àwọn modulu àgbègbè 147, àwọn ìṣípadà 224</td></tr>
+  <tr><td nowrap><b>Ìrántí</b></td><td>Ìṣàwárí ọ̀rọ̀-kíkún SQLite FTS5 + àwọn ìṣàpẹẹrẹ fekito tí a ṣe quantization sí int8, ìdínkù tí a tẹ̀</td></tr>
+  <tr><td nowrap><b>Àwọn àwòṣe</b></td><td>Zod 4 — ìmúdájú I/O irinṣẹ́ MCP + àwọn àdéhùn API</td></tr>
+  <tr><td nowrap><b>Àwọn ìlànà ibánisọ̀rọ̀</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
+  <tr><td nowrap><b>Ṣíṣàn data</b></td><td>Àwọn ìṣẹ̀lẹ̀ tí a rán láti olupin (SSE) + afárá WebSocket (<code>/v1/ws</code>)</td></tr>
+  <tr><td nowrap><b>Dídínkù data</b></td><td>Pipeline ẹ́ńjìnì 12 — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
+  <tr><td nowrap><b>Ìfàṣẹsí &amp; ààbò</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + ìfàṣẹsí MCP tó ní ààlà · AES-256-GCM nígbà tí data wà ní ìsinmi · DOMPurify</td></tr>
+  <tr><td nowrap><b>Ìfarapamọ́</b></td><td>wreq-js — àfarawé ìka TLS JA3 / JA4, aṣojú ipele 3</td></tr>
+  <tr><td nowrap><b>Ìfaradà</b></td><td>Aláfọ̀wọ́kù àyíká, ìdádúró tí ń pọ̀ sí i, ìdènà ọ̀pọ̀ ìbéèrè lẹ́ẹ̀kan náà, ìmúláradá ara ẹni auto-combo</td></tr>
+  <tr><td nowrap><b>Ìkọ̀wé àkọsílẹ̀</b></td><td>pino — àwọn àkọsílẹ̀ JSON tó ní àgbékalẹ̀ pẹ̀lú àyíká ìbéèrè</td></tr>
+  <tr><td nowrap><b>Ìdánwò</b></td><td>Olùṣiṣẹ́ ìdánwò Node.js + Vitest — <b>ó ju àwọn ìkéde ìdánwò aimi 60,000 lọ</b> káàkiri àwọn fáìlì ìdánwò tí a tọpinpin tí ó ju 8,400 lọ (ẹyọkan, ìṣọ̀kan, E2E, ààbò, àyíká-ẹ̀rọ)</td></tr>
+  <tr><td nowrap><b>Àwọn pèpéle</b></td><td>Kọ̀ǹpútà (Electron) · Android (Termux) · PWA (àṣàwákiri èyíkéyìí)</td></tr>
+  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — ìtẹ̀jáde npm aládàáṣiṣẹ́ + Docker Hub nígbà ìtúsílẹ̀</td></tr>
+  <tr><td nowrap><b>Àwọn ìjápọ̀</b></td><td><a href="https://omniroute.online">Ojúlé wẹ́ẹ̀bù</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
 </table>
 
 <div align="center">
@@ -1817,7 +1817,7 @@ OmniRoute dúró lórí àyà àwọn òmìrán. Ó bẹ̀rẹ̀ gẹ́gẹ́ b�
 
 **[⬆ Padà sí òkè](#-omniroute)** · A fi ❤️ kọ́ ọ́ fún àwùjọ AI orísun-ṣíṣi.
 
-<sub>Ẹ dá a sílẹ̀ láti ọwọ́ <a href="https://github.com/diegosouzapw">Diego Souza</a> · OmniRoute v3.8.53 · Node ≥22.22.2 · Àṣẹ MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
+<sub>Ẹ dá a sílẹ̀ láti ọwọ́ <a href="https://github.com/diegosouzapw">Diego Souza</a> · OmniRoute v3.8.54 · Node ≥22.22.2 · Àṣẹ MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
 
 </div>
 <!-- Ìjíròrò GitHub ti ṣiṣẹ́ fún Ìbéèrè àti Àwọn Ìdáhùn àwùjọ -->

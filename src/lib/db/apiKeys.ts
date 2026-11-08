@@ -278,10 +278,20 @@ interface ApiKeyView extends JsonRecord {
   forcedModel: string | null;
 }
 
+/**
+ * `bypassCache` reads the row from SQLite and leaves this process's cache (and the Redis
+ * copy) alone: nothing is read from it and nothing is written to it. For callers that
+ * must see a revoke made by another process (the cache is only cleared locally).
+ */
+export interface ApiKeyLookupOptions {
+  bypassCache?: boolean;
+}
+
 // LRU cache for API key validation (valid keys only)
 const _keyValidationCache = new Map<string, { valid: boolean; timestamp: number }>();
 const _keyMetadataCache = new Map<string, CacheEntry<ApiKeyMetadata>>();
 const _lastUsedUpdateCache = new Map<string, number>();
+const CACHE_TTL = 60 * 1000; // 1 minute TTL
 const LAST_USED_UPDATE_TTL = 5 * 60 * 1000;
 const MAX_CACHE_SIZE = 1000;
 const EXCLUSIVE_LEASE_SCOPE = "lease:exclusive";
@@ -1457,7 +1467,10 @@ export function isRetiredApiKeyHash(db: ApiKeysDbLike, hashedKey: string): boole
   return !!row;
 }
 
-export async function validateApiKey(key: string | null | undefined) {
+export async function validateApiKey(
+  key: string | null | undefined,
+  options: ApiKeyLookupOptions = {}
+) {
   if (!key || typeof key !== "string") return false;
 
   if (isConfiguredEnvApiKey(key) || isSelfLoopBearer(key)) return true;
@@ -1466,8 +1479,10 @@ export async function validateApiKey(key: string | null | undefined) {
   const hashedKey = await hashKey(key);
   const cacheKey = hashedKey;
 
-  // SQLite remains authoritative across independently bundled route modules.
-  // A cached positive can outlive rotation/revocation performed in another bundle.
+  const cached = options.bypassCache ? undefined : _keyValidationCache.get(cacheKey);
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return cached.valid;
+  }
 
   // A Redis hit never authorizes on its own (GHSA-66vh-35g3-78qv): eviction on regenerate/revoke
   // is best-effort and a late SET can resurrect an evicted entry, so the entry could keep a
@@ -1495,6 +1510,17 @@ export async function validateApiKey(key: string | null | undefined) {
   if (typeof expiresAt === "string" && expiresAt.trim() !== "") {
     const expiresMs = Date.parse(expiresAt);
     if (Number.isFinite(expiresMs) && expiresMs <= now) return false;
+  }
+
+  if (options.bypassCache) {
+    // last_used_at is bookkeeping: a write lock held by another process must not fail
+    // a check whose reads succeeded (the Live WS heartbeat would close a valid client).
+    try {
+      markApiKeyUsed(db, row.id, now);
+    } catch {
+      // retried on the next lookup: the throttle entry is only set after a write
+    }
+    return true;
   }
 
   evictIfNeeded(_keyValidationCache);
@@ -1534,7 +1560,8 @@ export async function validateApiKey(key: string | null | undefined) {
  * Get API key metadata with caching for performance
  */
 export async function getApiKeyMetadata(
-  key: string | null | undefined
+  key: string | null | undefined,
+  options: ApiKeyLookupOptions = {}
 ): Promise<ApiKeyMetadata | null> {
   if (!key || typeof key !== "string") return null;
 
@@ -1614,6 +1641,10 @@ export async function getApiKeyMetadata(
 
   // Re-read key ownership and policy after mutations in independently bundled routes.
   const hashedKey = await hashKey(key);
+  const cached = options.bypassCache ? undefined : _keyMetadataCache.get(hashedKey);
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return cached.value;
+  }
 
   const db = getDbInstance() as ApiKeysDbLike;
   const stmt = getPreparedStatements(db);
@@ -1725,8 +1756,10 @@ export async function getApiKeyMetadata(
   setNoLog(metadata.id, metadata.noLog === true);
 
   // Cache the result
-  evictIfNeeded(_keyMetadataCache);
-  _keyMetadataCache.set(hashedKey, { value: metadata, timestamp: now });
+  if (!options.bypassCache) {
+    evictIfNeeded(_keyMetadataCache);
+    _keyMetadataCache.set(hashedKey, { value: metadata, timestamp: now });
+  }
 
   return metadata;
 }

@@ -71,7 +71,7 @@ OMNIROUTE ನಿಮಗೆ ಹಣ ಉಳಿಸಲು ಮತ್ತು ನಿಮ್
 
 <div align="center">
 
-|                              |          v3.8.50          | **v3.8.51** |      `v3.8.53+`       |
+|                              |          v3.8.50          | **v3.8.51** |      `v3.8.54+`       |
 | ---------------------------- | :-----------------------: | :---------: | :-------------------: |
 | 🌐 ಪೂರೈಕೆದಾರರು               |            352            |   **358**   |          380          |
 | 🧠 ಅನನ್ಯ ಚಾಟ್ ಮಾದರಿ IDಗಳು    |           1320            |  **1374**   |         1491          |
@@ -580,7 +580,7 @@ Radar ಬಳಸುವುದು ಐಚ್ಛಿಕವಾಗಿದ್ದು, ಅ�
 
 </div>
 
-> **v3.8.20 → v3.8.53** ನ ಇತ್ತೀಚಿನ ಪ್ರಮುಖ ಅಂಶಗಳು. ಸಂಪೂರ್ಣ ಇತಿಹಾಸ [`CHANGELOG.md`](CHANGELOG.md) ನಲ್ಲಿ.
+> **v3.8.20 → v3.8.54** ನ ಇತ್ತೀಚಿನ ಪ್ರಮುಖ ಅಂಶಗಳು. ಸಂಪೂರ್ಣ ಇತಿಹಾಸ [`CHANGELOG.md`](CHANGELOG.md) ನಲ್ಲಿ.
 
 - **⚖️ `quota-weighted` ಮಾರ್ಗದರ್ಶನ** — 20ನೇ ಕಾಂಬೋ ತಂತ್ರವು ಖಾಲಿಯಾದ ಖಾತೆಗಳನ್ನು ಬಿಟ್ಟು, ಉಳಿದವುಗಳಲ್ಲಿ ಉಳಿದಿರುವ ಕೋಟಾ ÷ ಪ್ರಸ್ತುತ ಲೋಡ್ ಅನುಪಾತದಲ್ಲಿ ಆಯ್ಕೆಮಾಡುತ್ತದೆ, ಈಗಿರುವ ಸಂಭಾಷಣೆಗಳನ್ನು ಸ್ಥಿರವಾಗಿಡುತ್ತದೆ. → [Auto-Combo](docs/routing/AUTO-COMBO.md)
 - **🧰 ಹೆಡ್ಲೆಸ್ ಮೋಡ್** — `omniroute serve --headless` (ಅಥವಾ `OMNIROUTE_HEADLESS=1`) ಕೇವಲ `/v1/*` ಪ್ರಾಕ್ಸಿ ಎಂಜಿನ್ ಅನ್ನು ಚಾಲನೆ ಮಾಡುತ್ತದೆ, ಡ್ಯಾಶ್ಬೋರ್ಡ್ ಮತ್ತು ಡ್ಯಾಶ್ಬೋರ್ಡ್-ಮಾತ್ರ ಉಪಪ್ರಣಾಳಿಗಳನ್ನು ಆಫ್ ಮಾಡುತ್ತದೆ. → [Headless Mode](docs/guides/HEADLESS.md)
@@ -1014,7 +1014,7 @@ omniroute
 ```
 
 > 💡 `npm warn ERESOLVE` ಅಥವಾ peer-dep ಎಚ್ಚರಿಕೆಗಳು ಕಂಡಿವೆಯೇ? [ಅವು ಹಾನಿಕಾರಕವಲ್ಲ](docs/guides/TROUBLESHOOTING.md#npm-install-warnings-eresolve--peer--deprecated).
-> **npm 11 ಅಥವಾ ಹೊಸದನ್ನು ಬಳಸುತ್ತಿದ್ದೀರಾ?** ಅನುಮತಿಸದ ಹೊರತು npm ಪ್ಯಾಕೇಜ್ lifecycle ಸ್ಕ್ರಿಪ್ಟ್ಗಳನ್ನು ನಿರ್ಬಂಧಿಸಬಹುದು. OmniRoute ನ `postinstall` (`node scripts/build/postinstall.mjs`) ಅದರ native runtime ಫೈಲ್ಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಲು ಅಗತ್ಯವಿದೆ. ಗ್ಲೋಬಲ್ ಆಗಿ install ಮಾಡುವಾಗ npm ಎಚ್ಚರಿಕೆಯಲ್ಲಿ ಹೆಸರಿಸಿದ ಪ್ಯಾಕೇಜ್ಗಳನ್ನು ಅನುಮತಿಸಿ. OmniRoute 3.8.53 ವರದಿ ಮಾಡಿದ ಪ್ಯಾಕೇಜ್ ಸೆಟ್ಗಾಗಿ:
+> **npm 11 ಅಥವಾ ಹೊಸದನ್ನು ಬಳಸುತ್ತಿದ್ದೀರಾ?** ಅನುಮತಿಸದ ಹೊರತು npm ಪ್ಯಾಕೇಜ್ lifecycle ಸ್ಕ್ರಿಪ್ಟ್ಗಳನ್ನು ನಿರ್ಬಂಧಿಸಬಹುದು. OmniRoute ನ `postinstall` (`node scripts/build/postinstall.mjs`) ಅದರ native runtime ಫೈಲ್ಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಲು ಅಗತ್ಯವಿದೆ. ಗ್ಲೋಬಲ್ ಆಗಿ install ಮಾಡುವಾಗ npm ಎಚ್ಚರಿಕೆಯಲ್ಲಿ ಹೆಸರಿಸಿದ ಪ್ಯಾಕೇಜ್ಗಳನ್ನು ಅನುಮತಿಸಿ. OmniRoute 3.8.54 ವರದಿ ಮಾಡಿದ ಪ್ಯಾಕೇಜ್ ಸೆಟ್ಗಾಗಿ:
 >
 > ```bash
 > npm install -g --allow-scripts=omniroute,keytar,onnxruntime-node,@parcel/watcher,@swc/core,protobufjs,esbuild omniroute
@@ -1291,19 +1291,19 @@ OMNIROUTE_SKIP_POSTINSTALL=1 npm install -g omniroute   # CI=1 ಕೂಡ ಇದ�
   <tr><td nowrap><b>ರನ್ಟೈಮ್</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
   <tr><td nowrap><b>ಭಾಷೆ</b></td><td>TypeScript 6.0 — <code>src/</code> ಮತ್ತು <code>open-sse/</code> ಗಳಾದ್ಯಂತ <b>100% TypeScript</b> (v2.0 ರಿಂದ ಕೋರ್ನಲ್ಲಿ ಶೂನ್ಯ <code>any</code>)</td></tr>
   <tr><td nowrap><b>ಫ್ರೇಮ್ವರ್ಕ್</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
-  <tr><td nowrap><b>ಡೇಟಾಬೇಸ್</b></td><td>better-sqlite3 (SQLite, WAL ಜರ್ನಲಿಂಗ್) + LowDB (JSON ಲೆಗಸಿ) — 147 ಡೊಮೈನ್ ಮಾಡ್ಯೂಲ್ಗಳು, 222 ಮೈಗ್ರೇಶನ್ಗಳು</td></tr>
-  <tr><td nowrap><b>ಮೆಮೊರಿ</b></td><td>SQLite FTS5 ಪೂರ್ಣ-ಪಠ್ಯ + int8-ಕ್ವಾಂಟೈಸ್ ಮಾಡಲಾದ ವೆಕ್ಟರ್ ಎಂಬೆಡಿಂಗ್ಗಳು, ಟೈಪ್ ಮಾಡಲಾದ ಡಿಕೇ</td></tr>
-  <tr><td nowrap><b>ಸ್ಕೀಮಾಗಳು</b></td><td>Zod 4 — MCP ಟೂಲ್ I/O ಮೌಲ್ಯಮಾಪನ + API ಕಾಂಟ್ರಾಕ್ಟ್ಗಳು</td></tr>
-  <tr><td nowrap><b>ಪ್ರೊಟೊಕಾಲ್ಗಳು</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
-  <tr><td nowrap><b>ಸ್ಟ್ರೀಮಿಂಗ್</b></td><td>Server-Sent Events (SSE) + WebSocket ಬ್ರಿಡ್ಜ್ (<code>/v1/ws</code>)</td></tr>
-  <tr><td nowrap><b>ಸಂಕ್ಷೇಪಣ</b></td><td>12-ಎಂಜಿನ್ ಪೈಪ್ಲೈನ್ — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
-  <tr><td nowrap><b>ದೃಢೀಕರಣ ಮತ್ತು ಭದ್ರತೆ</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + MCP ಸ್ಕೋಪ್ ಮಾಡಲಾದ ದೃಢೀಕರಣ · AES-256-GCM ಸಂಗ್ರಹಣೆಯಲ್ಲೂ · DOMPurify</td></tr>
-  <tr><td nowrap><b>ಸ್ಟೆಲ್ತ್</b></td><td>wreq-js — JA3 / JA4 TLS ಫಿಂಗರ್ಪ್ರಿಂಟ್ ಇಮ್ಪರ್ಸನೇಶನ್, 3-ಮಟ್ಟದ ಪ್ರಾಕ್ಸಿ</td></tr>
-  <tr><td nowrap><b>ಸ್ಥಿತಿಸ್ಥಾಪಕತ್ವ</b></td><td>ಸರ್ಕ್ಯೂಟ್ ಬ್ರೇಕರ್, ಎಕ್ಸ್ಪೊನೆನ್ಷಿಯಲ್ ಬ್ಯಾಕ್ಆಫ್, ಆಂಟಿ-ಥಂಡರಿಂಗ್-ಹರ್ಡ್, ಆಟೋ-ಕಾಂಬೋ ಸೆಲ್ಫ್-ಹೀಲಿಂಗ್</td></tr>
-  <tr><td nowrap><b>ಲಾಗಿಂಗ್</b></td><td>pino — ರಿಕ್ವೆಸ್ಟ್ ಕಾಂಟೆಕ್ಸ್ಟ್ನೊಂದಿಗೆ ಸ್ಟ್ರಕ್ಚರ್ಡ್ JSON ಲಾಗ್ಗಳು</td></tr>
-  <tr><td nowrap><b>ಪರೀಕ್ಷಣ</b></td><td>Node.js ಟೆಸ್ಟ್ ರನ್ನರ್ + Vitest — 8,400+ ಟ್ರ್ಯಾಕ್ ಮಾಡಲಾದ ಟೆಸ್ಟ್ ಫೈಲ್ಗಳಲ್ಲಿ <b>60,000+ ಸ್ಟ್ಯಾಟಿಕ್ ಟೆಸ್ಟ್ ಡಿಕ್ಲರೇಶನ್ಗಳು</b> (ಯೂನಿಟ್, ಇಂಟಿಗ್ರೇಶನ್, E2E, ಸೆಕ್ಯುರಿಟಿ, ಇकोಸಿಸ್ಟమ್)</td></tr>
-  <tr><td nowrap><b>ವೇದಿಕೆಗಳು</b></td><td>ಡೆಸ್ಕ್ಟಾಪ್ (Electron) · Android (Termux) · PWA (ಯಾವುದೇ ಬ್ರೌಸರ್)</td></tr>
-  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — ರಿಲೀಸ್ನಲ್ಲಿ ಆಟೋ npm ಪಬ್ಲಿಷ್ + Docker Hub</td></tr>
+  <tr><td nowrap><b>ಡೇಟಾಬೇಸ್</b></td><td>better-sqlite3 (SQLite, WAL ಜರ್ನಲಿಂಗ್) + LowDB (JSON ಲೆಗಸಿ) — 147 ಡೊಮೇನ್ ಮಾಡ್ಯೂಲ್ಗಳು, 224 ಮೈಗ್ರೇಶನ್ಗಳು</td></tr>
+  <tr><td nowrap><b>ಮೆಮೊರಿ</b></td><td>SQLite FTS5 ಪೂರ್ಣ-ಪಠ್ಯ + int8-ಕ್ವಾಂಟೈಸ್ ಮಾಡಿದ ವೆಕ್ಟರ್ ಎಂಬೆಡ್ಡಿಂಗ್ಗಳು, ಟೈಪ್ ಮಾಡಿದ ಕ್ಷಯ</td></tr>
+  <tr><td nowrap><b>ಸ್ಕೀಮಾಗಳು</b></td><td>Zod 4 — MCP ಟೂಲ್ I/O ಪರಿಶೀಲನೆ + API ಒಪ್ಪಂದಗಳು</td></tr>
+  <tr><td nowrap><b>ಪ್ರೋಟೋಕಾಲ್ಗಳು</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
+  <tr><td nowrap><b>ಸ್ಟ್ರೀಮಿಂಗ್</b></td><td>ಸರ್ವರ್-ಸೆಂಟ್ ಈವೆಂಟ್ಗಳು (SSE) + WebSocket ಬ್ರಿಡ್ಜ್ (<code>/v1/ws</code>)</td></tr>
+  <tr><td nowrap><b>ಸಂಕೋಚನ</b></td><td>12-ಎಂಜಿನ್ ಪೈಪ್ಲೈನ್ — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
+  <tr><td nowrap><b>ದೃಢೀಕರಣ &amp; ಭದ್ರತೆ</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + MCP ಸ್ಕೋಪ್ ಮಾಡಿದ ದೃಢೀಕರಣ · ವಿಶ್ರಾಂತಿ ಸ್ಥಿತಿಯಲ್ಲಿರುವ ಡೇಟಾಗೆ AES-256-GCM · DOMPurify</td></tr>
+  <tr><td nowrap><b>ಸ್ಟೆಲ್ತ್</b></td><td>wreq-js — JA3 / JA4 TLS ಫಿಂಗರ್ಪ್ರಿಂಟ್ ಅನುಕರಣೆ, 3-ಹಂತದ ಪ್ರಾಕ್ಸಿ</td></tr>
+  <tr><td nowrap><b>ಸ್ಥೈರ್ಯ</b></td><td>ಸರ್ಕ್ಯೂಟ್ ಬ್ರೇಕರ್, ಎಕ್ಸ್ಪೋನೆನ್ಷಿಯಲ್ ಬ್ಯಾಕ್ಆಫ್, ಆಂಟಿ-ಥಂಡರಿಂಗ್-ಹರ್ಡ್, ಸ್ವಯಂ-ಕಾಂಬೋ ಸ್ವಯಂ-ಚೇತರಿಕೆ</td></tr>
+  <tr><td nowrap><b>ಲಾಗಿಂಗ್</b></td><td>pino — ವಿನಂತಿ ಸಂದರ್ಭದೊಂದಿಗೆ ರಚನಾತ್ಮಕ JSON ಲಾಗ್ಗಳು</td></tr>
+  <tr><td nowrap><b>ಪರೀಕ್ಷಣೆ</b></td><td>Node.js ಟೆಸ್ಟ್ ರನ್ನರ್ + Vitest — 8,400+ ಟ್ರ್ಯಾಕ್ ಮಾಡಲಾದ ಟೆಸ್ಟ್ ಫೈಲ್ಗಳಾದ್ಯಂತ <b>60,000+ ಸ್ಥಿರ ಟೆಸ್ಟ್ ಘೋಷಣೆಗಳು</b> (ಯೂನಿಟ್, ಇಂಟಿಗ್ರೇಷನ್, E2E, ಭದ್ರತೆ, ಪರಿಸರ ವ್ಯವಸ್ಥೆ)</td></tr>
+  <tr><td nowrap><b>ಪ್ಲಾಟ್ಫಾರ್ಮ್ಗಳು</b></td><td>ಡೆಸ್ಕ್ಟಾಪ್ (Electron) · Android (Termux) · PWA (ಯಾವುದೇ ಬ್ರೌಸರ್)</td></tr>
+  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — ರಿಲೀಸ್ ಸಂದರ್ಭದಲ್ಲಿ ಸ್ವಯಂ npm ಪ್ರಕಟಣೆ + Docker Hub</td></tr>
   <tr><td nowrap><b>ಲಿಂಕ್ಗಳು</b></td><td><a href="https://omniroute.online">ವೆಬ್ಸೈಟ್</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
 </table>
 
@@ -1804,7 +1804,7 @@ MIT ಪರವಾನಗಿ - ವಿವರಗಳಿಗಾಗಿ [ಪರವಾನ�
 
 **[⬆ ಮೇಲಕ್ಕೆ ಹಿಂತಿರುಗಿ](#-omniroute)** · ಮುಕ್ತ-ಮೂಲ AI ಸಮುದಾಯಕ್ಕಾಗಿ ❤️ಯಿಂದ ನಿರ್ಮಿಸಲಾಗಿದೆ.
 
-<sub><a href="https://github.com/diegosouzapw">Diego Souza</a> ಅವರಿಂದ ರಚಿಸಲಾಗಿದೆ · OmniRoute v3.8.53 · Node ≥22.22.2 · MIT ಪರವಾನಗಿ · <a href="https://omniroute.online">omniroute.online</a></sub>
+<sub><a href="https://github.com/diegosouzapw">Diego Souza</a> ಅವರಿಂದ ರಚಿಸಲಾಗಿದೆ · OmniRoute v3.8.54 · Node ≥22.22.2 · MIT ಪರವಾನಗಿ · <a href="https://omniroute.online">omniroute.online</a></sub>
 
 </div>
 <!-- ಸಮುದಾಯದ ಪ್ರಶ್ನೋತ್ತರಕ್ಕಾಗಿ GitHub Discussions ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ -->

@@ -71,7 +71,7 @@
 
 <div align="center">
 
-|                                          |         v3.8.50          | **v3.8.51** |        `v3.8.53+`         |
+|                                          |         v3.8.50          | **v3.8.51** |        `v3.8.54+`         |
 | ---------------------------------------- | :----------------------: | :---------: | :-----------------------: |
 | 🌐 Masu samarwa                          |           352            |   **358**   |            380            |
 | 🧠 Keɓaɓɓun ID na samfuran hira          |           1320           |  **1374**   |           1491            |
@@ -580,7 +580,7 @@ Radar na zaɓi ne kuma GET-only. Abokin hulɗar OmniRoute ba ya loda prompts, zi
 
 </div>
 
-> Manyan abubuwa na baya-bayan nan daga **v3.8.20 → v3.8.53**. Cikakken tarihin canje-canje yana cikin [`CHANGELOG.md`](CHANGELOG.md).
+> Manyan abubuwa na baya-bayan nan daga **v3.8.20 → v3.8.54**. Cikakken tarihin canje-canje yana cikin [`CHANGELOG.md`](CHANGELOG.md).
 
 - **⚖️ `quota-weighted` routing** — dabarar haɗin kai ta 20 tana kauce wa asusun da suka ƙare, sannan tana zaɓo daga sauran bisa ga adadin quota da ya rage ÷ nauyin da ke kan layi, tana barin tattaunawa da aka riga aka fara a makale. → [Auto-Combo](docs/routing/AUTO-COMBO.md)
 - **🧰 Headless mode** — `omniroute serve --headless` (ko `OMNIROUTE_HEADLESS=1`) yana kunna injin `/v1/*` proxy kawai, ba tare da dashboard da tsarin dashboard kawai ba. → [Headless Mode](docs/guides/HEADLESS.md)
@@ -1014,7 +1014,7 @@ omniroute
 ```
 
 > 💡 Kuna ganin `npm warn ERESOLVE` ko gargaɗin peer-dep? [Ba su da illa](docs/guides/TROUBLESHOOTING.md#npm-install-warnings-eresolve--peer--deprecated).
-> **Kuna amfani da npm 11 ko na baya?** npm na iya toshe rubutun lifecycle na fakiti sai in an ba su izini. Ana buƙatar `postinstall` na OmniRoute (`node scripts/build/postinstall.mjs`) don shirya fayilolin runtime na asali. Bari fakitocin da aka ambata a gargaɗin npm yayin shigarwa a duniya. Don tsarin fakitin da OmniRoute 3.8.53 ya ba da rahoto:
+> **Kuna amfani da npm 11 ko na baya?** npm na iya toshe rubutun lifecycle na fakiti sai in an ba su izini. Ana buƙatar `postinstall` na OmniRoute (`node scripts/build/postinstall.mjs`) don shirya fayilolin runtime na asali. Bari fakitocin da aka ambata a gargaɗin npm yayin shigarwa a duniya. Don tsarin fakitin da OmniRoute 3.8.54 ya ba da rahoto:
 >
 > ```bash
 > npm install -g --allow-scripts=omniroute,keytar,onnxruntime-node,@parcel/watcher,@swc/core,protobufjs,esbuild omniroute
@@ -1291,23 +1291,23 @@ Ma'aunai na asali a 2026-10-18: **bidiyoyi na musamman 1.976** · **sanannun kal
 
 <table>
   <tr><th align="left">Mataki</th><th align="left">Fasaha</th></tr>
-  <tr><td nowrap><b>Lokacin Aiki</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
-  <tr><td nowrap><b>Harshe</b></td><td>TypeScript 6.0 — <b>100% TypeScript</b> a cikin <code>src/</code> da <code>open-sse/</code> (babu <code>any</code> a jigon tsarin tun daga v2.0)</td></tr>
-  <tr><td nowrap><b>Tsarin Aiki</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
-  <tr><td nowrap><b>Ma'ajin Bayanai</b></td><td>better-sqlite3 (SQLite, WAL journaling) + LowDB (JSON na dā) — modules 147 na yankuna, migrations 222</td></tr>
-  <tr><td nowrap><b>Ƙwaƙwalwa</b></td><td>SQLite FTS5 binciken cikakken rubutu + vector embeddings masu int8-quantized, decay mai nau'i</td></tr>
-  <tr><td nowrap><b>Tsare-tsare</b></td><td>Zod 4 — tantance I/O na kayan aikin MCP + kwangilolin API</td></tr>
-  <tr><td nowrap><b>Ƙa'idodin Sadarwa</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
-  <tr><td nowrap><b>Watsawa</b></td><td>Server-Sent Events (SSE) + gadar WebSocket (<code>/v1/ws</code>)</td></tr>
-  <tr><td nowrap><b>Matsewa</b></td><td>Pipeline mai injuna 12 — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
-  <tr><td nowrap><b>Tantancewa &amp; tsaro</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + tantance MCP mai iyaka · AES-256-GCM a hali na ajiya · DOMPurify</td></tr>
-  <tr><td nowrap><b>ɓoyewa</b></td><td>wreq-js — kwaikwayon fingerprint na TLS JA3 / JA4, proxy mai matakai 3</td></tr>
-  <tr><td nowrap><b>Juriyawar</b></td><td>Circuit breaker, exponential backoff, kariya daga thundering-herd, warkewar kai ta auto-combo</td></tr>
-  <tr><td nowrap><b>Rubutun Ayyuka</b></td><td>pino — logs na JSON masu tsari tare da mahallin buƙata</td></tr>
-  <tr><td nowrap><b>Gwaji</b></td><td>Node.js test runner + Vitest — <b>sanarwar gwaje-gwaje 60,000</b> a cikin fayilolin gwaji 8,400 da ake bibiya (unit, integration, E2E, tsaro, ecosystem)</td></tr>
-  <tr><td nowrap><b>Dandamali</b></td><td>Desktop (Electron) · Android (Termux) · PWA (kowane burauza)</td></tr>
-  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — buga kai tsaye zuwa npm + Docker Hub a lokacin release</td></tr>
-  <tr><td nowrap><b>Hanyoyin Haɗi</b></td><td><a href="https://omniroute.online">Shafin Yanar</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
+  <tr><td nowrap><b>Lokacin gudana</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
+  <tr><td nowrap><b>Harshe</b></td><td>TypeScript 6.0 — <b>TypeScript 100%</b> a faɗin <code>src/</code> da <code>open-sse/</code> (babu <code>any</code> ko ɗaya a cikin core tun v2.0)</td></tr>
+  <tr><td nowrap><b>Tsarin aiki</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
+  <tr><td nowrap><b>Ma’adanar bayanai</b></td><td>better-sqlite3 (SQLite, WAL journaling) + LowDB (JSON na gado) — modules 147 na yanki, migrations 224</td></tr>
+  <tr><td nowrap><b>Ƙwaƙwalwa</b></td><td>Cikakken rubutu na SQLite FTS5 + vector embeddings masu int8-quantized, tare da raguwar da aka tsara da nau’i</td></tr>
+  <tr><td nowrap><b>Tsare-tsare</b></td><td>Zod 4 — ingancin MCP tool I/O + kwangilolin API</td></tr>
+  <tr><td nowrap><b>Ka’idoji</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
+  <tr><td nowrap><b>Yawo</b></td><td>Server-Sent Events (SSE) + gadar WebSocket (<code>/v1/ws</code>)</td></tr>
+  <tr><td nowrap><b>Matse bayanai</b></td><td>Bututun injuna 12 — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
+  <tr><td nowrap><b>Tantancewa &amp; tsaro</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + ingantaccen MCP mai iyakantaccen faɗi · AES-256-GCM yayin ajiya · DOMPurify</td></tr>
+  <tr><td nowrap><b>ɓoyewa</b></td><td>wreq-js — kwaikwayon sawun yatsa na JA3 / JA4 TLS, wakili mai matakai 3</td></tr>
+  <tr><td nowrap><b>Juriya</b></td><td>Mai katse da’ira, jinkirin exponential, kariya daga cunkoson buƙatu, gyaran kai ta atomatik na auto-combo</td></tr>
+  <tr><td nowrap><b>Rajista</b></td><td>pino — rajistar JSON mai tsari tare da mahallin buƙata</td></tr>
+  <tr><td nowrap><b>Gwaji</b></td><td>Mai gudanar da gwajin Node.js + Vitest — <b>bayyanannun sanarwar gwaji sama da 60,000</b> a cikin fayilolin gwaji sama da 8,400 da aka bi diddigi (unit, integration, E2E, tsaro, ecosystem)</td></tr>
+  <tr><td nowrap><b>Dandamali</b></td><td>Kwamfuta (Electron) · Android (Termux) · PWA (kowane burauza)</td></tr>
+  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — wallafa npm ta atomatik + Docker Hub yayin fitarwa</td></tr>
+  <tr><td nowrap><b>Hanyoyi</b></td><td><a href="https://omniroute.online">Gidan yanar gizo</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
 </table>
 
 <div align="center">
@@ -1807,7 +1807,7 @@ Lasisi na MIT - duba [LICENSE](LICENSE) don ƙarin bayani.
 
 **[⬆ Komawa sama](#-omniroute)** · An gina shi da ❤️ don al'ummar AI mai buɗaɗɗen tushe.
 
-<sub>Diego Souza ne ya ƙirƙira shi ta <a href="https://github.com/diegosouzapw">Diego Souza</a> · OmniRoute v3.8.53 · Node ≥22.22.2 · Lasisi na MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
+<sub>Diego Souza ne ya ƙirƙira shi ta <a href="https://github.com/diegosouzapw">Diego Souza</a> · OmniRoute v3.8.54 · Node ≥22.22.2 · Lasisi na MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
 
 </div>
 <!-- An kunna GitHub Discussions don tambayoyi da amsoshi na al'umma -->

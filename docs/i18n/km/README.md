@@ -71,7 +71,7 @@
 
 <div align="center">
 
-|                                 |            v3.8.50             | **v3.8.51** |      `v3.8.53+`       |
+|                                 |            v3.8.50             | **v3.8.51** |      `v3.8.54+`       |
 | ------------------------------- | :----------------------------: | :---------: | :-------------------: |
 | 🌐 អ្នកផ្តល់សេវា                |              352               |   **358**   |          380          |
 | 🧠 លេខសម្គាល់ម៉ូដែលជជែកតែមួយគត់ |              1320              |  **1374**   |         1491          |
@@ -579,7 +579,7 @@ Radar គឺជាមុខងារដែលត្រូវជ្រើសរ�
 
 </div>
 
-> សេចក្តីពិសេសថ្មីៗពី **v3.8.20 → v3.8.53**។ ប្រវត្តិពេញលេញសូមមើលក្នុង [`CHANGELOG.md`](CHANGELOG.md)។
+> សេចក្តីពិសេសថ្មីៗពី **v3.8.20 → v3.8.54**។ ប្រវត្តិពេញលេញសូមមើលក្នុង [`CHANGELOG.md`](CHANGELOG.md)។
 
 - **⚖️ `quota-weighted` routing** — យុទ្ធសាស្ត្ររួមលេខ ២០ នេះរំលងគណនីដែលបានប្រើអស់ហើយ បន្ទាប់មកជ្រើសរើសចេញពីគណនីនៅសល់ដោយសមាមាត្រទៅនឹង quota នៅសល់ ÷ បន្ទុកកំពុងដំណើរការ ដើម្បីរក្សា threads ការសន្ទនាដែលមានស្រាប់ឲ្យនៅដដែល។ → [Auto-Combo](docs/routing/AUTO-COMBO.md)
 - **🧰 របៀប Headless** — `omniroute serve --headless` (ឬ `OMNIROUTE_HEADLESS=1`) ដំណើរការតែម៉ាស៊ីនភ្លើង proxy `/v1/*` ប៉ុណ្ណោះ ដោយ dashboard និងប្រព័ន្ធដែលមានតែ dashboard ត្រូវបានបិទ។ → [Headless Mode](docs/guides/HEADLESS.md)
@@ -1013,7 +1013,7 @@ omniroute
 ```
 
 > 💡 ឃើញ `npm warn ERESOLVE` ឬការព្រមាន peer-dep? [ពួកវាគ្មានគ្រោះថ្នាក់ទេ](docs/guides/TROUBLESHOOTING.md#npm-install-warnings-eresolve--peer--deprecated)។
-> **ប្រើ npm 11 ឬថ្មីជាងនេះ?** npm អាចរាំងខ្ទប់ script វដ្តជីវិតរបស់ package លើកលែងតែពួកវាត្រូវបានអនុញ្ញាត។ `postinstall` របស់ OmniRoute (`node scripts/build/postinstall.mjs`) ចាំបាច់ដើម្បីរៀបចំឯកសារ runtime ដើមរបស់វា។ អនុញ្ញាត package ដែលមានឈ្មោះក្នុងការព្រមានរបស់ npm នៅពេលដំឡើងជាសកល។ សម្រាប់សំណុំ package ដែលបានរាយការណ៍ដោយ OmniRoute 3.8.53៖
+> **ប្រើ npm 11 ឬថ្មីជាងនេះ?** npm អាចរាំងខ្ទប់ script វដ្តជីវិតរបស់ package លើកលែងតែពួកវាត្រូវបានអនុញ្ញាត។ `postinstall` របស់ OmniRoute (`node scripts/build/postinstall.mjs`) ចាំបាច់ដើម្បីរៀបចំឯកសារ runtime ដើមរបស់វា។ អនុញ្ញាត package ដែលមានឈ្មោះក្នុងការព្រមានរបស់ npm នៅពេលដំឡើងជាសកល។ សម្រាប់សំណុំ package ដែលបានរាយការណ៍ដោយ OmniRoute 3.8.54៖
 >
 > ```bash
 > npm install -g --allow-scripts=omniroute,keytar,onnxruntime-node,@parcel/watcher,@swc/core,protobufjs,esbuild omniroute
@@ -1293,19 +1293,19 @@ process ដូចគ្នានៅលើ port តែមួយ ដូច្ន�
   <tr><td nowrap><b>បរិស្ថានដំណើរការ</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
   <tr><td nowrap><b>ភាសា</b></td><td>TypeScript 6.0 — <b>TypeScript 100%</b> នៅទូទាំង <code>src/</code> និង <code>open-sse/</code> (គ្មាន <code>any</code> នៅក្នុងស្នូល ចាប់ពី v2.0)</td></tr>
   <tr><td nowrap><b>Framework</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
-  <tr><td nowrap><b>មូលដ្ឋានទិន្នន័យ</b></td><td>better-sqlite3 (SQLite, ការកត់ត្រា WAL) + LowDB (JSON ជំនាន់ចាស់) — ម៉ូឌុលដែន 147, migrations 222</td></tr>
-  <tr><td nowrap><b>អង្គចងចាំ</b></td><td>ការស្វែងរកអត្ថបទពេញជាមួយ SQLite FTS5 + vector embeddings ដែលបាន quantize ជា int8 និង decay បែប typed</td></tr>
-  <tr><td nowrap><b>Schemas</b></td><td>Zod 4 — ការផ្ទៀងផ្ទាត់ I/O នៃឧបករណ៍ MCP + កិច្ចសន្យា API</td></tr>
-  <tr><td nowrap><b>ព្រូតូកូល</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
-  <tr><td nowrap><b>Streaming</b></td><td>Server-Sent Events (SSE) + ស្ពាន WebSocket (<code>/v1/ws</code>)</td></tr>
-  <tr><td nowrap><b>ការបង្ហាប់</b></td><td>pipeline ម៉ាស៊ីន 12 — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
-  <tr><td nowrap><b>ការផ្ទៀងផ្ទាត់ &amp; សុវត្ថិភាព</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + ការផ្ទៀងផ្ទាត់ MCP តាម scope · AES-256-GCM នៅពេលរក្សាទុក · DOMPurify</td></tr>
-  <tr><td nowrap><b>Stealth</b></td><td>wreq-js — ការក្លែងបន្លំ TLS fingerprint JA3 / JA4, proxy 3 កម្រិត</td></tr>
-  <tr><td nowrap><b>ភាពធន់</b></td><td>Circuit breaker, exponential backoff, ការការពារ thundering-herd, self-healing បែប auto-combo</td></tr>
-  <tr><td nowrap><b>ការកត់ត្រា</b></td><td>pino — logs JSON ដែលមានរចនាសម្ព័ន្ធ ជាមួយបរិបទនៃសំណើ</td></tr>
-  <tr><td nowrap><b>ការធ្វើតេស្ត</b></td><td>Node.js test runner + Vitest — <b>ការប្រកាសតេស្តស្ថិត 60,000</b> នៅទូទាំងឯកសារតេស្តដែលត្រូវបានតាមដាន 8,400 (unit, integration, E2E, security, ecosystem)</td></tr>
-  <tr><td nowrap><b>វេទិកា</b></td><td>Desktop (Electron) · Android (Termux) · PWA (កម្មវិធីរុករកណាមួយ)</td></tr>
-  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — publish npm ដោយស្វ័យប្រវត្តិ + Docker Hub នៅពេល release</td></tr>
+  <tr><td nowrap><b>មូលដ្ឋានទិន្នន័យ</b></td><td>better-sqlite3 (SQLite, កំណត់ហេតុ WAL) + LowDB (JSON ចាស់) — ម៉ូឌុលដែន 147, migration 224</td></tr>
+  <tr><td nowrap><b>អង្គចងចាំ</b></td><td>អត្ថបទពេញ SQLite FTS5 + vector embeddings ដែលបាន quantize ជា int8, ការថយចុះតាមប្រភេទ</td></tr>
+  <tr><td nowrap><b>គ្រោងទិន្នន័យ</b></td><td>Zod 4 — ការផ្ទៀងផ្ទាត់ I/O របស់ឧបករណ៍ MCP + កិច្ចសន្យា API</td></tr>
+  <tr><td nowrap><b>ពិធីការ</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
+  <tr><td nowrap><b>ការផ្សាយទិន្នន័យ</b></td><td>Server-Sent Events (SSE) + ស្ពាន WebSocket (<code>/v1/ws</code>)</td></tr>
+  <tr><td nowrap><b>ការបង្ហាប់</b></td><td>បំពង់ដំណើរការ 12 ម៉ាស៊ីន — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
+  <tr><td nowrap><b>ការផ្ទៀងផ្ទាត់អត្តសញ្ញាណ និងសុវត្ថិភាព</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + MCP scoped auth · AES-256-GCM ពេលរក្សាទុក · DOMPurify</td></tr>
+  <tr><td nowrap><b>ការលាក់អត្តសញ្ញាណ</b></td><td>wreq-js — ការក្លែងធ្វើស្នាមម្រាមដៃ JA3 / JA4 TLS, proxy 3 កម្រិត</td></tr>
+  <tr><td nowrap><b>ភាពធន់</b></td><td>ឧបករណ៍បំបែកសៀគ្វី, exponential backoff, ការប្រឆាំងនឹង thundering herd, ការជួសជុលដោយខ្លួនឯង auto-combo</td></tr>
+  <tr><td nowrap><b>ការកត់ត្រា</b></td><td>pino — កំណត់ហេតុ JSON មានរចនាសម្ព័ន្ធ ជាមួយបរិបទសំណើ</td></tr>
+  <tr><td nowrap><b>ការធ្វើតេស្ត</b></td><td>Node.js test runner + Vitest — <b>ការប្រកាសតេស្តឋិតិវន្តជាង 60,000</b> នៅទូទាំងឯកសារតេស្តដែលបានតាមដានជាង 8,400 (unit, integration, E2E, សុវត្ថិភាព, ecosystem)</td></tr>
+  <tr><td nowrap><b>វេទិកា</b></td><td>កុំព្យូទ័រលើតុ (Electron) · Android (Termux) · PWA (កម្មវិធីរុករកណាមួយ)</td></tr>
+  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — បោះពុម្ព npm ដោយស្វ័យប្រវត្តិ + Docker Hub នៅពេលចេញផ្សាយ</td></tr>
   <tr><td nowrap><b>តំណភ្ជាប់</b></td><td><a href="https://omniroute.online">គេហទំព័រ</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
 </table>
 
@@ -1806,7 +1806,7 @@ OmniRoute ឈរលើស្នាដៃរបស់អ្នកជំនាន�
 
 **[⬆ ត្រឡប់ទៅកំពូល](#-omniroute)** · បង្កើតដោយ ❤️ សម្រាប់សហគមន៍ AI ប្រភពបើកចំហ។
 
-<sub>បង្កើតដោយ <a href="https://github.com/diegosouzapw">Diego Souza</a> · OmniRoute v3.8.53 · Node ≥22.22.2 · អាជ្ញាប័ណ្ណ MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
+<sub>បង្កើតដោយ <a href="https://github.com/diegosouzapw">Diego Souza</a> · OmniRoute v3.8.54 · Node ≥22.22.2 · អាជ្ញាប័ណ្ណ MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
 
 </div>
 <!-- បានបើក GitHub Discussions សម្រាប់ការសួរ-ឆ្លើយរបស់សហគមន៍ -->

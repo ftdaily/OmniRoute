@@ -71,7 +71,7 @@
 
 <div align="center">
 
-|                                         |           v3.8.50            | **v3.8.51** |       `v3.8.53+`        |
+|                                         |           v3.8.50            | **v3.8.51** |       `v3.8.54+`        |
 | --------------------------------------- | :--------------------------: | :---------: | :---------------------: |
 | 🌐 ပံ့ပိုးပေးသူများ                     |             352              |   **358**   |           380           |
 | 🧠 ထူးခြားသော chat model ID များ        |             1320             |  **1374**   |          1491           |
@@ -582,7 +582,7 @@ Radar သည် opt-in ဖြစ်ပြီး GET-only ဖြစ်ပါသ�
 
 </div>
 
-> **v3.8.20 → v3.8.53** မှ နောက်ဆုံးထွက်အချက်အလက်များ။ အပြည့်အစုံသမိုင်းကို [`CHANGELOG.md`](CHANGELOG.md) မှာကြည့်နိုင်ပါတယ်။
+> **v3.8.20 → v3.8.54** မှ နောက်ဆုံးထွက်အချက်အလက်များ။ အပြည့်အစုံသမိုင်းကို [`CHANGELOG.md`](CHANGELOG.md) မှာကြည့်နိုင်ပါတယ်။
 
 - **⚖️ `quota-weighted` လမ်းကြောင်းရွေးချယ်မှု** — ၂၀ ကြိမ်မြောက် combo မဟာဗျူဟာက quota ကုန်သွားတဲ့ အကောင့်တွေကို ကျော်သွားပြီး ကျန်တဲ့ quota ÷ in-flight load အလိုက် ကျန်တဲ့အကောင့်တွေထဲက ဆွဲယူပေးပါတယ်၊ ရှိပြီးသား စကားပြောမှုတွေကိုတော့ တည်နေရာမှာထားပေးပါတယ်။ → [Auto-Combo](docs/routing/AUTO-COMBO.md)
 - **🧰 Headless mode** — `omniroute serve --headless` (သို့မဟုတ် `OMNIROUTE_HEADLESS=1`) ကို အသုံးပြုလျှင် `/v1/*` proxy engine ကိုသာ run လုပ်ပြီး dashboard နဲ့ dashboard-only subsystems တွေကို ပိတ်ထားပါတယ်။ → [Headless Mode](docs/guides/HEADLESS.md)
@@ -1017,7 +1017,7 @@ omniroute
 ```
 
 > 💡 `npm warn ERESOLVE` သို့မဟုတ် peer-dep warning များ တွေ့ရသလား။ [အန္တရာယ်မရှိပါ](docs/guides/TROUBLESHOOTING.md#npm-install-warnings-eresolve--peer--deprecated)။
-> **npm 11 သို့မဟုတ် ထိုအထက် သုံးနေပါသလား။** npm သည် ခွင့်ပြုထားခြင်းမရှိလျှင် package lifecycle script များကို ပိတ်ဆို့နိုင်သည်။ OmniRoute ၏ `postinstall` (`node scripts/build/postinstall.mjs`) သည် ၎င်း၏ native runtime ဖိုင်များကို ပြင်ဆင်ရန် လိုအပ်သည်။ globally install လုပ်သည့်အခါ npm ၏ warning တွင် ဖော်ပြထားသော package များကို ခွင့်ပြုပါ။ OmniRoute 3.8.53 မှ ဖော်ပြသော package set အတွက်-
+> **npm 11 သို့မဟုတ် ထိုအထက် သုံးနေပါသလား။** npm သည် ခွင့်ပြုထားခြင်းမရှိလျှင် package lifecycle script များကို ပိတ်ဆို့နိုင်သည်။ OmniRoute ၏ `postinstall` (`node scripts/build/postinstall.mjs`) သည် ၎င်း၏ native runtime ဖိုင်များကို ပြင်ဆင်ရန် လိုအပ်သည်။ globally install လုပ်သည့်အခါ npm ၏ warning တွင် ဖော်ပြထားသော package များကို ခွင့်ပြုပါ။ OmniRoute 3.8.54 မှ ဖော်ပြသော package set အတွက်-
 >
 > ```bash
 > npm install -g --allow-scripts=omniroute,keytar,onnxruntime-node,@parcel/watcher,@swc/core,protobufjs,esbuild omniroute
@@ -1297,20 +1297,20 @@ port တစ်ခုတည်းရှိ process တစ်ခုတည်းက
   <tr><td nowrap><b>လုပ်ဆောင်ချိန်ပတ်ဝန်းကျင်</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
   <tr><td nowrap><b>ဘာသာစကား</b></td><td>TypeScript 6.0 — <code>src/</code> နှင့် <code>open-sse/</code> တစ်လျှောက် <b>TypeScript 100%</b> (v2.0 မှစ၍ core တွင် <code>any</code> လုံးဝမပါ)</td></tr>
   <tr><td nowrap><b>Framework</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
-  <tr><td nowrap><b>ဒေတာဘေ့စ်</b></td><td>better-sqlite3 (SQLite, WAL journaling) + LowDB (JSON legacy) — domain module 147 ခု၊ migration 222 ခု</td></tr>
-  <tr><td nowrap><b>မမ်မိုရီ</b></td><td>SQLite FTS5 full-text + int8-quantized vector embedding များ၊ typed decay</td></tr>
-  <tr><td nowrap><b>Schema များ</b></td><td>Zod 4 — MCP tool I/O အတည်ပြုစစ်ဆေးခြင်း + API contract များ</td></tr>
-  <tr><td nowrap><b>ပရိုတိုကောလ်များ</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
-  <tr><td nowrap><b>Streaming</b></td><td>Server-Sent Events (SSE) + WebSocket bridge (<code>/v1/ws</code>)</td></tr>
-  <tr><td nowrap><b>Compression</b></td><td>engine 12 ခုပါ pipeline — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
-  <tr><td nowrap><b>Auth နှင့် လုံခြုံရေး</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + MCP scoped auth · သိုလှောင်ထားသောဒေတာအတွက် AES-256-GCM · DOMPurify</td></tr>
-  <tr><td nowrap><b>Stealth</b></td><td>wreq-js — JA3 / JA4 TLS fingerprint အယောင်ဆောင်ခြင်း၊ အဆင့် ၃ ဆင့် proxy</td></tr>
-  <tr><td nowrap><b>Resilience</b></td><td>Circuit breaker၊ exponential backoff၊ anti-thundering-herd၊ auto-combo self-healing</td></tr>
-  <tr><td nowrap><b>Logging</b></td><td>pino — request context ပါဝင်သော structured JSON log များ</td></tr>
-  <tr><td nowrap><b>စမ်းသပ်ခြင်း</b></td><td>Node.js test runner + Vitest — ခြေရင်းခံထားသော test file 8,400 ကျော်တွင် <b>static test declaration 60,000</b> (unit, integration, E2E, security, ecosystem)</td></tr>
-  <tr><td nowrap><b>ပလက်ဖောင်းများ</b></td><td>Desktop (Electron) · Android (Termux) · PWA (မည်သည့် browser မှမဆို)</td></tr>
-  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — release အသစ်တိုင်းတွင် အလိုအလျောက် npm publish + Docker Hub</td></tr>
-  <tr><td nowrap><b>လင့်ခ်များ</b></td><td><a href="https://omniroute.online">ဝဘ်ဆိုဒ်</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
+  <tr><td nowrap><b>ဒေတာဘေ့စ်</b></td><td>better-sqlite3 (SQLite၊ WAL journaling) + LowDB (JSON legacy) — domain module 147 ခု၊ migration 224 ခု</td></tr>
+  <tr><td nowrap><b>မှတ်ဉာဏ်</b></td><td>SQLite FTS5 full-text + int8-quantized vector embeddings၊ typed decay</td></tr>
+  <tr><td nowrap><b>Schema များ</b></td><td>Zod 4 — MCP tool I/O validation + API စာချုပ်များ</td></tr>
+  <tr><td nowrap><b>ပရိုတိုကောများ</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
+  <tr><td nowrap><b>ဒေတာစီးဆင်းမှု</b></td><td>Server-Sent Events (SSE) + WebSocket bridge (<code>/v1/ws</code>)</td></tr>
+  <tr><td nowrap><b>ချုံ့မှု</b></td><td>အင်ဂျင် 12 ခုပါ pipeline — RTK၊ Caveman၊ LLMLingua-2 (MobileBERT ONNX)၊ GCF၊ OmniGlyph</td></tr>
+  <tr><td nowrap><b>အထောက်အထားနှင့် လုံခြုံရေး</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + MCP scoped auth · သိမ်းဆည်းထားသောဒေတာအတွက် AES-256-GCM · DOMPurify</td></tr>
+  <tr><td nowrap><b>ဖုံးကွယ်မှု</b></td><td>wreq-js — JA3 / JA4 TLS fingerprint impersonation၊ အဆင့် 3 ဆင့် proxy</td></tr>
+  <tr><td nowrap><b>ခံနိုင်ရည်</b></td><td>Circuit breaker၊ exponential backoff၊ anti-thundering-herd၊ auto-combo self-healing</td></tr>
+  <tr><td nowrap><b>မှတ်တမ်းတင်ခြင်း</b></td><td>pino — request context ပါဝင်သော structured JSON logs</td></tr>
+  <tr><td nowrap><b>စမ်းသပ်ခြင်း</b></td><td>Node.js test runner + Vitest — လိုက်လံမှတ်တမ်းတင်ထားသော test file 8,400 ကျော်တွင် <b>static test declaration 60,000 ကျော်</b> (unit၊ integration၊ E2E၊ security၊ ecosystem)</td></tr>
+  <tr><td nowrap><b>ပလက်ဖောင်းများ</b></td><td>Desktop (Electron) · Android (Termux) · PWA (မည်သည့် browser မဆို)</td></tr>
+  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — release ပြုလုပ်ချိန်တွင် npm publish အလိုအလျောက်ပြုလုပ်ခြင်း + Docker Hub</td></tr>
+  <tr><td nowrap><b>လင့်ခ်များ</b></td><td><a href="https://omniroute.online">ဝဘ်ဆိုက်</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
 </table>
 
 <div align="center">
@@ -1810,7 +1810,7 @@ MIT လိုင်စင် - အသေးစိတ်အတွက် [LICENSE]
 
 **[⬆ အပေါ်သို့ ပြန်သွားရန်](#-omniroute)** · open-source AI အသိုင်းအဝိုင်းအတွက် ❤️ ဖြင့် တည်ဆောက်ထားသည်။
 
-<sub><a href="https://github.com/diegosouzapw">Diego Souza</a> မှ ဖန်တီးသည် · OmniRoute v3.8.53 · Node ≥22.22.2 · MIT လိုင်စင် · <a href="https://omniroute.online">omniroute.online</a></sub>
+<sub><a href="https://github.com/diegosouzapw">Diego Souza</a> မှ ဖန်တီးသည် · OmniRoute v3.8.54 · Node ≥22.22.2 · MIT လိုင်စင် · <a href="https://omniroute.online">omniroute.online</a></sub>
 
 </div>
 <!-- အသိုင်းအဝိုင်း၏ အမေးအဖြေများအတွက် GitHub Discussions ကို ဖွင့်ထားသည် -->

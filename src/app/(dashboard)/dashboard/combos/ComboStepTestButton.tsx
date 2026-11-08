@@ -2,6 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
+import { Button, Icon } from "@/shared/components";
 import { getI18nOrFallback } from "./comboPageHelpers";
 import {
   describeComboStepTestResult,
@@ -11,7 +12,7 @@ import {
   runComboStepTest,
   subscribeComboStepTests,
 } from "./comboStepTest";
-import Icon from "@/shared/components/Icon";
+import { Spinner } from "@/shared/components/Loading";
 
 const STATE_STYLES = {
   idle: { icon: "science", tone: "text-text-muted border-transparent" },
@@ -42,23 +43,21 @@ export default function ComboStepTestButton({ entry }: { entry: unknown }) {
         : getI18nOrFallback(t, "testStep", "Test this model");
 
   return (
-    // kit-exception: icon-only step probe (spinner while running); the kit Button is a
-    // labelled pill control, this is a status glyph not an action label
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-sm"
       onClick={() => target && void runComboStepTest(target)}
       disabled={!target || state === "running"}
-      className={`p-0.5 rounded border transition-colors ${style.tone} ${
-        target ? "hover:text-primary hover:bg-bg-subtle" : "opacity-30 cursor-not-allowed"
-      }`}
+      className={`border ${style.tone} ${target ? "" : "opacity-30 cursor-not-allowed"}`}
       title={title}
       aria-label={title}
     >
-      <Icon
-        name={style.icon as never}
-        size={12}
-        className={state === "running" ? "animate-spin" : ""}
-      />
-    </button>
+      {state === "running" ? (
+        <Spinner decorative size="xs" />
+      ) : (
+        <Icon name={style.icon} size={12} />
+      )}
+    </Button>
   );
 }

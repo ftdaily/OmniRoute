@@ -71,7 +71,7 @@
 
 <div align="center">
 
-|                                  |         v3.8.50          | **v3.8.51** |      `v3.8.53+`       |
+|                                  |         v3.8.50          | **v3.8.51** |      `v3.8.54+`       |
 | -------------------------------- | :----------------------: | :---------: | :-------------------: |
 | 🌐 Ndị na-enye ọrụ               |           352            |   **358**   |          380          |
 | 🧠 NJirimara ụdị nkata pụrụ iche |           1320           |  **1374**   |         1491          |
@@ -580,7 +580,7 @@ A na-ahọrọ iji Radar n'onwe gị, ọ na-ejikwa naanị GET. Klayentị Omni
 
 </div>
 
-> Ihe ndị a kacha pụta ìhè site na **v3.8.20 → v3.8.53**. Akụkọ zuru ezu dị na [`CHANGELOG.md`](CHANGELOG.md).
+> Ihe ndị a kacha pụta ìhè site na **v3.8.20 → v3.8.54**. Akụkọ zuru ezu dị na [`CHANGELOG.md`](CHANGELOG.md).
 
 - **⚖️ `quota-weighted` routing** — usoro ngwakọta nke iri abụọ na-apụpụ akaụntụ agwụla, wee họrọ ndị fọdụrụ dabere na quota fọdụrụ ÷ ibu dị ugbu a, na-eme ka mkparịta ụka dị adị nọgide. → [Auto-Combo](docs/routing/AUTO-COMBO.md)
 - **🧰 Headless mode** — `omniroute serve --headless` (ma ọ bụ `OMNIROUTE_HEADLESS=1`) na-agba naanị injin proxy `/v1/*`, na dashboard na usoro dashboard naanị kwụsịrị. → [Headless Mode](docs/guides/HEADLESS.md)
@@ -1015,7 +1015,7 @@ omniroute
 ```
 
 > 💡 Ị na-ahụ `npm warn ERESOLVE` ma ọ bụ peer-dep ịdọ aka ná ntị? [Ha adịghị egwu](docs/guides/TROUBLESHOOTING.md#npm-install-warnings-eresolve--peer--deprecated).
-> **Ị na-eji npm 11 ma ọ bụ nke ka elu?** npm nwere ike igbochi package lifecycle scripts belụsọ na e kwenyere ha. `postinstall` nke OmniRoute (`node scripts/build/postinstall.mjs`) dị mkpa iji kwadebe native runtime files ya. Kwenye packages npm kpọrọ aha n'ịdọ aka ná ntị ya mgbe ị na-etinye n'ụwa niile. Maka otu packages OmniRoute 3.8.53 kọrọ:
+> **Ị na-eji npm 11 ma ọ bụ nke ka elu?** npm nwere ike igbochi package lifecycle scripts belụsọ na e kwenyere ha. `postinstall` nke OmniRoute (`node scripts/build/postinstall.mjs`) dị mkpa iji kwadebe native runtime files ya. Kwenye packages npm kpọrọ aha n'ịdọ aka ná ntị ya mgbe ị na-etinye n'ụwa niile. Maka otu packages OmniRoute 3.8.54 kọrọ:
 >
 > ```bash
 > npm install -g --allow-scripts=omniroute,keytar,onnxruntime-node,@parcel/watcher,@swc/core,protobufjs,esbuild omniroute
@@ -1292,20 +1292,20 @@ Metrik iwu na 2026-10-18: **vidiyo pụrụ iche 1.976** · **nlele amaara 20.22
   <tr><td nowrap><b>Oge ịrụ ọrụ</b></td><td>Node.js 22.x / 24.x LTS — <code>&gt;=22.22.2 &lt;23 || &gt;=24.0.0 &lt;27</code></td></tr>
   <tr><td nowrap><b>Asụsụ</b></td><td>TypeScript 6.0 — <b>100% TypeScript</b> n'ofe <code>src/</code> na <code>open-sse/</code> (<code>any</code> efu na isi sistemụ kemgbe v2.0)</td></tr>
   <tr><td nowrap><b>Framework</b></td><td>Next.js 16 + React 19 + Tailwind CSS 4</td></tr>
-  <tr><td nowrap><b>Nchekwa Data</b></td><td>better-sqlite3 (SQLite, WAL journaling) + LowDB (JSON ochie) — 147 modul ngalaba, 222 mbugharị</td></tr>
-  <tr><td nowrap><b>Ncheta</b></td><td>SQLite FTS5 nchọ ederede zuru oke + mgbakọ vector int8-quantized, mbelata nwere ụdị</td></tr>
-  <tr><td nowrap><b>Skima</b></td><td>Zod 4 — nkwenye I/O ngwaọrụ MCP + nkwekọrịta API</td></tr>
-  <tr><td nowrap><b>Usoro Nkwurịta</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
-  <tr><td nowrap><b>Mbupụ</b></td><td>Server-Sent Events (SSE) + WebSocket njikọ (<code>/v1/ws</code>)</td></tr>
-  <tr><td nowrap><b>Mbelata</b></td><td>Pipeline engine 12 — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
-  <tr><td nowrap><b>Nkwenye &amp; Nchekwa</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + MCP nkwenye nwere oke · AES-256-GCM n'ọnọdụ · DOMPurify</td></tr>
-  <tr><td nowrap><b>Nzuzo</b></td><td>wreq-js — ịṅomi fingerprint TLS JA3 / JA4, proxy ọkwa 3</td></tr>
-  <tr><td nowrap><b>Iguzogide</b></td><td>Circuit breaker, exponential backoff, anti-thundering-herd, ọgwụgwọ onwe ya auto-combo</td></tr>
-  <tr><td nowrap><b>Ndekọ</b></td><td>pino — ndekọ JSON haziri nke ọma yana ọnọdụ arịrị</td></tr>
-  <tr><td nowrap><b>Nnwalị</b></td><td>Node.js test runner + Vitest — <b>karịa 60,000 nkọwa nnwale kwụsie ike</b> n'ofe karịa 8,400 faịlụ nnwale a na-eso (unit, integration, E2E, nchekwa, ecosystem)</td></tr>
-  <tr><td nowrap><b>Ikpo Okwu</b></td><td>Desktọp (Electron) · Android (Termux) · PWA (browser ọ bụla)</td></tr>
-  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — mbipụta npm akpaghị aka + Docker Hub n'oge mwepụta</td></tr>
-  <tr><td nowrap><b>Njikọ</b></td><td><a href="https://omniroute.online">Weebụsaịtị</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
+  <tr><td nowrap><b>Ebe nchekwa data</b></td><td>better-sqlite3 (SQLite, ndekọ WAL) + LowDB (JSON nke ochie) — modul ngalaba 147, migrations 224</td></tr>
+  <tr><td nowrap><b>Ncheta</b></td><td>SQLite FTS5 maka ọchụchọ ederede zuru ezu + embeddings vector nke int8-quantized, mbelata nwere ụdị</td></tr>
+  <tr><td nowrap><b>Atụmatụ</b></td><td>Zod 4 — nkwado I/O nke ngwaọrụ MCP + nkwekọrịta API</td></tr>
+  <tr><td nowrap><b>Usoro nkwukọrịta</b></td><td>MCP (stdio / HTTP / SSE) + A2A v0.3 (JSON-RPC 2.0 + SSE)</td></tr>
+  <tr><td nowrap><b>Nfefe</b></td><td>Server-Sent Events (SSE) + njikọ WebSocket (<code>/v1/ws</code>)</td></tr>
+  <tr><td nowrap><b>Mkpakọ</b></td><td>Pipeline engines 12 — RTK, Caveman, LLMLingua-2 (MobileBERT ONNX), GCF, OmniGlyph</td></tr>
+  <tr><td nowrap><b>Nnweta &amp; nchekwa</b></td><td>OAuth 2.0 (PKCE) + JWT + API Keys + ikike MCP nwere oke · AES-256-GCM mgbe echekwara · DOMPurify</td></tr>
+  <tr><td nowrap><b>Nzuzo</b></td><td>wreq-js — nṅomi akara mkpịsị aka JA3 / JA4 TLS, proxy ọkwa 3</td></tr>
+  <tr><td nowrap><b>Nkwụsi ike</b></td><td>Onye na-egbochi sekit, nlọghachi na-abawanye nke nta nke nta, mgbochi ìgwè na-awakpo otu oge, ọgwụgwọ onwe ya auto-combo</td></tr>
+  <tr><td nowrap><b>Ndekọ</b></td><td>pino — ndekọ JSON ahaziri ahazi nwere ọnọdụ arịrịọ</td></tr>
+  <tr><td nowrap><b>Nnwale</b></td><td>Node.js test runner + Vitest — <b>nkwupụta ule static karịrị 60,000</b> n'ofe faịlụ ule karịrị 8,400 a na-enyocha (unit, integration, E2E, nchekwa, gburugburu ebe obibi)</td></tr>
+  <tr><td nowrap><b>Ikpo okwu</b></td><td>Desktọpụ (Electron) · Android (Termux) · PWA (ihe nchọgharị ọ bụla)</td></tr>
+  <tr><td nowrap><b>CI/CD</b></td><td>GitHub Actions — mbipụta npm akpaghị aka + Docker Hub mgbe ewepụtara</td></tr>
+  <tr><td nowrap><b>Njikọ</b></td><td><a href="https://omniroute.online">Webụsaịtị</a> · <a href="https://www.npmjs.com/package/omniroute">npm</a> · <a href="https://hub.docker.com/r/diegosouzapw/omniroute">Docker Hub</a></td></tr>
 </table>
 
 <div align="center">
@@ -1805,7 +1805,7 @@ Akwụkwọ ikike MIT - lee [LICENSE](LICENSE) maka nkọwa.
 
 **[⬆ Laghachi n'elu](#-omniroute)** · Ejiri ❤️ wuo ya maka obodo AI mepere emepe.
 
-<sub>Ọ bụ <a href="https://github.com/diegosouzapw">Diego Souza</a> mepụtara ya · OmniRoute v3.8.53 · Node ≥22.22.2 · Akwụkwọ ikike MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
+<sub>Ọ bụ <a href="https://github.com/diegosouzapw">Diego Souza</a> mepụtara ya · OmniRoute v3.8.54 · Node ≥22.22.2 · Akwụkwọ ikike MIT · <a href="https://omniroute.online">omniroute.online</a></sub>
 
 </div>
 <!-- GitHub Discussions agbanyere maka ajụjụ na azịza obodo -->

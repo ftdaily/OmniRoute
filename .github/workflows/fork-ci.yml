@@ -1,0 +1,43 @@
+name: Fork Deploy Helpers
+
+# Fork-only gate for fork/deploy/*.py (Phase 1.1/1.2). Runs on PRs to mine;
+# never on main/release (upstream must not inherit fork ops tooling), never on
+# self-hosted runners (fork PR code stays off the .113 pool).
+on:
+  pull_request:
+    branches: [mine]
+    paths:
+      - "fork/deploy/**"
+      - "tests/unit/fork-deploy-*.test.ts"
+      - ".github/workflows/fork-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fork-deploy:
+    name: Fork Deploy Helpers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          package-manager-cache: false
+          node-version: 24
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Unit tests (fork deploy helpers)
+        run: node --test --test-force-exit tests/unit/fork-deploy-*.test.ts
+      - name: Python syntax (fork deploy helpers)
+        run: python3 -m py_compile fork/deploy/pack.py fork/deploy/local-release.py fork/deploy/tencent-release.py
+      - name: Packer CLI surface
+        run: |
+          python3 fork/deploy/pack.py --help
+          python3 fork/deploy/local-release.py --help
+          python3 fork/deploy/tencent-release.py --help
+          python3 fork/deploy/local-release.py --help-policy
+          python3 fork/deploy/tencent-release.py --help-policy

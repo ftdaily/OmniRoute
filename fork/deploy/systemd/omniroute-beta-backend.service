@@ -15,6 +15,7 @@ Wants=network-online.target
 BindsTo=omniroute-beta-proxy.service
 
 [Service]
+TimeoutStartSec=120
 Type=simple
 WorkingDirectory=%h/.local/share/omniroute/beta-current
 # Same entrypoint stable uses: dev/run-standalone.mjs (prefers server-ws.mjs:

@@ -51,6 +51,8 @@ test("beta backend serves the internal port and dies with the proxy", () => {
     "heap cap comes from NODE_OPTIONS env, not a CLI flag (flag would win)"
   );
   assert.match(backend, /Environment=DATA_DIR=\/home\/zuxler\/\.omniroute-beta/);
+  // user-manager default TimeoutStartSec=15s kills the 90s readiness gate (COLD-MEASURE)
+  assert.match(backend, /^TimeoutStartSec=120$/m);
 });
 
 test("p2 ram drop-in still present for the plain beta unit", () => {

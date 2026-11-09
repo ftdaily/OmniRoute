@@ -26,6 +26,7 @@ with metadata rollback; secrets flow via EnvironmentFile 0600.
 import argparse
 import hashlib
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -75,6 +76,8 @@ def build_parser():
     ap.add_argument("--ledger-top", default="231")
     ap.add_argument("--clone-dir", default=None,
                     help="default /var/lib/omniroute-beta-<release>")
+    ap.add_argument("--service-user", default="omniroute",
+                    help="OS user the beta unit runs as; owns the clone dir")
     ap.add_argument("--help-policy", action="store_true")
     ap.add_argument("cmd", nargs="?", choices=["seal", "beta", "promote"])
     ap.add_argument("image", nargs="?")
@@ -258,6 +261,19 @@ def seal(ctx):
     print("TENCENT_SEALED", data["identity"]["main_pid"], "health200=" + str(ok))
 
 
+def chown_tree(path, user):
+    """chown -R path to the service user; the beta unit runs as this user."""
+    import pwd
+    import shutil
+    uid = pwd.getpwnam(user).pw_uid
+    gid = pwd.getpwnam(user).pw_gid
+    for root, dirs, files in os.walk(path):
+        shutil.chown(root, user, user)
+        for n in dirs + files:
+            shutil.chown(os.path.join(root, n), user, user)
+    return uid, gid
+
+
 def stage(ctx, image, build, s, a):
     """Unpack artifact tarball to a unique release dir + clone DATA_DIR via backup API."""
     import tarfile
@@ -290,6 +306,7 @@ def stage(ctx, image, build, s, a):
     import shutil as _sh
     _sh.copy2(p, clone / "server.env")
     (clone / "server.env").chmod(0o600)
+    chown_tree(str(clone), ctx.args.service_user)
     return target, clone
 
 

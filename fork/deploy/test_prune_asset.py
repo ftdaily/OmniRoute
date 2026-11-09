@@ -109,6 +109,31 @@ class PruneSelectTest(unittest.TestCase):
         self.assertIn("not confirmed", proc.stderr)
         self.assertTrue(os.path.exists(os.path.join(self.root, self.prev)))
 
+    def test_apply_deletes_readonly_sealed_tree(self):
+        # Installers seal release dirs read-only (dr-xr-xr-x); the delete
+        # path must chmod u+w + retry instead of leaving them behind (rc=1).
+        target = os.path.join(self.root, self.prev)
+        nested = os.path.join(target, "node_modules", ".bin")
+        os.makedirs(nested)
+        with open(os.path.join(nested, "blob"), "w") as f:
+            f.write("x" * 1024)
+        for dirpath, dirnames, filenames in os.walk(target):
+            for fn in filenames:
+                os.chmod(os.path.join(dirpath, fn), 0o444)
+            os.chmod(dirpath, 0o555)
+        confirm = os.path.join(self.tmp.name, "confirm-ro.txt")
+        with open(confirm, "w") as f:
+            f.write(f"DELETE {self.prev} (post-soak previous)\n")
+        # setUp only ages dirs existing then; this tree grew after, re-age it
+        old = 49 * 3600
+        os.utime(target, (old, old))
+        proc = run_prune(self.root, self.link, self.dropin, "--apply",
+                         "--confirm-list", confirm)
+        out = self.body(proc)
+        self.assertIn(f"deleted {self.prev}", out)
+        self.assertFalse(os.path.exists(target))
+        self.assertTrue(os.path.exists(os.path.join(self.root, self.live)))
+
 
 class ReleaseAssetTest(unittest.TestCase):
     def test_dry_run_upload_download(self):

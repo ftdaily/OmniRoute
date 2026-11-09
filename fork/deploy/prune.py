@@ -12,6 +12,8 @@ import argparse
 import hashlib
 import os
 import re
+import shutil
+import stat
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -110,6 +112,37 @@ def select(
     return out
 
 
+def _rmtree_chmod_retry(func, path, exc_info):
+    """rmtree error handler: installer-sealed trees are read-only (dr-xr-xr-x).
+
+    unlink/rmdir need write on the PARENT dir, not on path itself, so loosen
+    both (never through a symlink) and retry once. A failed retry raises out
+    of rmtree, which the caller reports as rc=1 (e.g. unwritable mount).
+    """
+    if not os.path.islink(path):
+        try:
+            mode = os.stat(path).st_mode
+            extra = stat.S_IWUSR | (stat.S_IXUSR if stat.S_ISDIR(mode) else 0)
+            os.chmod(path, mode | extra)
+        except OSError:
+            pass
+    parent = os.path.dirname(path)
+    if parent:
+        try:
+            os.chmod(parent, os.stat(parent).st_mode | stat.S_IWUSR | stat.S_IXUSR)
+        except OSError:
+            pass
+    func(path)
+
+
+def rmtree_ro(path: str) -> None:
+    """Delete a release dir even when sealed read-only by the installer."""
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_rmtree_chmod_retry)
+    else:  # pragma: no cover - floor is 3.12, kept for backports
+        shutil.rmtree(path, onerror=_rmtree_chmod_retry)
+
+
 def confirm_hash(decisions: list[Decision]) -> str:
     lines = [f"{d.verdict} {d.name} {d.reason}" for d in decisions]
     return hashlib.sha256(("\n".join(lines) + "\n").encode()).hexdigest()[:16]
@@ -149,9 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     for name in to_delete:
         full = os.path.join(args.releases_root, name)
         try:
-            import shutil
-
-            shutil.rmtree(full)
+            rmtree_ro(full)
             print(f"deleted {name}")
         except OSError as exc:
             print(f"prune: failed to delete {name}: {exc}", file=sys.stderr)

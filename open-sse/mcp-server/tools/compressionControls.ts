@@ -22,7 +22,7 @@ import { logToolCall } from "../audit.ts";
 import {
   getCompressionSettings,
   updateCompressionSettings,
-} from "../../../src/lib/db/compression.ts";
+} from "../../handlers/chatCore/compressionSettings.ts";
 import { registerBuiltinCompressionEngines } from "../../services/compression/engines/index.ts";
 import {
   getCompressionEngine,

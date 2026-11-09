@@ -417,14 +417,14 @@ test("handleChat: a new key (default combo/*) cannot reach a blocked model throu
   assert.deepEqual(meta?.allowedCombos, ["combo/*"], "precondition: default combo grant");
 
   const status = await chat(key, COMBO);
-  assert.equal(status, 503, "every target is skipped before dispatch");
+  assert.equal(status, 403, "every target is skipped before dispatch");
   assert.deepEqual(upstreamModels, [], "the blocked target must not be dispatched");
 });
 
 test("handleChat: a combo/* grant on a restricted key cannot reach a blocked model", async () => {
   const key = await seed(wildcardGrant([BLOCKED]));
   const status = await chat(key, COMBO);
-  assert.equal(status, 503);
+  assert.equal(status, 403);
   assert.deepEqual(upstreamModels, []);
 });
 
@@ -437,7 +437,7 @@ test("handleChat: a named allowedCombos grant reaches a blocked model of that co
 
 test("handleChat: naming one combo does not open blockedModels for the others", async () => {
   const key = await seed({ allowedCombos: ["combo/*", "mixed-combo"], blockedModels: [BLOCKED] });
-  assert.equal(await chat(key, COMBO), 503, "reached through combo/* only");
+  assert.equal(await chat(key, COMBO), 403, "reached through combo/* only");
   assert.deepEqual(upstreamModels, []);
   assert.equal(await chat(key, "mixed-combo"), 200, "named combo");
   assert.deepEqual(upstreamModels, ["secret-model"], "its first target is dispatched");
@@ -567,7 +567,7 @@ test("handleChat: dispatch gate applies a segment glob to an alias target", asyn
 
 test("handleChat: a blockedModels entry naming the alias skips that combo target", async () => {
   const key = await seed({ blockedModels: [ALIAS] });
-  assert.equal(await chat(key, ALIAS_COMBO), 503, "every target is skipped before dispatch");
+  assert.equal(await chat(key, ALIAS_COMBO), 403, "every target is skipped before dispatch");
   assert.deepEqual(upstreamModels, []);
 });
 

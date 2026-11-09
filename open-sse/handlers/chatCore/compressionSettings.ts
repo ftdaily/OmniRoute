@@ -10,6 +10,12 @@
 
 import type { CompressionConfig } from "../../services/compression/types.ts";
 
+// Single open-sse → src/lib/db/compression edge for MCP tools (boundary ratchet).
+export {
+  getCompressionSettings,
+  updateCompressionSettings,
+} from "../../../src/lib/db/compression.ts";
+
 type LoggerLike = { warn?: (...args: unknown[]) => void } | null | undefined;
 
 export function createDisabledCompressionConfig(): CompressionConfig {

@@ -1,5 +1,4 @@
 import Bottleneck from "bottleneck";
-import type { BoundedMap } from "../../../src/lib/quota/boundedMap.ts";
 
 export const WATCHDOG_INTERVAL_MS = 30_000;
 
@@ -16,13 +15,12 @@ interface LimiterWedgeWatchdogDependencies {
   limiterLastUsed: Map<string, number>;
   limiterEffectiveSettings: WeakMap<Bottleneck, Bottleneck.ConstructorOptions>;
   // boundedMap in production (LRU-capped), plain Map in some tests — the
-  // boundedMap in production (LRU-capped), plain Map in some tests — the
-  // watchdog only reads and writes entries; the manager also iterates,
-  // deletes, and clears. BoundedMap provides exactly this method set.
-  preservedReplacementSettings: Pick<
-    BoundedMap<Bottleneck.ConstructorOptions>,
-    "get" | "set" | "keys" | "delete" | "clear"
-  >;
+  // watchdog only reads and writes entries.
+  preservedReplacementSettings: {
+    get(key: string): Bottleneck.ConstructorOptions | undefined;
+    // The return value is ignored, so both Map#set (returns the map) and BoundedMap#set (void) fit.
+    set(key: string, value: Bottleneck.ConstructorOptions): unknown;
+  };
   trackBackground: (promise: Promise<unknown>) => void;
   log: (...args: unknown[]) => void;
   warn: (...args: unknown[]) => void;

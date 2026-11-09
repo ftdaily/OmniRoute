@@ -1,0 +1,37 @@
+[Unit]
+Description=OmniRoute Beta server (cold start, internal :20139)
+# Same bundle as the plain beta unit, on the internal port only. Started by
+# the proxy on first connection (Wants below); stops on `systemctl stop` or
+# when the proxy that needs it exits (BindsTo — the proxy holds no client
+# state, so a fresh pair on next wake is correct).
+After=network-online.target
+Wants=network-online.target
+BindsTo=omniroute-beta-proxy.service
+After=omniroute-beta-proxy.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/zuxler/OmniRoute
+# No hardcoded --max-old-space-size flag: the heap cap comes from
+# NODE_OPTIONS below, which a CLI flag would silently override
+# (proven 2026-11-09, 4496293888 with both set).
+ExecStart=/usr/bin/node scripts/dev/run-next.mjs start
+Restart=no
+Environment=NODE_ENV=production
+Environment=PORT=20139
+Environment=OMNIROUTE_PORT=20139
+Environment=HOSTNAME=127.0.0.1
+Environment=DATA_DIR=/home/zuxler/.omniroute-beta
+Environment=PROXY_HEALTH_TEST_URL=https://www.google.com
+# P2 tuning baked in (same values as omniroute-beta-p2-ram.conf, which this
+# unit does not need because it carries no CLI heap flag to conflict with).
+Environment=APP_LOG_LEVEL=warn
+Environment=NODE_OPTIONS=--max-old-space-size=2048
+Environment=OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS=300000
+Environment=OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS=300000
+Environment=OMNIROUTE_WARMUP_TICK_INTERVAL_MS=300000
+# Keep-alive already env-tunable upstream
+# (MAIN_SERVER_KEEPALIVE_TIMEOUT_MS, default 65 s); no fork knob needed.
+
+[Install]
+WantedBy=multi-user.target

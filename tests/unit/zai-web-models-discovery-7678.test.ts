@@ -71,8 +71,8 @@ test("zai-web exposes only its curated public models without remote discovery", 
   });
 
   // zai-web is a curated-only provider (no remote /models endpoint): synced
-  // imports and operator custom models are intentionally NOT surfaced — the
-  // registry catalog is the complete lineup. Seed both to lock that contract.
+  // imports are intentionally NOT surfaced — the registry catalog plus the
+  // operator's own custom rows (#18018) is the complete lineup.
   await modelsDb.replaceSyncedAvailableModelsForConnection("zai-web", connection.id, [
     { id: "glm-4.6v", name: "GLM-4.6V", source: "imported" },
     { id: "0727-106B-API", name: "GLM-4.5-Air", source: "imported" },
@@ -90,9 +90,7 @@ test("zai-web exposes only its curated public models without remote discovery", 
 
   try {
     const response = await modelsRoute.GET(
-      new Request(
-        `http://localhost/api/providers/${connection.id}/models?refresh=true&excludeCustom=true`
-      ),
+      new Request(`http://localhost/api/providers/${connection.id}/models?refresh=true`),
       { params: { id: connection.id } }
     );
 

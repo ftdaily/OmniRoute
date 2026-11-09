@@ -9,3 +9,4 @@
 # This file must stay LF too: git parses it as-is, and a trailing CR would
 # corrupt every pattern (e.g. "*.sh\r" matches nothing).
 .gitattributes text eol=lf
+fork/PATCHES.md merge=union

@@ -200,8 +200,8 @@ jobs:
           # failure); retry 3x with backoff and verify the binary before moving on.
           actionlint_ok=0
           for attempt in 1 2 3; do
-            if bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "${ACTIONLINT_VERSION#v}" "$HOME/.local/bin" \
-              && "$HOME/.local/bin/actionlint" -version; then
+            bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "${ACTIONLINT_VERSION#v}" "$HOME/.local/bin" || true
+            if "$HOME/.local/bin/actionlint" -version; then
               actionlint_ok=1
               break
             fi

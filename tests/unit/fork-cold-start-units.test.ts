@@ -25,10 +25,14 @@ test("beta proxy forwards to the internal backend with idle exit", () => {
   assert.match(proxy, /systemd-socket-proxyd/);
   assert.match(proxy, /--exit-idle-time=15min/);
   assert.match(proxy, /127\.0\.0\.1:20139/);
-  assert.match(proxy, /Wants=omniroute-beta-backend\.service/);
+  assert.match(proxy, /Requires=omniroute-beta-backend\.service/);
   assert.ok(
     !/^BindsTo=/m.test(proxy),
     "proxy must not BindsTo the backend: it holds the client socket across backend restarts"
+  );
+  assert.ok(
+    !/^\[Install\]/m.test(proxy),
+    "socket-activated proxy must not start at boot"
   );
 });
 
@@ -37,7 +41,7 @@ test("beta backend serves the internal port and dies with the proxy", () => {
   assert.match(backend, /Environment=PORT=20139/);
   assert.match(backend, /Environment=OMNIROUTE_PORT=20139/);
   assert.match(backend, /BindsTo=omniroute-beta-proxy\.service/);
-  assert.match(backend, /scripts\/dev\/run-next\.mjs start/);
+  assert.match(backend, /dev\/run-standalone\.mjs/);
   assert.match(backend, /Environment=NODE_OPTIONS=--max-old-space-size=2048/);
   assert.ok(
     !/ExecStart=.*--max-old-space-size/.test(backend),

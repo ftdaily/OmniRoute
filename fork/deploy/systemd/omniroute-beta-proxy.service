@@ -1,19 +1,19 @@
 [Unit]
 Description=OmniRoute Beta socket proxy (cold start, idle exit 15 min)
-# Started on first connection to omniroute-beta.socket. Exits after 15 min
-# idle, freeing RAM; the socket stays and re-wakes it on next connection.
+# Socket-activated: started on first connection to omniroute-beta.socket.
+# Exits after 15 min idle, freeing RAM; the socket stays and re-wakes it.
+# ordering note: the backend BindsTo= this proxy (backend dies with proxy),
+# so the proxy must NOT After= the backend — that is an ordering cycle
+# (verify: "Transaction order is cyclic"). Instead the proxy Requires= the
+# backend (pulled in on the same transaction; systemd orders Requires
+# members before their requirer) WITHOUT After=, and the backend's
+# ExecStartPost readiness gate makes "backend started" mean "serving":
+# proxyd connects only after the gate passes, so no ECONNREFUSED on wake.
 Requires=omniroute-beta.socket
+Requires=omniroute-beta-backend.service
 After=omniroute-beta.socket
-# Pulled in by the socket; stops when the socket stops. The backend is
-# NOT a dependency: first connection starts backend+proxy together, and the
-# proxy must outlive backend restarts (it holds the client socket).
-Wants=omniroute-beta-backend.service
-Before=omniroute-beta-backend.service
 
 [Service]
 Type=simple
 ExecStart=/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=15min 127.0.0.1:20139
 Restart=no
-
-[Install]
-WantedBy=multi-user.target

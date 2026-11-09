@@ -33,9 +33,33 @@ interface ProxyHealthEntry {
   ttlMs: number;
 }
 
-// In-memory cache: proxyUrl → health entry
+// In-memory cache: proxyUrl → health entry.
+// Fork P2 (2.5): bounded — proxy URL churn (rotation pools, dead proxies)
+// would otherwise grow this map without limit. Default 500; the malformed-
+// URL and bad-host early writes go through the same set path, so capping in
+// one place covers all writers.
+const PROXY_HEALTH_CACHE_MAX = (() => {
+  const raw = process.env.OMNIROUTE_PROXY_HEALTH_CACHE_MAX;
+  const parsed = raw ? Number(raw) : Number.NaN;
+  return Number.isFinite(parsed) && parsed >= 100 ? Math.floor(parsed) : 500;
+})();
 const proxyHealthCache = new Map<string, ProxyHealthEntry>();
 const proxyHealthInflight = new Map<string, Promise<boolean>>();
+
+function cacheProxyHealth(proxyUrl: string, entry: ProxyHealthEntry): void {
+  proxyHealthCache.set(proxyUrl, entry);
+  while (proxyHealthCache.size > PROXY_HEALTH_CACHE_MAX) {
+    // Map preserves insertion order: oldest first.
+    const oldest = proxyHealthCache.keys().next();
+    if (oldest.done) break;
+    proxyHealthCache.delete(oldest.value);
+  }
+}
+
+/** Test hook: current proxy-health cache entry count (P2 cap regression check). */
+export function __proxyHealthCacheSizeForTesting(): number {
+  return proxyHealthCache.size;
+}
 
 type TcpCheck = (host: string, port: number, timeoutMs: number) => Promise<boolean>;
 let tcpCheckImpl: TcpCheck = tcpCheck;
@@ -77,7 +101,7 @@ export async function isProxyReachable(
     url = new URL(proxyUrl);
   } catch {
     // Malformed URL — treat as unreachable
-    proxyHealthCache.set(proxyUrl, {
+    cacheProxyHealth(proxyUrl, {
       healthy: false,
       checkedAt: Date.now(),
       ttlMs: cacheTtlMs,
@@ -89,7 +113,7 @@ export async function isProxyReachable(
   const port = parseInt(url.port || defaultPortForScheme(url.protocol), 10);
 
   if (!host || isNaN(port)) {
-    proxyHealthCache.set(proxyUrl, {
+    cacheProxyHealth(proxyUrl, {
       healthy: false,
       checkedAt: Date.now(),
       ttlMs: cacheTtlMs,
@@ -105,7 +129,7 @@ export async function isProxyReachable(
   const probe = tcpCheckImpl(host, port, timeoutMs).then((healthy) => {
     // Before the cache write, so the verdict's TTL starts after the (flag-gated) note.
     noteProbeVerdict(proxyUrl, healthy);
-    proxyHealthCache.set(proxyUrl, {
+    cacheProxyHealth(proxyUrl, {
       healthy,
       checkedAt: Date.now(),
       ttlMs: healthy ? cacheTtlMs : Math.min(cacheTtlMs, UNHEALTHY_CACHE_TTL_MS),

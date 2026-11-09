@@ -522,6 +522,10 @@ jobs:
           # PR acceleration is not release-candidate provenance.
           cache: ${{ github.event_name == 'pull_request' }}
       - run: npm run check:docs-all
+        env:
+          # Fork does not maintain docs/i18n mirrors (English only, frozen at the
+          # upstream pin) — skip the exact-copy llm.txt + CHANGELOG mirror checks.
+          FORK_SKIP_I18N_MIRRORS: "1"
       # Previously-orphaned contract gates (existed as files, never wired anywhere).
       # All exit 0 today: cli-i18n is a hard gate, openapi-coverage is a ratchet
       # (floor ~36), openapi-security-tiers is advisory (Hard Rules #15/#17).

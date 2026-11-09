@@ -44,6 +44,11 @@ export function __resetSpawnSyncForTest() {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 
+// Fork guard: the fork does not maintain docs/i18n mirrors (English only,
+// mirrors frozen at the upstream pin). FORK_SKIP_I18N_MIRRORS=1 drops the
+// README-mirrors migration check from buildChecks. Upstream never sets it.
+const SKIP_I18N_MIRRORS = process.env.FORK_SKIP_I18N_MIRRORS === "1";
+
 const COMMON_NON_IMPL_BASENAMES = new Set([
   "index.ts",
   "index.mts",
@@ -734,7 +739,8 @@ function makeProviderCountValidator(expected, requireClaim = false) {
 
 export function buildChecks() {
   return [
-    ...buildReadmeMigrationChecks(ROOT, countMigrations()),
+    // Fork frozen mirrors: dropped when FORK_SKIP_I18N_MIRRORS=1.
+    ...(SKIP_I18N_MIRRORS ? [] : buildReadmeMigrationChecks(ROOT, countMigrations())),
     {
       label: "Provider count",
       actual: readProviderTotal(),

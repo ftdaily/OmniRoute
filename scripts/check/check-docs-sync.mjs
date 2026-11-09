@@ -73,6 +73,12 @@ function isSemver(value) {
 
 let hasFailure = false;
 
+// Fork guard: the fork does not maintain docs/i18n mirrors (English only,
+// mirrors frozen at the upstream pin). FORK_SKIP_I18N_MIRRORS=1 skips the
+// exact-copy llm.txt mirror check and the CHANGELOG mirror version check so
+// upstream merges stay clean — upstream never sets this env.
+const SKIP_I18N_MIRRORS = process.env.FORK_SKIP_I18N_MIRRORS === "1";
+
 function fail(message) {
   hasFailure = true;
   console.error(`[docs-sync] FAIL - ${message}`);
@@ -243,10 +249,20 @@ try {
     }
   }
 
-  // llm.txt mirrors must be exact copies (no translation)
-  checkI18nMirrorFile("llm.txt", llmPath);
+  // llm.txt mirrors must be exact copies (no translation).
+  // On the fork (FORK_SKIP_I18N_MIRRORS=1) mirrors are frozen at the upstream
+  // pin, so this check is skipped — logged, never silent.
+  if (SKIP_I18N_MIRRORS) {
+    console.log("[docs-sync] llm.txt i18n mirrors skipped (FORK_SKIP_I18N_MIRRORS=1)");
+  } else {
+    checkI18nMirrorFile("llm.txt", llmPath);
+  }
   // CHANGELOG.md mirrors are translations — check version sections and size, not exact content
-  checkI18nChangelogFile(changelogPath);
+  if (SKIP_I18N_MIRRORS) {
+    console.log("[docs-sync] CHANGELOG.md i18n mirrors skipped (FORK_SKIP_I18N_MIRRORS=1)");
+  } else {
+    checkI18nChangelogFile(changelogPath);
+  }
 
   // Anti-regression: legacy duplicate docs that have been superseded must not return.
   // Use docs/reference/* as the source of truth.

@@ -34,6 +34,11 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 // Env vars referenced in code that should NOT trigger documentation drift.
 // These are usually system/process vars or harness-only knobs.
 const IGNORE_FROM_CODE = new Set([
+  // Fork-only CI gate knob: tells the docs-sync/counts gates to skip frozen
+  // docs/i18n mirrors (scripts/check/check-docs-sync.mjs,
+  // scripts/check/check-docs-counts-sync.mjs). Set only in the fork's CI env,
+  // never OmniRoute runtime config.
+  "FORK_SKIP_I18N_MIRRORS",
   "NODE_ENV",
   "PATH",
   "HOME",

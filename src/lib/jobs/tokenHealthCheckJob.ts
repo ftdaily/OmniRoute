@@ -13,7 +13,16 @@
 import { isHealthCheckDisabled, sweep } from "@/lib/tokenHealthCheck";
 import type { JobRegistry } from "@/lib/jobRegistry/registry";
 
-const TOKEN_HEALTH_CHECK_INTERVAL_MS = 60_000;
+const DEFAULT_TOKEN_HEALTH_CHECK_INTERVAL_MS = 60_000;
+
+// Fork P2 (2.3): allow slowing the 60 s sweep via env; default unchanged,
+// invalid values fall back to the default (same clamp pattern as the
+// reasoning-cache cleanup job).
+function resolveTokenHealthCheckIntervalMs(): number {
+  const raw = process.env.OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS;
+  const parsed = raw ? Number(raw) : Number.NaN;
+  return Number.isFinite(parsed) && parsed >= 10_000 ? Math.floor(parsed) : DEFAULT_TOKEN_HEALTH_CHECK_INTERVAL_MS;
+}
 
 export function registerTokenHealthCheck(registry: JobRegistry): void {
   const now = new Date().toISOString();
@@ -21,7 +30,7 @@ export function registerTokenHealthCheck(registry: JobRegistry): void {
     id: "token_health_check",
     type: "interval",
     cron: null,
-    intervalMs: TOKEN_HEALTH_CHECK_INTERVAL_MS,
+    intervalMs: resolveTokenHealthCheckIntervalMs(),
     enabled: true,
     envFlag: null,
     config: {},

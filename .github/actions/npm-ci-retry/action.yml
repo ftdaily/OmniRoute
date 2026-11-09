@@ -75,6 +75,9 @@ runs:
 
           # --no-audit: `audit:deps` is its own gate; the inline audit only adds latency.
           if npm ci --no-audit --no-fund; then
+            # fork: npm 11 silently drops optional keytar (blocked install script);
+            # restore it per check-native-deps fix #1 (fork/PATCHES.md).
+            [ -d node_modules/keytar ] || npm install keytar --no-save --no-audit --no-fund --foreground-scripts
             exit 0
           else
             exit_code=$?

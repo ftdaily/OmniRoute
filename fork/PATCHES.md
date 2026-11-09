@@ -101,3 +101,4 @@
   those dirs (verified via package.json main/exports + `ls`).
 - `tests/unit/fork-deploy-pack.test.ts`: both `stage` invocations pass
   `--skip-native-check` (only the test uses it).
+- `.github/actions/npm-ci-retry/action.yml`: after a fresh `npm ci`, reinstall optional `keytar` if npm 11 dropped it (check-native-deps fix #1); stops the Build/Lint keytar flake.

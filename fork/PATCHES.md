@@ -22,3 +22,7 @@
 - `src/lib/proxyHealth.ts`: `proxyHealthCache` capped (`PROXY_HEALTH_CACHE_MAX`, default 500, `OMNIROUTE_PROXY_HEALTH_CACHE_MAX` override floor 100) via single `cacheProxyHealth()` writer covering all set sites incl. malformed-URL/bad-host early writes + `__proxyHealthCacheSizeForTesting`. Test: `tests/unit/proxy-health-cache-cap.test.ts` (1/1); existing proxy-health suites (6246/refusal-memory/default-port, 13 tests) green.
 - Investigated, no change: `src/lib/gamification/notifications.ts` `recentUnlocks` already bounded (per-key cap 50 + 1-min entry TTL + 2-min stale-key eviction each record).
 - `fork/deploy/systemd/omniroute-beta-p2-ram.conf` (new, not deployed): Beta drop-in — `APP_LOG_LEVEL=warn`, `NODE_OPTIONS=--max-old-space-size=2048` (IGNORED on units with hardcoded ExecStart flag — proven 4496293888; real activation = user edits ExecStart or adopts the flag-free 2b server unit), 3 timer envs at 300 s.
+
+## Phase 2 env docs (sync fix)
+
+- `.env.example` + `docs/reference/ENVIRONMENT.md`: documented the 5 fork P2 vars (CI `check:env-doc-sync` requires code/example/docs in sync): `OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS`, `OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS`, `OMNIROUTE_WARMUP_TICK_INTERVAL_MS`, `OMNIROUTE_PROXY_HEALTH_CACHE_MAX`, `OMNIROUTE_HOOKS_RATELIMIT_MAP_MAX`. Verified: `node scripts/check/check-env-doc-sync.mjs` green (722/1014/1031, none missing); `check:docs-counts` exit 0 (1 pre-existing soft drift: CODEBASE_DOCUMENTATION executor count).

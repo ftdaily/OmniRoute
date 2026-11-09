@@ -8,6 +8,9 @@ Before=omniroute-beta-proxy.service
 ListenStream=127.0.0.1:20129
 # Hermes/OpenViking/opencode keep localhost:20129; no per-connection service.
 Accept=no
+# REQUIRED: default Service= would be omniroute-beta.service (same basename)
+# = the OLD plain beta. Pin the proxy so first connection wakes the cold path.
+Service=omniroute-beta-proxy.service
 
 [Install]
 WantedBy=sockets.target

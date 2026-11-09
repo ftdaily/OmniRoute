@@ -1,0 +1,12 @@
+[Unit]
+Description=OmniRoute production socket proxy (idle exit 30 min)
+Requires=omniroute-prod.socket
+Requires=omniroute-repo.service
+After=omniroute-prod.socket
+
+[Service]
+Type=simple
+TimeoutStartSec=120
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 110); do [ "$(curl -s -o /dev/null -w "%%{http_code}" --max-time 2 http://127.0.0.1:20138/api/health)" = 200 ] && exit 0; sleep 1; done; exit 1'
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=30min 127.0.0.1:20138
+Restart=no

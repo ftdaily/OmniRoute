@@ -21,7 +21,6 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const workflow = readFileSync(path.join(root, ".github/workflows/docker-publish.yml"), "utf8");
 const buildJob = workflow.slice(workflow.indexOf("\n  build:"), workflow.indexOf("\n  merge:"));
-const mergeJob = workflow.slice(workflow.indexOf("\n  merge:"));
 
 const AMD64 = "a".repeat(64);
 const ARM64 = "b".repeat(64);

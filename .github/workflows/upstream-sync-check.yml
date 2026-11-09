@@ -1,0 +1,67 @@
+name: Upstream sync check (manual)
+
+# Read-only dry run: shows what the next upstream merge would touch, without
+# merging anything. Dispatch → read the step summary → merge in a worktree with
+# rerere on → run fork/sync/merge-recipes.sh → fork PR → CI → Beta → Stable.
+# Never pushes, never opens PRs/issues.
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: "Upstream ref to preview (branch or tag)"
+        required: false
+        default: "release/v3.8.54"
+        type: string
+      upstream_repo:
+        description: "Upstream repository (owner/name)"
+        required: false
+        default: "cheaper-inference/OmniRoute"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    name: Preview upstream merge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch upstream ref
+        run: |
+          git fetch --no-tags "https://github.com/${{ inputs.upstream_repo }}" "${{ inputs.upstream_ref }}"
+
+      - name: List and classify conflicts
+        run: |
+          TREE=$(git merge-tree --write-tree --name-only --messages HEAD FETCH_HEAD || true)
+          # Files git merged (blank-line terminated list after the tree SHA) plus
+          # any CONFLICT paths from the messages section — clean fast-forwards
+          # yield an empty set, which is itself the answer.
+          BODY=$(printf '%s\n' "$TREE" | awk 'NR==1{next} /^$/{exit} {print}' | sort -u || true)
+          CONFLICTS=$(printf '%s\n' "$TREE" | grep -oE 'CONFLICT[^:]* in [^ ]+' | sed 's/.* in //' | sort -u || true)
+          BODY=$(printf '%s\n%s\n' "$BODY" "$CONFLICTS" | grep . | sort -u || true)
+          COUNT=$(echo "$BODY" | grep -c . || true)
+          {
+            echo "## Upstream sync preview"
+            echo ""
+            echo "Upstream: \`${{ inputs.upstream_repo }}@${{ inputs.upstream_ref }}\`"
+            echo "Conflicting files: **$COUNT**"
+            echo ""
+            while IFS= read -r f; do
+              [ -n "$f" ] || continue
+              case "$f" in
+                docs/i18n/*) cls="known: docs/i18n → theirs" ;;
+                README.md|AGENTS.md|llm.txt) cls="known: root docs → theirs + rerun generators" ;;
+                package.json) cls="known: keep fork fields, take upstream deps" ;;
+                src/i18n/messages/*) cls="known: key union" ;;
+                src/lib/db/migrations/*) cls="known: renumber" ;;
+                *) cls="NEW: manual" ;;
+              esac
+              echo "- \`$f\` — $cls"
+            done <<< "$BODY"
+          } >> "$GITHUB_STEP_SUMMARY"

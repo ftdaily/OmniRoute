@@ -20,7 +20,7 @@ assert.ok(
 );
 console.log(`[adaptive-admission-route-matrix] DATA_DIR=${harness.TEST_DATA_DIR}`);
 
-const { BaseExecutor, resetStorage, seedConnection, cleanup } = harness;
+const { BaseExecutor, resetStorage, seedConnection, seedApiKey, cleanup } = harness;
 
 const {
   getAdaptiveAdmissionRuntime,
@@ -345,6 +345,7 @@ test(
       name: "admission-matrix-openai",
       apiKey: "sk-openai-admission-matrix",
     });
+    const callerApiKey = await seedApiKey({ name: "admission-matrix-caller" });
     const connectionId = String(connection.id);
     const beforeConnection = connectionFailureState(
       (await getProviderConnectionById(connectionId)) as Record<string, unknown> | null
@@ -363,7 +364,10 @@ test(
         ...routeCase,
         buildRequest: () =>
           jsonRequest("http://localhost/api/v1/relay/chat/completions", chatBody("relay"), {
+            // Relay auth consumes the Bearer token; handleChat's api-key policy
+            // needs a valid key too, so carry both (Bearer stays the relay token).
             Authorization: `Bearer ${rawRelayToken}`,
+            "x-api-key": callerApiKey.key,
           }),
       };
     });

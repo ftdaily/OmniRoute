@@ -67,3 +67,6 @@
 - `StopWhenUnneeded=yes` NOT used: systemd 262 `--user verify` rejects it
   as unknown in `[Service]` (verified warning); backend `BindsTo=` the
   proxy achieves the same stop-with-proxy.
+## Phase 2 env docs (sync fix)
+
+- `.env.example` + `docs/reference/ENVIRONMENT.md`: documented the 5 fork P2 vars (CI `check:env-doc-sync` requires code/example/docs in sync): `OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS`, `OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS`, `OMNIROUTE_WARMUP_TICK_INTERVAL_MS`, `OMNIROUTE_PROXY_HEALTH_CACHE_MAX`, `OMNIROUTE_HOOKS_RATELIMIT_MAP_MAX`. Verified: `node scripts/check/check-env-doc-sync.mjs` green (722/1014/1031, none missing); `check:docs-counts` exit 0 (1 pre-existing soft drift: CODEBASE_DOCUMENTATION executor count).

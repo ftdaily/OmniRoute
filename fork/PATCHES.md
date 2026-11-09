@@ -89,3 +89,4 @@
   vs origin/mine`, exit 0.
 - Supersedes: `b825ecc34f` (5,194-line reconciliation ledger, upstream file
   churn every sync) was reset (`git reset --hard origin/mine`), never pushed.
+- `.github/workflows/quality.yml`: actionlint install retries 3x with 10s backoff + `actionlint -version` verification before continuing, hard fail after 3 misses (raw.githubusercontent flakes ~92-byte error page). ci.yml:449 untouched (upstream).

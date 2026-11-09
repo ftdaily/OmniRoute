@@ -309,6 +309,26 @@ test("merge: Bun digest downloads may find nothing", () => {
   }
 });
 
+const PREPARE = "Resolve version, latest-promotion, and skip flag";
+const TAG_PUSH = {
+  EVENT_NAME: "push",
+  REF_TYPE: "tag",
+  REF_NAME: "v1.0.0",
+  DEFAULT_BRANCH: "main",
+};
+const MANDATORY_REFS = [
+  `${IMAGE}:1.0.0`,
+  `${IMAGE}:1.0.0-web`,
+  `${GHCR}:1.0.0`,
+  `${GHCR}:1.0.0-web`,
+];
+
+function runPrepare(env, scenario) {
+  // Actions defines every variable of the step's env block, empty when the event lacks it.
+  const stepEnv = { INPUT_VERSION: "", PROMOTE_INPUT: "", ...env };
+  return withSandbox((dir) => runScript(dir, PREPARE, { env: stepEnv, scenario }));
+}
+
 test("prepare: skips when the mandatory images are complete, without looking at Bun", () => {
   const result = runPrepare(TAG_PUSH, {
     tags: {

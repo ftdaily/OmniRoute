@@ -145,7 +145,7 @@ test("a state change invalidates the cache so the next read rebuilds", async () 
 
 test("on build timeout, last-good is returned and cached so subsequent calls hit cache immediately", async () => {
   await resolve(async () => payload("seeded"));
-  readCache.invalidateDbCache();
+  catalogCache.__expireCatalogCacheForTest(60_000);
 
   const prevTimeout = process.env.CATALOG_BUILD_TIMEOUT_MS;
   process.env.CATALOG_BUILD_TIMEOUT_MS = "20";

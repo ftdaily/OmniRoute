@@ -307,12 +307,7 @@ function dropCatalogCacheIfStateChanged(): void {
   if (currentVersion === lastSeenCatalogCacheVersion) return;
   lastSeenCatalogCacheVersion = currentVersion;
   catalogCache.clear();
-  // Deliberately NOT clearing catalogLastGood: it is the timeout fallback and is
-  // NEVER served as fresh (only on catalog_build_timeout with an explicit
-  // x-omniroute-catalog: last-good header, then re-cached). Clearing it here
-  // would erase timeout protection on every state invalidation — a seeded entry
-  // followed by invalidateDbCache() could never serve last-good (#8728 test).
-  // Fresh/SWR correctness is preserved by clearing catalogCache above.
+  catalogLastGood.clear();
   // Deliberately NOT clearing catalogInFlight: an in-flight build bound to the
   // previous generation is left to finish for its original caller, but the
   // generation check in the join path (below) keeps new requests from joining

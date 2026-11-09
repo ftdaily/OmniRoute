@@ -98,7 +98,14 @@ test("countLocales reads a real, positive locale count from config/i18n.json", (
 
 test("the gate exits 0 against the current (synced) repo state", () => {
   // Throws if exit code is non-zero; current docs are synced so this must pass.
-  assert.doesNotThrow(() => execFileSync("node", [GATE], { encoding: "utf8", stdio: "pipe" }));
+  // Mirror CI Docs job: fork freezes docs/i18n mirrors at the upstream pin.
+  assert.doesNotThrow(() =>
+    execFileSync("node", [GATE], {
+      encoding: "utf8",
+      stdio: "pipe",
+      env: { ...process.env, FORK_SKIP_I18N_MIRRORS: "1" },
+    })
+  );
 });
 
 // --- Free-tier headline gate ------------------------------------------------

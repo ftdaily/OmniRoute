@@ -26,6 +26,7 @@ with metadata rollback; secrets flow via EnvironmentFile 0600.
 import argparse
 import hashlib
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -75,6 +76,8 @@ def build_parser():
     ap.add_argument("--ledger-top", default="231")
     ap.add_argument("--clone-dir", default=None,
                     help="default /var/lib/omniroute-beta-<release>")
+    ap.add_argument("--service-user", default="omniroute",
+                    help="OS user the beta unit runs as; owns the clone dir")
     ap.add_argument("--help-policy", action="store_true")
     ap.add_argument("cmd", nargs="?", choices=["seal", "beta", "promote"])
     ap.add_argument("image", nargs="?")
@@ -97,6 +100,7 @@ class Ctx:
         self.node = args.node
         self.new_tables = set(t for t in args.new_tables.split(",") if t)
         self.heap = args.heap_mb
+        self.policy_format = args.policy_format
         self.min_free = int(args.min_free_gb * 1024 ** 3)
         self.min_avail = int(args.min_avail_mb * 1024 ** 2)
         self.ledger_top = str(args.ledger_top)
@@ -258,6 +262,42 @@ def seal(ctx):
     print("TENCENT_SEALED", data["identity"]["main_pid"], "health200=" + str(ok))
 
 
+def chown_tree(path, user):
+    """chown -R path to the service user; the beta unit runs as this user."""
+    import pwd
+    import shutil
+    uid = pwd.getpwnam(user).pw_uid
+    gid = pwd.getpwnam(user).pw_gid
+    for root, dirs, files in os.walk(path):
+        shutil.chown(root, user, user)
+        for n in dirs + files:
+            shutil.chown(os.path.join(root, n), user, user)
+    return uid, gid
+
+
+def migrations_listing_sha(names):
+    """pack.py artifact convention: sha256 of `ls src/lib/db/migrations/*.sql | sort`.
+
+    The artifact ships the hex STRING (pack.py `migrations` field), not a list,
+    so runners must hash their extracted listing the same way — never iterate
+    the string as if it were filenames.
+    """
+    h = hashlib.sha256()
+    for n in sorted(names):
+        h.update(("src/lib/db/migrations/%s\n" % n).encode())
+    return h.hexdigest()
+
+
+def verify_migrations(target, migr_sub, want):
+    migr_dir = target / migr_sub
+    assert migr_dir.is_dir(), "migrations dir missing in image: " + str(migr_dir)
+    names = sorted(p.name for p in migr_dir.glob("*.sql"))
+    assert names, "no migrations in image: " + str(migr_dir)
+    assert migrations_listing_sha(names) == want, \
+        "artifact migration listing drift: image=%s" % ",".join(names)
+    return names
+
+
 def stage(ctx, image, build, s, a):
     """Unpack artifact tarball to a unique release dir + clone DATA_DIR via backup API."""
     import tarfile
@@ -271,12 +311,21 @@ def stage(ctx, image, build, s, a):
             assert not p.is_absolute() and ".." not in p.parts, "unsafe archive path"
     target.mkdir(mode=0o700)
     run(["tar", "-xzf", str(archive), "-C", str(target)])
-    assert (target / "dev/run-standalone.mjs").is_file()
+    # Flat packs (pack.py 758697d9dd) land entrypoints at target root; a
+    # single top dir named exactly <release> is an OLD nested artifact —
+    # strip it. Anything else nested is rejected (no silent mis-extract).
+    tops = [p for p in target.iterdir()]
+    if len(tops) == 1 and tops[0].name == a["release"] and tops[0].is_dir() and \
+            (tops[0] / "dev/run-standalone.mjs").is_file():
+        for child in tops[0].iterdir():
+            child.rename(target / child.name)
+        tops[0].rmdir()
+    assert (target / "dev/run-standalone.mjs").is_file(), \
+        "entrypoint missing: flat pack expected, nested artifact not stripped"
     assert (target / ctx.migr_sub).is_dir()
     assert (target / ".build/next/BUILD_ID").read_text().strip() == build
-    migr = sorted(p.name for p in (target / ctx.migr_sub).glob("*.sql"))
-    for want in a.get("migrations", []):
-        assert want in migr, "artifact migration missing in image: " + want
+    verify_migrations(target, ctx.migr_sub, a["migrations"])
+    chown_tree(str(target), ctx.args.service_user)
     run([ctx.node, "-e",
          "const D=require('better-sqlite3');let d=new D(':memory:');"
          "if(d.prepare('SELECT 1 AS ok').get().ok!==1)process.exit(1);d.close()"],
@@ -290,6 +339,14 @@ def stage(ctx, image, build, s, a):
     import shutil as _sh
     _sh.copy2(p, clone / "server.env")
     (clone / "server.env").chmod(0o600)
+    # STORAGE_ENCRYPTION_KEY lives in DATA_DIR/.env (never in server.env);
+    # beta bootstrap refuses to generate it when the clone DB has encrypted
+    # credentials. Copy it 0600 alongside server.env; never print its value.
+    de = ctx.data / ".env"
+    if de.is_file():
+        _sh.copy2(de, clone / ".env")
+        (clone / ".env").chmod(0o600)
+    chown_tree(str(clone), ctx.args.service_user)
     return target, clone
 
 
@@ -309,8 +366,14 @@ def boot_qualify(ctx, target, clone, build, s, a):
              "OMNIROUTE_DISABLE_LOCAL_HEALTHCHECK=\"true\"",
              "OMNIROUTE_DISABLE_CREDENTIAL_HEALTH_CHECK=\"true\"",
              "STREAM_READINESS_TIMEOUT_MS=\"180000\""]
-    ef.write_text("\n".join("Environment=" + line for line in lines) + "\n")
+    # EnvironmentFile= takes bare KEY=value lines — never the `Environment=`
+    # unit-directive prefix (systemd silently drops prefixed lines, which
+    # once left beta on PORT 20128 fighting stable -> EADDRINUSE).
+    ef.write_text("\n".join(line for line in lines) + "\n")
     ef.chmod(0o600)
+    port_lines = {l.split("=", 1)[0]: l for l in lines}
+    assert port_lines["PORT"] == 'PORT="%d"' % ctx.args.beta_port, \
+        "beta env PORT drift: " + port_lines["PORT"]
     unit = ctx.D / "omniroute-beta.service"
     unit.write_text("[Unit]\nDescription=OmniRoute beta (fork)\nAfter=network-online.target\n"
                     "[Service]\nType=simple\nUser=omniroute\nGroup=omniroute\n"

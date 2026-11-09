@@ -107,6 +107,29 @@ def sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
+def migrations_listing_sha(names):
+    """pack.py artifact convention: sha256 of `ls src/lib/db/migrations/*.sql | sort`.
+
+    The artifact ships the hex STRING (pack.py `migrations` field), not a list,
+    so install() must hash its extracted listing the same way — never iterate
+    the string as if it were filenames.
+    """
+    h = hashlib.sha256()
+    for n in sorted(names):
+        h.update(("src/lib/db/migrations/%s\n" % n).encode())
+    return h.hexdigest()
+
+
+def verify_migrations(target, want):
+    migr_dir = target / "migrations"
+    assert migr_dir.is_dir(), "migrations dir missing in image: " + str(migr_dir)
+    names = sorted(p.name for p in migr_dir.glob("*.sql"))
+    assert names, "no migrations in image: " + str(migr_dir)
+    assert migrations_listing_sha(names) == want, \
+        "artifact migration listing drift: image=%s" % ",".join(names)
+    return names
+
+
 def prop(ctx, n):
     return run(["systemctl", "--user", "show", ctx.unit, "-p", n, "--value"])
 
@@ -257,6 +280,7 @@ def install(ctx, artifact, release, build):
     assert (target / "dev/run-standalone.mjs").is_file()
     assert (target / ".build/next/BUILD_ID").read_text().strip() == build
     assert not (target / ".env").exists()
+    verify_migrations(target, a["migrations"])
     run([ctx.node, "-e", "const D=require('better-sqlite3');let d=new D(':memory:');"
                           "if(d.prepare('SELECT 1 AS ok').get().ok!==1)process.exit(1);d.close()"],
         cwd=target)

@@ -32,6 +32,8 @@ jobs:
           python-version: "3.12"
       - name: Unit tests (fork deploy helpers)
         run: node --test --test-force-exit tests/unit/fork-deploy-*.test.ts
+      - name: Unit tests (fork deploy python helpers)
+        run: python3 fork/deploy/test_tencent_release.py
       - name: Python syntax (fork deploy helpers)
         run: python3 -m py_compile fork/deploy/pack.py fork/deploy/local-release.py fork/deploy/tencent-release.py
       - name: Packer CLI surface

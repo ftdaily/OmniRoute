@@ -90,3 +90,14 @@
 - Supersedes: `b825ecc34f` (5,194-line reconciliation ledger, upstream file
   churn every sync) was reset (`git reset --hard origin/mine`), never pushed.
 - `.github/workflows/quality.yml`: actionlint install retries 3x with 10s backoff + `actionlint -version` verification before continuing, hard fail after 3 misses (raw.githubusercontent flakes ~92-byte error page). ci.yml:449 untouched (upstream).
+## P1-PACKFIX2: fixture-only native-check skip + gate-precision note
+
+- `fork/deploy/pack.py`: `stage()` gains `skip_native_check=False` +
+  `--skip-native-check` CLI flag (test-only; default keeps the in-stage
+  better-sqlite3 load check ON for real packs). CI fixture stages carry a
+  stub prebuild and no native build, so the check failed there (exit 1).
+  `TRANSFORMER_PATHS` gains a one-line REVIEW ARTIFACT-2 note: gate is
+  dir-level; runtime loads `transformers.node.*` + `ort.node.min.*` inside
+  those dirs (verified via package.json main/exports + `ls`).
+- `tests/unit/fork-deploy-pack.test.ts`: both `stage` invocations pass
+  `--skip-native-check` (only the test uses it).

@@ -75,6 +75,10 @@ test("fork/deploy/pack.py stages standalone minus docs/i18n and keeps the 4 tran
         join(out, "stage"),
         "--node",
         process.execPath,
+        // Fixture stage carries a stub better-sqlite3 prebuild (no native
+        // build in CI): skip only the in-stage load check. Real releases
+        // keep it ON (flag defaults off in pack.py).
+        "--skip-native-check",
       ],
       {
         encoding: "utf8",
@@ -132,7 +136,7 @@ test("fork/deploy pack.py pack rejects an over-budget stage", () => {
     "python3",
     [join(DEPLOY, "pack.py"), "stage", "--src", src, "--commit", "abc1234",
      "--build-id", "BUILDID1", "--release", release, "--stage-dir", stageDir,
-     "--node", process.execPath],
+     "--node", process.execPath, "--skip-native-check"],
     { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, NODE_PATH: join(ROOT, "node_modules") } }
   );

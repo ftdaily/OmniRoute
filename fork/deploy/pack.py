@@ -43,7 +43,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 DEFAULT_NODE = "/home/zuxler/.local/node-v24.15.0/bin/node"
 
-TRANSFORMER_PATHS = [
+TRANSFORMER_PATHS = [  # dir-level gate (REVIEW ARTIFACT-2 note): runtime loads transformers.node.* + ort.node.min.* inside these dirs; if upstream renames those files, pin filenames here.
     "node_modules/onnxruntime-web",
     "node_modules/onnxruntime-node/bin",
     "node_modules/@huggingface/transformers/dist",
@@ -125,7 +125,8 @@ def sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
-def stage(src, commit, build_id, release, stage_dir, node, ledger_top=None):
+def stage(src, commit, build_id, release, stage_dir, node, ledger_top=None,
+          skip_native_check=False):
     src = Path(src)
     stage = Path(stage_dir)
     standalone = src / STANDALONE_SUBDIR
@@ -171,9 +172,13 @@ def stage(src, commit, build_id, release, stage_dir, node, ledger_top=None):
                 assert p.exists(), f"broken symlink {p}"
                 links.append(str(p.relative_to(stage)))
     assert (stage / ".build/next/BUILD_ID").read_text().strip() == build_id
-    run([node, "-e", "const D=require('better-sqlite3');let d=new D(':memory:');"
-                      "if(d.prepare('SELECT 1 AS ok').get().ok!==1)process.exit(1);d.close()"],
-        cwd=stage)
+    # In-stage native check (better-sqlite3 loads from the stage, NODE_PATH
+    # unset). Fixture stages carry a stub prebuild, so tests pass
+    # --skip-native-check; real releases keep it ON (default False = check).
+    if not skip_native_check:
+        run([node, "-e", "const D=require('better-sqlite3');let d=new D(':memory:');"
+                          "if(d.prepare('SELECT 1 AS ok').get().ok!==1)process.exit(1);d.close()"],
+            cwd=stage)
     print("STAGED", release, "files=",
           sum(1 for _ in stage.rglob("*") if _.is_file()),
           "removed=" + str(len(removed)), "links=" + str(len(links)))
@@ -288,6 +293,10 @@ def main(argv=None):
     st.add_argument("--stage-dir", required=True)
     st.add_argument("--node", default=DEFAULT_NODE)
     st.add_argument("--ledger-top", default=None)
+    st.add_argument("--skip-native-check", action="store_true",
+                    help="test-only: skip the in-stage better-sqlite3 load check "
+                         "(fixture stages carry a stub prebuild; CI has no native build). "
+                         "Real releases must keep the check ON (default).")
     pk = sub.add_parser("pack")
     pk.add_argument("--stage-dir", required=True)
     pk.add_argument("--src", required=True)
@@ -307,7 +316,8 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.cmd == "stage":
         stage(args.src, args.commit, args.build_id, args.release,
-              args.stage_dir, args.node, args.ledger_top)
+              args.stage_dir, args.node, args.ledger_top,
+              args.skip_native_check)
     elif args.cmd == "pack":
         pack(args.stage_dir, args.src, args.release, args.out_dir, args.seal,
              args.size_budget_bytes)

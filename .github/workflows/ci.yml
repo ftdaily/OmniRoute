@@ -571,7 +571,8 @@ jobs:
             echo "::notice title=i18n mirrors pending::This PR changes English docs whose 66 mirrors are now stale. Nothing to do here: the mirrors are refreshed in the post-merge i18n batch."
           fi
       - name: i18n docs drift (sources changed since their translation)
-        if: ${{ github.event_name != 'pull_request' }}
+        # fork: docs/i18n frozen at upstream pin, no translation batch (fork/PATCHES.md)
+        if: ${{ github.event_name != 'pull_request' && github.repository != 'ftdaily/OmniRoute' }}
         run: node scripts/i18n/check-translation-drift.mjs
 
   docs-lint:

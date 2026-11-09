@@ -387,3 +387,24 @@ test("every shipped @omniroute workspace package is covered by an artifact prefi
   );
   assert.deepEqual(uncovered, []);
 });
+
+test("v1 _helpers ship in the tarball (fork 8309a7 runtime chain, missed in baseline 42548605185)", () => {
+  // src/shared/utils/apiKeyPolicy.ts imports @/app/api/v1/_helpers/apiKeyScope.ts
+  // (via src/sse/handlers/chat.ts:181), executed as .ts through tsx at runtime.
+  for (const helper of [
+    "src/app/api/v1/_helpers/apiKeyScope.ts",
+    "src/app/api/v1/_helpers/mediaSink.ts",
+  ]) {
+    const unexpectedPaths = findUnexpectedArtifactPaths([helper], {
+      exactPaths: PACK_ARTIFACT_ALLOWED_EXACT_PATHS,
+      prefixPaths: PACK_ARTIFACT_ALLOWED_PATH_PREFIXES,
+    });
+    assert.deepEqual(unexpectedPaths, [], `${helper} must pass the pack gate`);
+    assert.ok(existsSync(helper), `${helper} must exist in the checkout`);
+  }
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as { files: string[] };
+  assert.ok(
+    packageJson.files.includes("src/app/api/v1/_helpers/"),
+    'package.json "files" must keep the src/app/api/v1/_helpers/ prefix'
+  );
+});

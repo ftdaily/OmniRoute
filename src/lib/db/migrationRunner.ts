@@ -661,6 +661,23 @@ function isSchemaAlreadyApplied(
         hasTable(db, "key_preferences") &&
         hasTable(db, "user_combos")
       );
+    case "234":
+      // Cache-write tier columns (#17307, renumbered 213 -> 217 -> 226 -> 227 -> 228 -> 229 -> 230 -> 234
+      // (fork owns 226-231): the 213 slot went to 213_api_key_preferred_connections first,
+      // the 217 slot to 217_quota_recovery_tickets, the 226 slot to
+      // 226_user_portal_flags_prefs_combos, the 227 slot to 227_retired_api_key_hashes,
+      // the 228 slot to 228_quota_recovery_tickets, the 229 slot to
+      // 229_proxy_subscription_mirror_urls, the 230 slot to
+      // 230_request_cost_ledger_read_indexes and the 231 slot to 231_quota_recovery_due_cover,
+      // none of which has a guard here). Keyed by version
+      // only: a stale number would skip those migrations.
+      return [
+        "tokens_cache_creation_5m",
+        "tokens_cache_creation_1h",
+        "cache_creation_tier_status",
+        "cache_write_cost_usd",
+        "cache_write_priced_tokens",
+      ].every((column) => hasColumn(db, "call_logs", column));
     default:
       return false;
   }

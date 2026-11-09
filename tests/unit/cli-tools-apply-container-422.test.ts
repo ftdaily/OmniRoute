@@ -44,6 +44,25 @@ function authed(url: string, init: RequestInit = {}): Request {
 const originalEnv = { ...process.env };
 const tempDirs = new Set<string>();
 
+function createRunnerIndependentTempDir(prefix: string): string {
+  // Evidence collectors may place TMPDIR inside a bind-mounted worktree. That is
+  // persistent by definition, so it is the wrong fixture for an ephemeral-target
+  // test. Use the platform default temp root while preserving the runner's env;
+  // if that root is also bind-mounted, the real guard assertions still fail.
+  const keys = ["TMPDIR", "TMP", "TEMP"] as const;
+  const original = new Map(keys.map((key) => [key, process.env[key]]));
+  for (const key of keys) delete process.env[key];
+  try {
+    return fs.mkdtempSync(path.join(ephemeralTmpBase(), prefix));
+  } finally {
+    for (const key of keys) {
+      const value = original.get(key);
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
 async function importRoute(label: string) {
   return import(`${pathToFileURL(routePath).href}?case=${label}-${Date.now()}-${Math.random()}`);
 }
@@ -82,7 +101,7 @@ function applyRequest(body: Record<string, unknown>) {
 test("refuses with 422 and does not write when the target is container-ephemeral", async () => {
   // OMNIROUTE_CONTAINER forces detection; the fake HOME has no bind mount, so
   // the target classifies as ephemeral.
-  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-ephemeral-"));
+  const fakeHome = createRunnerIndependentTempDir("or-apply-ephemeral-");
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
@@ -103,11 +122,12 @@ test("refuses with 422 and does not write when the target is container-ephemeral
 });
 
 test("the 422 body carries no stack trace", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-stack-"));
+  const fakeHome = createRunnerIndependentTempDir("or-apply-stack-");
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
   process.env.USERPROFILE = fakeHome;
+  delete process.env.OMNIROUTE_ALLOW_CONTAINER_CONFIG_WRITE;
 
   const { POST } = await importRoute("nostack");
   const body = await (await POST(applyRequest({}))).json();
@@ -117,7 +137,7 @@ test("the 422 body carries no stack trace", async () => {
 });
 
 test("dry-run still previews the config inside a container", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-dry-"));
+  const fakeHome = createRunnerIndependentTempDir("or-apply-dry-");
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
@@ -132,7 +152,7 @@ test("dry-run still previews the config inside a container", async () => {
 });
 
 test("OMNIROUTE_ALLOW_CONTAINER_CONFIG_WRITE lets the write through", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-override-"));
+  const fakeHome = createRunnerIndependentTempDir("or-apply-override-");
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.OMNIROUTE_ALLOW_CONTAINER_CONFIG_WRITE = "true";
@@ -149,7 +169,7 @@ test("OMNIROUTE_ALLOW_CONTAINER_CONFIG_WRITE lets the write through", async () =
 });
 
 test("the dashboard's guide-settings writer refuses the same way", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-guide-ephemeral-"));
+  const fakeHome = createRunnerIndependentTempDir("or-guide-ephemeral-");
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "1";
   process.env.HOME = fakeHome;
@@ -179,7 +199,7 @@ test("the dashboard's guide-settings writer refuses the same way", async () => {
 });
 
 test("a host environment applies the config normally", async () => {
-  const fakeHome = fs.mkdtempSync(path.join(ephemeralTmpBase(), "or-apply-host-"));
+  const fakeHome = createRunnerIndependentTempDir("or-apply-host-");
   tempDirs.add(fakeHome);
   process.env.OMNIROUTE_CONTAINER = "0";
   process.env.HOME = fakeHome;

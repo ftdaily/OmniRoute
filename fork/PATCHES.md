@@ -197,3 +197,7 @@
   on first image/video use, which is the correct laziness boundary. Verify on a
   FRESH boot (maps before first image request), do not chase further.
 - 2026-11-09 .github/workflows/docker-publish.yml: build + merge jobs define GHCR_IMAGE_NAME (= IMAGE_NAME). Upstream 535f0724d1/44e201b8ff verify steps read it; fork's GHCR-only env (f04c903529) had dropped it → 'GHCR_IMAGE_NAME: unbound variable' after image push.
+
+## v3.8.54 re-sync (2026-11-10): upstream migrations 228-235 → 232-239
+- Fork 226-231 are deployed (laptop + Tencent ledgers) and immovable; upstream's 8 new files moved byte-identical to 232-239 (header number only). `migrationRunner.ts` keeps fork `case "226"` and upstream's cache-write guard as `case "234"`; `constants.ts` upstream `toVersion` rows renumbered by (version, name).
+- `tests/unit/api-key-self-service-settings.test.ts`: 3 `historical self-service migration 218/228/229` tests skipped. They simulate upstream pre-release dev-build ledgers (settings table at 218/228/229) whose slots the fork owns; such ledgers cannot exist on fork databases, and the name-aware compat rows never match fork rows (228 quota_recovery_tickets, 229 proxy_subscription_mirror_urls).

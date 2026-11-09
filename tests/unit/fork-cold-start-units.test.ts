@@ -14,10 +14,13 @@ function read(name: string): string {
   return fs.readFileSync(path.join(DIR, name), "utf8");
 }
 
-test("beta socket holds the public port", () => {
+test("beta socket holds the public port and wakes the proxy", () => {
   const socket = read("omniroute-beta.socket");
   assert.match(socket, /ListenStream=127\.0\.0\.1:20129/);
   assert.match(socket, /Accept=no/);
+  // Default Service= would be omniroute-beta.service (same basename) = the
+  // OLD plain beta. Pin the proxy so first connection wakes the cold path.
+  assert.match(socket, /^Service=omniroute-beta-proxy\.service$/m);
 });
 
 test("beta proxy forwards to the internal backend with idle exit", () => {

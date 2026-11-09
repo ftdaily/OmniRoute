@@ -17,7 +17,7 @@
 - `fork/deploy/pack.py`: fork artifact packager (parametrised `stage/pack/list/smoke`; stages tracked files + dist + .build/next + migrations + node_modules, drops `docs/i18n`, asserts the 4 transformer paths, `.env` assert-absent, gzip -1 atomic tarball, health-200 smoke + ledger-top assert). Upstream has no equivalent path; never merge upstream.
 - `fork/deploy/local-release.py`: local rollout (`seal/install/beta/cutover` for the user-scoped unit; SQLite backup-API clone, EnvironmentFile 0600, PID-exact stop, auto metadata-rollback; beta/cutover/install require receipts + parent approval). Host identity (unit, ports, paths, heap) via CLI args. Fork-only.
 - `fork/deploy/tencent-release.py`: Tencent rollout (`seal/beta/promote`; atomic symlink swap with rollback, disk/mem guards, migration SHA pins via `--migration-230/231`, clone dir via `--clone-dir`). Fork-only; run as root on the host.
-- `.github/workflows/fork-ci.yml`: runs `tests/unit/fork-deploy-*.test.ts` + `py_compile` + helper `--help` surface on PRs to `mine` touching `fork/deploy/**` (hosted runner only). Standalone workflow — not in the `ci`/`quality` admission policy.
+- `.github/workflows/fork-ci.yml`: runs `tests/unit/fork-deploy-*.test.ts` + `fork/deploy/test_tencent_release.py` (18 unittest: Ctx binding, stage layout, migrations sha, beta env, .env clone) + `py_compile` + helper `--help` surface on PRs to `mine` touching `fork/deploy/**` (hosted runner only). Standalone workflow — not in the `ci`/`quality` admission policy.
 
 ## P1-PACKFIX2: fixture-only native-check skip + gate-precision note
 
@@ -44,3 +44,28 @@
   with `<release>/` and the 4 transformer paths sit at `./node_modules/...`.
   End-to-end proof: extracted a fixture tarball into `releases/R1/` —
   `server.js` + `node_modules/onnxruntime-web` land directly, no nesting.
+
+## TENCENT-SCRIPT: fold all 5 Tencent workarounds into the runners
+
+- `fork/deploy/tencent-release.py`:
+  1. `Ctx` binds `self.policy_format = args.policy_format` (matches
+     `local-release.py`; was AttributeError on `seal`).
+  2. `stage()` extracts the flat pack (`tar -xzf -C target`), strips a
+     single top dir named exactly `<release>` (old nested artifacts),
+     rejects anything else nested, then `chown_tree(target, service-user)`
+     (was EACCES for `User=omniroute`).
+  3. `migrations_listing_sha()` + `verify_migrations()`: artifact
+     `migrations` is the pack.py listing sha256 STRING — hash the image
+     listing (`src/lib/db/migrations/<sorted names>`, newline-joined) and
+     compare; never iterate the string as filenames.
+  4. `boot_qualify()` writes `tencent-beta.env` as plain `KEY=value`
+     (EnvironmentFile= rejects the `Environment=` unit prefix — once left
+     beta on PORT 20128 fighting stable) and asserts `PORT == beta port`.
+  5. `stage()` copies `DATA_DIR/.env` (STORAGE_ENCRYPTION_KEY) into the
+     clone 0600 pre-chown; value never printed.
+- `fork/deploy/local-release.py`: `install()` gains the same
+  `verify_migrations()` listing-sha check (was membership-loop over the
+  string too); its `beta()` already wrote plain env + copied `.env` —
+  untouched except sharing the helper shape.
+- `fork/deploy/test_tencent_release.py`: 18 unittest (RED->GREEN: 8
+  failures + 2 errors on unfixed scripts) wired into `fork-ci.yml`.

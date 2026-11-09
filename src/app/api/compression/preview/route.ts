@@ -180,7 +180,7 @@ function resolveToolSchemaDetail(config: unknown): {
   }
   const stepDetail: Record<string, unknown> = {};
   for (const key of ["maxDescriptionChars", "dropExamples", "dropVendorExtensions"] as const) {
-    const v = (toolSchemaDetail as Record<string, unknown>)[key];
+    const v: unknown = toolSchemaDetail[key];
     if (v !== undefined) stepDetail[key] = v;
   }
   return {
@@ -216,7 +216,7 @@ function resolveRelevanceDetail(config: unknown): {
     "budgetPercent",
     "boilerplateWeight",
   ] as const) {
-    const v = (relevanceDetail as Record<string, unknown>)[key];
+    const v: unknown = relevanceDetail[key];
     if (v !== undefined) stepDetail[key] = v;
   }
   return {

@@ -3,6 +3,9 @@ import React from "react";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import fs from "node:fs";
+import path from "node:path";
+
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
@@ -35,6 +38,19 @@ describe("ErrorPageScaffold CTAs", () => {
     for (const link of [primary, secondary]) {
       expect(link.className).not.toMatch(/\b(bg-primary|px-6|py-3|rounded-lg)\b/);
     }
+  });
+
+  it("stays a client component so kit buttonVariants() never runs on the server", () => {
+    // RSC error on /400../503: "Attempted to call buttonVariants() from the server
+    // but buttonVariants is on the client" (#19388 scaffold called a "use client"
+    // export from a server component). All props are serializable, so "use client"
+    // is the correct smallest fix.
+    const sourcePath = path.resolve(
+      import.meta.dirname,
+      "../../../src/shared/components/ErrorPageScaffold.tsx"
+    );
+    const firstLine = fs.readFileSync(sourcePath, "utf8").split("\n")[0].trim();
+    expect(firstLine).toBe('"use client";');
   });
 
   it("falls back to the dashboard and status actions", () => {

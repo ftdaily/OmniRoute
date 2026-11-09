@@ -1,3 +1,5 @@
+"use client";
+
 import { buttonVariants } from "@omniroute/ui-kit/button";
 import Icon from "@/shared/components/Icon";
 import { OmniRouteLockup } from "@/shared/components/OmniRouteLogo";

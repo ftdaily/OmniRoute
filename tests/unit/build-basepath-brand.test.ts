@@ -49,7 +49,8 @@ test(
     const manifest = JSON.parse(fs.readFileSync(path.join(DIST, "routes-manifest.json"), "utf8"));
     assert.equal(manifest.basePath, BASE_PATH, "routes-manifest.json basePath");
 
-    // Client chunks and the server output (ErrorPageScaffold and maintenance are server components).
+    // Client chunks and the server output (ErrorPageScaffold is a client component
+    // since the buttonVariants RSC fix; maintenance stays server-rendered).
     const hits = [
       ...filesMatching(path.join(DIST, "static"), ABSOLUTE_BRAND),
       ...filesMatching(path.join(DIST, "server"), ABSOLUTE_BRAND),

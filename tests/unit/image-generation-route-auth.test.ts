@@ -192,17 +192,18 @@ test("v1 image generation POST rejects an invalid presented API key", async () =
   }
 });
 
-// Issue #2257: with enforcement off, a stale key in a CLI config must degrade to
-// anonymous exactly like clientApiPolicy does — the route guard must not be
-// stricter than the middleware that already fronts it.
-test("v1 image generation POST ignores an invalid presented key while REQUIRE_API_KEY is off", async () => {
+// Fork policy (supersedes #2257 anonymous-degradation): an EXPLICIT invalid or
+// unknown bearer must 401 and never dispatch upstream, even with
+// REQUIRE_API_KEY off — mirroring tests/unit/internal-test-mark-trust.test.ts.
+test("v1 image generation POST rejects an invalid presented key while REQUIRE_API_KEY is off", async () => {
   const originalOmniRouteApiKey = process.env.OMNIROUTE_API_KEY;
   const originalRequireApiKey = process.env.REQUIRE_API_KEY;
   process.env.OMNIROUTE_API_KEY = "valid-image-route-key";
   process.env.REQUIRE_API_KEY = "false";
 
-  globalThis.fetch = async (url) => {
-    assert.equal(String(url), "http://localhost:7860/sdapi/v1/txt2img");
+  let fetched = false;
+  globalThis.fetch = async () => {
+    fetched = true;
     return new Response(JSON.stringify({ images: ["YW5vbnltb3Vz"] }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -219,12 +220,14 @@ test("v1 image generation POST ignores an invalid presented key while REQUIRE_AP
         },
         body: JSON.stringify({
           model: "sdwebui/stable-diffusion-v1-5",
-          prompt: "stale key degrades to anonymous",
+          prompt: "stale key is rejected",
         }),
       })
     );
 
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 401);
+    assert.match(await readErrorMessage(response), /Invalid API key/);
+    assert.equal(fetched, false, "401 must not dispatch upstream");
   } finally {
     if (originalOmniRouteApiKey === undefined) {
       delete process.env.OMNIROUTE_API_KEY;

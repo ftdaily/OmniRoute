@@ -71,7 +71,7 @@ test("POST /v1/embeddings authentication", async (t) => {
   );
 
   await t.test(
-    "should NOT return 401 when an invalid API key is provided and REQUIRE_API_KEY is false (#7785)",
+    "should return 401 when an invalid API key is provided and REQUIRE_API_KEY is false (#7785)",
     async () => {
       process.env.REQUIRE_API_KEY = "false";
       process.env.OMNIROUTE_API_KEY = "valid-key";
@@ -81,10 +81,10 @@ test("POST /v1/embeddings authentication", async (t) => {
         body: JSON.stringify({ model: "mistral/mistral-embed", input: "test" }),
       });
       const res = await POST(req);
-      assert.notStrictEqual(
+      assert.strictEqual(
         res.status,
         401,
-        "an invalid presented key must not 401 when REQUIRE_API_KEY=false (anonymous access)"
+        "an invalid presented key must 401 even when REQUIRE_API_KEY=false"
       );
       delete process.env.OMNIROUTE_API_KEY;
       delete process.env.REQUIRE_API_KEY;

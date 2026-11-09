@@ -1,16 +1,13 @@
 /**
- * #7785 — Auth policy inconsistency on /v1/embeddings and /v1/web/fetch.
+ * #7785 — Auth policy on /v1/embeddings and /v1/web/fetch.
  *
- * When REQUIRE_API_KEY=false, all client APIs should allow anonymous access.
- * However, embeddings and web-fetch routes still returned 401 for invalid
- * presented keys because the invalid-key check was NOT gated on
- * isRequireApiKeyEnabled() — unlike the combos route pattern.
- *
- * Fix: gate the route-local invalid-key check on isRequireApiKeyEnabled() in
- * both route files, matching the /api/v1/combos pattern.
+ * Fork policy (mirrors tests/unit/internal-test-mark-trust.test.ts): an
+ * EXPLICIT invalid/unknown bearer must 401 and never dispatch upstream,
+ * even with REQUIRE_API_KEY=false. Anonymous access is only for requests
+ * with NO presented credential.
  *
  * These tests verify:
- * 1. REQUIRE_API_KEY=false + invalid bearer key → NOT 401 (anonymous access)
+ * 1. REQUIRE_API_KEY=false + invalid bearer key → 401, upstream never called
  * 2. REQUIRE_API_KEY=true  + invalid bearer key → 401 (auth enforced)
  */
 
@@ -65,7 +62,7 @@ function webFetchRequest(): Request {
 
 // ── Embeddings route ──────────────────────────────────────────────────────
 
-test("#7785 embeddings: REQUIRE_API_KEY=false + invalid key → not 401", async () => {
+test("#7785 embeddings: REQUIRE_API_KEY=false + invalid key → 401", async () => {
   process.env.REQUIRE_API_KEY = "false";
 
   await createProviderNode({
@@ -76,19 +73,23 @@ test("#7785 embeddings: REQUIRE_API_KEY=false + invalid key → not 401", async 
     baseUrl: "http://10.10.0.182:11434/v1",
   });
 
+  let fetched = false;
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response(
+  globalThis.fetch = async () => {
+    fetched = true;
+    return new Response(
       JSON.stringify({
         data: [{ object: "embedding", embedding: [0.1, 0.2], index: 0 }],
         usage: { prompt_tokens: 3, total_tokens: 3 },
       }),
       { status: 200, headers: { "content-type": "application/json" } }
     );
+  };
 
   try {
     const res = await embeddingsPOST(embeddingsRequest(), {});
-    assert.notEqual(res.status, 401, "invalid key must NOT cause 401 when REQUIRE_API_KEY=false");
+    assert.equal(res.status, 401, "invalid key must cause 401 even when REQUIRE_API_KEY=false");
+    assert.equal(fetched, false, "401 must not dispatch upstream");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -103,11 +104,22 @@ test("#7785 embeddings: REQUIRE_API_KEY=true + invalid key → 401", async () =>
 
 // ── Web-fetch route ───────────────────────────────────────────────────────
 
-test("#7785 web-fetch: REQUIRE_API_KEY=false + invalid key → not 401", async () => {
+test("#7785 web-fetch: REQUIRE_API_KEY=false + invalid key → 401", async () => {
   process.env.REQUIRE_API_KEY = "false";
 
-  const res = await webFetchPOST(webFetchRequest());
-  assert.notEqual(res.status, 401, "invalid key must NOT cause 401 when REQUIRE_API_KEY=false");
+  let fetched = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetched = true;
+    return new Response("upstream must not be called", { status: 200 });
+  };
+  try {
+    const res = await webFetchPOST(webFetchRequest());
+    assert.equal(res.status, 401, "invalid key must cause 401 even when REQUIRE_API_KEY=false");
+    assert.equal(fetched, false, "401 must not dispatch upstream");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("#7785 web-fetch: REQUIRE_API_KEY=true + invalid key → 401", async () => {

@@ -234,6 +234,12 @@ export const PACK_ARTIFACT_ROOT_ALLOWED_PATH_PREFIXES: string[] = [
   "src/shared/",
   "src/sse/",
   "src/types/",
+  // Fork 8309a7: src/shared/utils/apiKeyPolicy.ts imports
+  // @/app/api/v1/_helpers/apiKeyScope.ts (via src/sse/handlers/chat.ts:181),
+  // executed as .ts source through tsx at runtime (bin/omniroute.mjs) — the
+  // published tarball 500s every chat request without it. Pin has no such
+  // chain (its apiKeyPolicy never imports _helpers), so pin needs no entry.
+  "src/app/api/v1/_helpers/",
 ];
 
 export const PACK_ARTIFACT_REQUIRED_PATHS: string[] = [

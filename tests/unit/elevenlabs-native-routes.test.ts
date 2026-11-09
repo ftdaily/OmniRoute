@@ -10,6 +10,7 @@ process.env.API_KEY_SECRET = process.env.API_KEY_SECRET || "elevenlabs-native-ro
 
 const core = await import("../../src/lib/db/core.ts");
 const readCache = await import("../../src/lib/db/readCache.ts");
+const apiKeysDb = await import("../../src/lib/db/apiKeys.ts");
 const voicesRoute = await import("../../src/app/api/v1/voices/route.ts");
 const speechRoute = await import("../../src/app/api/v1/text-to-speech/[voiceId]/route.ts");
 const transcriptionRoute = await import("../../src/app/api/v1/speech-to-text/route.ts");
@@ -167,6 +168,10 @@ test("native ElevenLabs routes reject missing credentials and traversal", async 
 
 for (const { path: routePath, route, body } of nativeGenerationRoutes) {
   test(`POST ${routePath} forwards native JSON, query and stored credentials`, async () => {
+    const callerKey = await apiKeysDb.createApiKey(
+      "ElevenLabs native caller",
+      "machine-elevenlabs-native"
+    );
     const payload = { ...body, provider_extension: { keep: true } };
     const contentType = routePath.endsWith("detailed/stream")
       ? "text/event-stream"
@@ -206,7 +211,7 @@ for (const { path: routePath, route, body } of nativeGenerationRoutes) {
       new Request(`http://localhost${routePath}?output_format=mp3_44100_128&enable_logging=true`, {
         method: "POST",
         headers: {
-          Authorization: "Bearer caller-key",
+          Authorization: `Bearer ${callerKey.key}`,
           "xi-api-key": "caller-provider-key",
           Cookie: "session=secret",
         },
@@ -220,6 +225,26 @@ for (const { path: routePath, route, body } of nativeGenerationRoutes) {
     assert.equal(response.headers.has("set-cookie"), false);
     assert.equal(response.headers.get("content-type"), contentType);
     assert.deepEqual(new Uint8Array(await response.arrayBuffer()), responseBytes);
+  });
+
+  test(`POST ${routePath} rejects an unknown bearer without dispatch`, async () => {
+    let fetched = false;
+    globalThis.fetch = (async () => {
+      fetched = true;
+      return new Response();
+    }) as typeof fetch;
+    const response = await route.POST(
+      new Request(`http://localhost${routePath}`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer caller-key",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      })
+    );
+    assert.equal(response.status, 401);
+    assert.equal(fetched, false);
   });
 
   test(`${routePath} rejects invalid JSON, invalid body and missing credentials without fetch`, async () => {

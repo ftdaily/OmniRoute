@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getApiKeyMetadata, validateApiKey } from "@/lib/db/apiKeys";
 import { extractApiKey } from "@/sse/services/auth";
 import { isDashboardSessionAuthenticated } from "@/shared/utils/apiAuth";
@@ -191,7 +190,7 @@ export type OwnedListScope =
 function unauthorized(message: string, request?: Request): Response {
   // A refused key keeps the Origin echo (#5242); see credentialRejectionHeaders().
   const headers = request ? credentialRejectionHeaders(request) : CORS_HEADERS;
-  return NextResponse.json(buildErrorBody(401, message), { status: 401, headers });
+  return Response.json(buildErrorBody(401, message), { status: 401, headers });
 }
 
 /**

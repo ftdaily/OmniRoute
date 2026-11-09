@@ -109,6 +109,8 @@ jobs:
       - run: npm run check:api-docs-refs
       - name: Docs accuracy (fabricated-docs + i18n mirrors, strict)
         run: npm run check:docs-all
+        env:
+          FORK_SKIP_I18N_MIRRORS: "1" # fork: docs/i18n frozen at upstream pin (fork/PATCHES.md)
 
   fast-gates:
     name: Fast Quality Gates

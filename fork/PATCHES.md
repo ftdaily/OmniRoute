@@ -18,3 +18,15 @@
 - `fork/deploy/local-release.py`: local rollout (`seal/install/beta/cutover` for the user-scoped unit; SQLite backup-API clone, EnvironmentFile 0600, PID-exact stop, auto metadata-rollback; beta/cutover/install require receipts + parent approval). Host identity (unit, ports, paths, heap) via CLI args. Fork-only.
 - `fork/deploy/tencent-release.py`: Tencent rollout (`seal/beta/promote`; atomic symlink swap with rollback, disk/mem guards, migration SHA pins via `--migration-230/231`, clone dir via `--clone-dir`). Fork-only; run as root on the host.
 - `.github/workflows/fork-ci.yml`: runs `tests/unit/fork-deploy-*.test.ts` + `py_compile` + helper `--help` surface on PRs to `mine` touching `fork/deploy/**` (hosted runner only). Standalone workflow — not in the `ci`/`quality` admission policy.
+
+## P1-PACKFIX2: fixture-only native-check skip + gate-precision note
+
+- `fork/deploy/pack.py`: `stage()` gains `skip_native_check=False` +
+  `--skip-native-check` CLI flag (test-only; default keeps the in-stage
+  better-sqlite3 load check ON for real packs). CI fixture stages carry a
+  stub prebuild and no native build, so the check failed there (exit 1).
+  `TRANSFORMER_PATHS` gains a one-line REVIEW ARTIFACT-2 note: gate is
+  dir-level; runtime loads `transformers.node.*` + `ort.node.min.*` inside
+  those dirs (verified via package.json main/exports + `ls`).
+- `tests/unit/fork-deploy-pack.test.ts`: both `stage` invocations pass
+  `--skip-native-check` (only the test uses it).

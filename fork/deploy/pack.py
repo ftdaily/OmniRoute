@@ -200,7 +200,7 @@ def pack(stage_dir, src, release, out_dir, seal=False, size_budget_bytes=SIZE_BU
                     a = p.relative_to(stage)
                     if ".." in a.parts or a.is_absolute():
                         raise RuntimeError("unsafe path " + str(a))
-                    tf.add(p, arcname=str(Path(release) / a), recursive=False)
+                    tf.add(p, arcname=str(Path(".") / a), recursive=False)
     part.rename(archive)
     size = archive.stat().st_size
     if size > size_budget_bytes:

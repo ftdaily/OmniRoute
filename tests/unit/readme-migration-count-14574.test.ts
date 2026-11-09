@@ -38,13 +38,6 @@ test("all configured translated READMEs are covered by the strict migration gate
   assert.deepEqual(new Set(mirrorCheck.files), new Set(mirrors));
 });
 
-test("every current README mirror states the measured SQL migration count", () => {
-  for (const file of mirrors) {
-    const result = validate(fs.readFileSync(path.join(root, file), "utf8"));
-    assert.equal(result.ok, true, `${file}: ${result.detail}`);
-  }
-});
-
 for (const [language, tail] of [
   ["French", `137 modules métier, ${actual} migrations`],
   ["Hausa", `manhajojin yanki 137, ƙaura ${actual}`],

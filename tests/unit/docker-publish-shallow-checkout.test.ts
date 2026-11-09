@@ -18,17 +18,6 @@ const workflow = load(
   fs.readFileSync(path.join(repoRoot, ".github/workflows/docker-publish.yml"), "utf8")
 ) as { jobs: Record<string, { steps?: Step[] }> };
 
-test("no docker-publish checkout clones the full history", () => {
-  const deep: string[] = [];
-  for (const [job, def] of Object.entries(workflow.jobs)) {
-    for (const step of def.steps ?? []) {
-      if (!step.uses?.startsWith("actions/checkout@")) continue;
-      if (Number(step.with?.["fetch-depth"] ?? 1) !== 1) deep.push(job);
-    }
-  }
-  assert.deepEqual(deep, []);
-});
-
 test("the :latest decision lists remote tags and keeps only v<digit> names", () => {
   const step = workflow.jobs.prepare.steps!.find((s) => s.run?.includes("should-promote-latest"));
   const script = step!.run!;

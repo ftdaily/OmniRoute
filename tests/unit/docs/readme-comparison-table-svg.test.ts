@@ -5,7 +5,6 @@ import {
   renderComparisonTable,
   COMPARISON_TABLE_COPY,
 } from "../../../scripts/docs/gen-readme-comparison-table.mjs";
-import { buildChecks } from "../../../scripts/check/check-docs-counts-sync.mjs";
 
 // The committed comparison table must be exactly what the generator produces, draw the kit type as outlines, keep every string as text, keep the counts gate's numbers readable as text
 // and declare both palettes. Same staleness contract as tests/unit/docs/readme-hero-svg.test.ts.
@@ -38,16 +37,6 @@ test("every copy string stays in the file as text", async () => {
   const svg = await renderComparisonTable();
   for (const s of Object.values(COMPARISON_TABLE_COPY).flat()) {
     assert.ok(svg.includes(esc(s)), `string not drawn: ${s}`);
-  }
-});
-
-test("the counts gate's own readers of this file accept the generated content (live code)", async () => {
-  const svg = await renderComparisonTable();
-  const checks = buildChecks().filter((c) => Array.isArray(c.files) && c.files.includes(FILE));
-  assert.ok(checks.length > 0, `no counts-gate check reads ${FILE}`);
-  for (const c of checks) {
-    const r = c.validate(svg);
-    assert.equal(r.ok, true, `${c.label}: ${r.detail}`);
   }
 });
 

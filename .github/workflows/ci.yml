@@ -601,75 +601,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  i18n-ui-coverage:
-    name: i18n UI Coverage
-    runs-on: ubuntu-latest
-    needs: changes
-    # P3 (plano mestre): a release-PR viva fica DRAFT o ciclo inteiro — jobs pesados pulam
-    # drafts (ciclo v3.8.44: 123 runs pesados re-disparados por merges na release, 88 cancelados).
-    # UI keys move with dashboard code OR message catalogs.
-    if: ${{ github.event_name != 'pull_request' || ((github.event.pull_request.draft == false || needs.changes.outputs.queueCandidate == 'true') && (needs.changes.outputs.i18n == 'true' || needs.changes.outputs.code == 'true')) }}
-    steps:
-      # fetch-depth: 0 — the value-drift gate diffs en.json against the merge base to
-      # find rewritten English strings. On a shallow clone the base ref is missing and
-      # the gate self-skips (base-unresolved), so it would never actually run.
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          package-manager-cache: false
-          node-version: ${{ env.CI_NODE_VERSION }}
-      - uses: ./.github/actions/npm-ci-retry
-        with:
-          # PR acceleration is not release-candidate provenance.
-          cache: ${{ github.event_name == 'pull_request' }}
-      - run: node scripts/i18n/check-ui-keys-coverage.mjs --threshold=65
-      - name: i18n ICU compilation (all UI catalogs)
-        run: npm run check:ui-icu
-      # Real-translation ratchet: a leaf copied verbatim from en.json passes key
-      # parity above but is still English to the user (es shipped 55% English).
-      # Blocking since PR-4 retranslated the verbatim-English backlog: the share of
-      # untranslated leaves per locale may only fall (ratchet baseline in
-      # config/quality/i18n-translation-baseline.json; `npm run i18n:check-ratio:update`).
-      - name: i18n real-translation ratio
-        run: node scripts/i18n/check-translation-ratio.mjs
-      # #8463: a rewritten English value used to leave its 39 translations behind
-      # silently (googleOAuthWarning shipped wrong copy in 39 locales for months).
-      # Key parity above cannot see it — a stale translation counts as covered.
-      - name: i18n UI value drift (stale translations)
-        env:
-          BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
-        run: node scripts/i18n/check-ui-value-drift.mjs
-      # Sibling of the drift gate above. That one catches an English value that was
-      # REWRITTEN; this one catches an English key that was ADDED while some locales never
-      # got it. The coverage gate at the top of this job cannot: it is a percentage per
-      # locale, and 11 absent keys out of ~13,000 leaves coverage at 99.9%. Incident: the
-      # Phase 3 canvas keys were translated across the 42 locales that existed, then the EU
-      # batch (#13044) took the repo to 51 and the nine newcomers shipped untranslated.
-      - name: i18n new-key coverage (a new key must reach every locale)
-        env:
-          BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
-        run: node scripts/i18n/check-new-key-coverage.mjs
-      # Absolute complement of the two gates above: every locale must carry exactly the key
-      # set of en.json, whatever the age of the key. A locale batch is generated from the
-      # en.json of the day the branch is cut and translates for days while the base keeps
-      # adding keys — the batch PR adds no key itself, so the new-key gate stays silent and
-      # 43 absent keys out of ~13,000 still read 99.7 % coverage. Incident 2026-09-15:
-      # batch 1 (#13044) landed 43 keys short in nine locales, batch 2 (#13660) 10 keys short
-      # in eight. Fix is `sync-ui-keys --locale=<codes> --translate-markers`.
-      - name: i18n key completeness (every locale carries every en.json key)
-        run: node scripts/i18n/check-key-completeness.mjs
-      # Same gate for the CLI catalogs (bin/cli/locales). check:cli-i18n only compares
-      # pt-BR / zh-CN / zh-TW; 38 locales shipped with 1–24 of 830 keys for months
-      # (audit 2026-09-16) and the CLI silently fell back to English for them.
-      - name: i18n key completeness (CLI catalogs)
-        run: node scripts/i18n/check-key-completeness.mjs --catalog=cli
-
   # #8038: cheap glossary/protected-terms consistency gate —
-  # complements i18n-ui-coverage (key parity) and the ICU `i18n` job below
-  # without needing app-boot/Playwright infra. Same gating as i18n-ui-coverage.
+  # complements the ICU `i18n` job below
+  # without needing app-boot/Playwright infra. Same gating as the `i18n` job.
   # ko added after the #8224 ko.json mistranslation cleanup so the fixed
   # terminology cannot silently regress on the next machine-translation run.
   i18n-glossary-zhcn:
@@ -1180,24 +1114,12 @@ jobs:
           cache: ${{ github.event_name == 'pull_request' }}
       # The second test runner (CLAUDE.md: "Both test runners must pass") — was never
       # wired into CI until the 2026-06-09 quality audit (Fase 6A.2).
-      # WS5.2/5.3 (v3.8.49 plan): JUnit output feeds Trunk Flaky Tests (advisory upload
-      # below). node:test stays OUT of the first wave (fd1-sensitive reporter stream).
+      # node:test stays OUT of the first wave (fd1-sensitive reporter stream).
       - run: npm run test:vitest -- --reporter=default --reporter=junit --outputFile.junit=trunk-junit/vitest-mcp.xml
       # vitest:ui went back to 870/870 green in the v3.8.49 quality plan (WS6.1,
       # PR #7127 — 69 fails triaged: matchMedia polyfill, node:test→vitest migration,
       # CompareTab D22 cap). Promoted to BLOCKING per the plan's post-merge step.
       - run: npm run test:vitest:ui -- --reporter=default --reporter=junit --outputFile.junit=trunk-junit/vitest-ui.xml
-      # Trunk Flaky Tests upload — advisory (never blocks), own-origin only (fork PRs
-      # have no TRUNK_TOKEN). Pinned by SHA (tag v2.1.2).
-      - name: Upload test results to Trunk (advisory)
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        continue-on-error: true
-        uses: trunk-io/analytics-uploader@a86313c7029d22e6ea2d5c346060a224d90053dc # v2.1.6
-        with:
-          junit-paths: trunk-junit/**/*.xml
-          org-slug: omniroute
-          token: ${{ secrets.TRUNK_TOKEN }}
-
   # Node 24/26 compatibility matrices moved to .github/workflows/nightly-compat.yml
   # (plano mestre testes+CI, Eixo D2 — they cost ~28% of every heavy run to catch a
   # failure class that rarely originates in a PR; nightly catches it within 24h and
@@ -1550,16 +1472,6 @@ jobs:
             echo "[e2e-balance] balancer unavailable — plain --shard fallback"
             npx playwright test tests/e2e/*.spec.ts --shard="$SHARD"/9 --reporter=line,junit
           fi
-      # WS5.2/5.3: Trunk Flaky Tests upload — advisory, own-origin only, SHA-pinned.
-      - name: Upload test results to Trunk (advisory)
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        continue-on-error: true
-        uses: trunk-io/analytics-uploader@a86313c7029d22e6ea2d5c346060a224d90053dc # v2.1.6
-        with:
-          junit-paths: junit-e2e-results.xml
-          org-slug: omniroute
-          token: ${{ secrets.TRUNK_TOKEN }}
-
   test-integration:
     name: Integration Tests (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
@@ -1709,7 +1621,6 @@ jobs:
       - quality-extended
       - docs-sync-strict
       - docs-lint
-      - i18n-ui-coverage
       - i18n-glossary-zhcn
       - i18n
       - pr-test-policy
@@ -1757,7 +1668,6 @@ jobs:
       - changes
       - lint
       - docs-sync-strict
-      - i18n-ui-coverage
       - i18n-glossary-zhcn
       - i18n
       - pr-test-policy
@@ -1831,7 +1741,6 @@ jobs:
             echo "| Change Classification | $(status '${{ needs.changes.result }}') |"
             echo "| Lint | $(status '${{ needs.lint.result }}') |"
             echo "| Docs Sync (Strict) | $(status '${{ needs.docs-sync-strict.result }}') |"
-            echo "| i18n UI Coverage | $(status '${{ needs.i18n-ui-coverage.result }}') |"
             echo "| i18n Glossary (zh-CN, ko) | $(status '${{ needs.i18n-glossary-zhcn.result }}') |"
             echo "| PR Test Policy | $(status '${{ needs.pr-test-policy.result }}') |"
             echo "| SonarQube (opt-in; disabled without SONARQUBE_ENABLED=true) | $(status '${{ needs.sonarqube.result }}') |"

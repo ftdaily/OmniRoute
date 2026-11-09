@@ -65,3 +65,49 @@ test("p2 ram drop-in still present for the plain beta unit", () => {
     "P2 drop-in must ship alongside the 2b units"
   );
 });
+
+test("prod socket holds :20128 and wakes the prod proxy", () => {
+  const socket = read("omniroute-prod.socket");
+  assert.match(socket, /ListenStream=0\.0\.0\.0:20128/);
+  assert.match(socket, /Accept=no/);
+  assert.match(socket, /^Service=omniroute-prod-proxy\.service$/m);
+});
+
+test("prod proxy forwards to the repo backend with 30min idle exit", () => {
+  const proxy = read("omniroute-prod-proxy.service");
+  assert.match(proxy, /systemd-socket-proxyd/);
+  assert.match(proxy, /--exit-idle-time=30min/);
+  assert.match(proxy, /127\.0\.0\.1:20138/);
+  assert.match(proxy, /Requires=omniroute-repo\.service/);
+  assert.match(proxy, /^ExecStartPre=.*127\.0\.0\.1:20138\/api\/health/m);
+  assert.match(proxy, /^TimeoutStartSec=120$/m);
+  assert.ok(
+    !/^BindsTo=/m.test(proxy),
+    "proxy must not BindsTo the repo backend: it holds the client socket across backend restarts"
+  );
+  assert.ok(
+    !/^\[Install\]/m.test(proxy),
+    "socket-activated proxy must not start at boot"
+  );
+});
+
+test("prod repo drop-in serves the internal port and dies with the proxy", () => {
+  const dropin = read("omniroute-repo-cold-start.conf");
+  assert.match(dropin, /Environment=PORT=20138/);
+  assert.match(dropin, /Environment=OMNIROUTE_PORT=20138/);
+  // scripts/build/runtime-env.mjs withRuntimePortEnv overwrites HOSTNAME from
+  // OMNIROUTE_HOSTNAME at runtime, so the unit must set OMNIROUTE_HOSTNAME,
+  // never HOSTNAME directly (direct HOSTNAME would be silently clobbered).
+  assert.match(dropin, /Environment=OMNIROUTE_HOSTNAME=127\.0\.0\.1/);
+  assert.ok(
+    !/^Environment=HOSTNAME=/m.test(dropin),
+    "drop-in must not set HOSTNAME directly (runtime-env.mjs overwrites it from OMNIROUTE_HOSTNAME)"
+  );
+  assert.match(dropin, /BindsTo=omniroute-prod-proxy\.service/);
+  assert.match(dropin, /^ExecStartPost=.*127\.0\.0\.1:20138\/api\/health/m);
+});
+
+test("prod healthcheck drop-in points at the internal backend", () => {
+  const dropin = read("omniroute-healthcheck-cold-start.conf");
+  assert.match(dropin, /Environment=OMNIROUTE_HEALTHCHECK_URL=http:\/\/127\.0\.0\.1:20138\/api\/health/);
+});

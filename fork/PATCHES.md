@@ -67,6 +67,16 @@
 - `StopWhenUnneeded=yes` NOT used: systemd 262 `--user verify` rejects it
   as unknown in `[Service]` (verified warning); backend `BindsTo=` the
   proxy achieves the same stop-with-proxy.
+## Prod cold start (laptop)
+
+- `fork/deploy/systemd/omniroute-prod.socket`: holds public `:20128`, `Accept=no`, `WantedBy=sockets.target`; first connection wakes `omniroute-prod-proxy.service`.
+- `fork/deploy/systemd/omniroute-prod-proxy.service`: `/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=30min 127.0.0.1:20138` (`TimeoutStartSec=120`; `ExecStartPre=` polls `http://127.0.0.1:20138/api/health` ~110 s; `Requires=omniroute-prod.socket` + `Requires=omniroute-repo.service`).
+- `fork/deploy/systemd/omniroute-repo-cold-start.conf` (drop-in for `omniroute-repo.service`, copied verbatim from deployed `zzzzzzzz-cold-start.conf`): internal `:20138` (`PORT`+`OMNIROUTE_PORT`, `OMNIROUTE_HOSTNAME=127.0.0.1`, `BindsTo=omniroute-prod-proxy.service`, `TimeoutStartSec=120`, `ExecStartPost=` health poll). `OMNIROUTE_HOSTNAME` not `HOSTNAME`: `scripts/build/runtime-env.mjs` `withRuntimePortEnv()` overwrites `HOSTNAME` from `OMNIROUTE_HOSTNAME` at runtime, so a direct `HOSTNAME=` would be silently clobbered.
+- `fork/deploy/systemd/omniroute-healthcheck-cold-start.conf`: `[Service] Environment=OMNIROUTE_HEALTHCHECK_URL=http://127.0.0.1:20138/api/health`.
+- Measured cold start: 14.8 s socket-wake → first `200` from `:20128`.
+- Rollback: `rm ~/.config/systemd/user/omniroute-repo.service.d/zzzzzzzz-cold-start.conf && systemctl --user disable --now omniroute-prod.socket && systemctl --user enable --now omniroute-repo.service && rm ~/.config/systemd/user/omniroute-healthcheck.service.d/omniroute-healthcheck-cold-start.conf` (plain `omniroute-repo.service` keeps running untouched below).
+- Tests: `tests/unit/fork-cold-start-units.test.ts` (4/4 prod: socket `:20128`+`Service=`, proxy idle-exit+`Requires=omniroute-repo.service`, drop-in `PORT`/`OMNIROUTE_PORT`/`OMNIROUTE_HOSTNAME`+no `HOSTNAME`+`BindsTo`, healthcheck drop-in URL). `systemd-analyze --user verify` on socket + proxy: exit 0, no warnings (drop-ins are fragments, not standalone).
+
 ## Phase 2 env docs (sync fix)
 
 - `.env.example` + `docs/reference/ENVIRONMENT.md`: documented the 5 fork P2 vars (CI `check:env-doc-sync` requires code/example/docs in sync): `OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS`, `OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS`, `OMNIROUTE_WARMUP_TICK_INTERVAL_MS`, `OMNIROUTE_PROXY_HEALTH_CACHE_MAX`, `OMNIROUTE_HOOKS_RATELIMIT_MAP_MAX`. Verified: `node scripts/check/check-env-doc-sync.mjs` green (722/1014/1031, none missing); `check:docs-counts` exit 0 (1 pre-existing soft drift: CODEBASE_DOCUMENTATION executor count).

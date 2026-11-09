@@ -1,0 +1,11 @@
+[Unit]
+Description=OmniRoute production socket (cold start, :20128)
+Before=omniroute-prod-proxy.service
+
+[Socket]
+ListenStream=0.0.0.0:20128
+Accept=no
+Service=omniroute-prod-proxy.service
+
+[Install]
+WantedBy=sockets.target

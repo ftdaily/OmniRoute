@@ -159,6 +159,40 @@ test("fork/deploy pack.py pack rejects an over-budget stage", () => {
   assert.ok(errText.includes("exceeds size budget"), `pack accepted an over-budget stage: ${errText.slice(0, 200)}`);
   assert.ok(!existsSync(join(out, "rollout", `${release}.tar.gz`)), "over-budget tarball was written");
 });
+test("fork/deploy pack.py emits flat entries (no <release>/ prefix)", () => {
+  const src = SRC();
+  const out = mkdtempSync(join(tmpdir(), "fork-deploy-flat-"));
+  const release = "abc1234-BUILDID1-flat";
+  const stageDir = join(out, "stage");
+  execFileSync(
+    "python3",
+    [join(DEPLOY, "pack.py"), "stage", "--src", src, "--commit", "abc1234",
+     "--build-id", "BUILDID1", "--release", release, "--stage-dir", stageDir,
+     "--node", process.execPath, "--skip-native-check"],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, NODE_PATH: join(ROOT, "node_modules") } }
+  );
+  execFileSync(
+    "python3",
+    [join(DEPLOY, "pack.py"), "pack", "--stage-dir", stageDir, "--src", src,
+     "--release", release, "--out-dir", join(out, "rollout")],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+  );
+  const tarball = join(out, "rollout", `${release}.tar.gz`);
+  assert.ok(existsSync(tarball), "pack wrote no tarball");
+  const entries: string = execFileSync("tar", ["-tzf", tarball], { encoding: "utf8" });
+  const names = entries.split("\n").filter((l) => l.length > 0).map((l) => l.replace(/^\.\//, ""));
+  assert.ok(!names.some((n) => n === release || n.startsWith(release + "/")),
+    `tarball nests under <release>/ (releases/X/X/ on install): ${names.slice(0, 3).join(", ")}`);
+  for (const p of [
+    "node_modules/onnxruntime-web",
+    "node_modules/onnxruntime-node/bin",
+    "node_modules/@huggingface/transformers/dist",
+    "node_modules/@atjsh/llmlingua-2/dist",
+  ]) {
+    assert.ok(names.some((n) => n === p || n.startsWith(p + "/")), `missing flat ${p}`);
+  }
+});
 test("fork/deploy runners expose the parametrised CLI and keep the safety guards", () => {
   const specs: Record<string, string[]> = {
     "pack.py": ["stage --src", "--commit", "--build-id", "--release", "--stage-dir", "TRANSFORMER_PATHS",

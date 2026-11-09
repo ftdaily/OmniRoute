@@ -30,3 +30,17 @@
   those dirs (verified via package.json main/exports + `ls`).
 - `tests/unit/fork-deploy-pack.test.ts`: both `stage` invocations pass
   `--skip-native-check` (only the test uses it).
+
+## P1-FLAT: pack.py emits flat './' entries (no <release>/ prefix)
+
+- `fork/deploy/pack.py` `pack()`: `arcname=str(Path(".") / a)` — matches
+  scratch `pack-3854b.py` (`tar -C STAGE .`, flat `./` members). The old
+  `Path(release) / a` prefix nested every install one level too deep when
+  `local-release.py install()` / `tencent-release.py stage()` extract with
+  `tar -xzf -C releases/<release>/` (ended up `releases/X/X/`, entrypoint
+  asserts failing).
+- `tests/unit/fork-deploy-pack.test.ts`: new "emits flat entries" test —
+  packs the fixture stage, lists the real tarball, asserts no entry starts
+  with `<release>/` and the 4 transformer paths sit at `./node_modules/...`.
+  End-to-end proof: extracted a fixture tarball into `releases/R1/` —
+  `server.js` + `node_modules/onnxruntime-web` land directly, no nesting.

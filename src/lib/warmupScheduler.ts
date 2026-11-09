@@ -97,7 +97,13 @@ export function startWarmupScheduler(): NodeJS.Timeout | null {
   }
   const cron = getCron();
   log.info("scheduler started", { cron, concurrency: getConcurrency() });
-  STATE.timer = setInterval(tick, 60_000);
+  // Fork P2 (2.3): 60 s default; OMNIROUTE_WARMUP_TICK_INTERVAL_MS overrides
+  // (clamped to >= 10 s, invalid falls back to default).
+  const raw = process.env.OMNIROUTE_WARMUP_TICK_INTERVAL_MS;
+  const parsed = raw ? Number(raw) : Number.NaN;
+  const tickMs =
+    Number.isFinite(parsed) && parsed >= 10_000 ? Math.floor(parsed) : 60_000;
+  STATE.timer = setInterval(tick, tickMs);
   STATE.timer.unref();
   tick();
   return STATE.timer;

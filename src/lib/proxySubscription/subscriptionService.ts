@@ -1093,6 +1093,13 @@ let schedulerStarted = false;
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
 
 /** Start a background ticker that refreshes enabled subscriptions on their interval. */
+// Fork P2 (2.3): 60 s default; OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS
+// overrides (clamped to >= 10 s, invalid falls back to default).
+function resolveSubscriptionSchedulerIntervalMs(): number {
+  const raw = process.env.OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS;
+  const parsed = raw ? Number(raw) : Number.NaN;
+  return Number.isFinite(parsed) && parsed >= 10_000 ? Math.floor(parsed) : 60_000;
+}
 export function startSubscriptionScheduler(): void {
   if (schedulerStarted) return;
   if (typeof window !== "undefined") return; // never in the browser
@@ -1121,7 +1128,8 @@ export function startSubscriptionScheduler(): void {
   };
 
   // Check every minute; each subscription self-throttles by its interval.
-  schedulerTimer = setInterval(tick, 60_000);
+  // Fork P2 (2.3): period overridable via env; default unchanged.
+  schedulerTimer = setInterval(tick, resolveSubscriptionSchedulerIntervalMs());
   if (typeof schedulerTimer.unref === "function") schedulerTimer.unref();
 }
 

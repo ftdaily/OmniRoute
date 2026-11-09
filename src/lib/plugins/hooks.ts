@@ -50,6 +50,14 @@ export type BuiltinEvent = (typeof BUILTIN_EVENTS)[number];
 
 const RATE_LIMIT_MAX = 100; // max calls per plugin per window
 const RATE_LIMIT_WINDOW_MS = 1000; // 1 second window
+// Fork P2 (2.5): bound the map — plugin installs/uninstalls churn keys, and a
+// stale plugin that never unregisters would otherwise pin an entry forever.
+// Default 500; OMNIROUTE_HOOKS_RATELIMIT_MAP_MAX overrides (floor 100).
+const RATE_LIMIT_MAP_MAX = (() => {
+  const raw = process.env.OMNIROUTE_HOOKS_RATELIMIT_MAP_MAX;
+  const parsed = raw ? Number(raw) : Number.NaN;
+  return Number.isFinite(parsed) && parsed >= 100 ? Math.floor(parsed) : 500;
+})();
 
 interface RateLimitState {
   count: number;
@@ -57,6 +65,15 @@ interface RateLimitState {
 }
 
 const rateLimitMap: Map<string, RateLimitState> = new Map();
+
+function evictRateLimitOverflow(): void {
+  while (rateLimitMap.size > RATE_LIMIT_MAP_MAX) {
+    // Map preserves insertion order: oldest first.
+    const oldest = rateLimitMap.keys().next();
+    if (oldest.done) break;
+    rateLimitMap.delete(oldest.value);
+  }
+}
 
 function isRateLimited(pluginName: string): boolean {
   const now = Date.now();
@@ -66,6 +83,7 @@ function isRateLimited(pluginName: string): boolean {
   if (!state || now - state.windowStart >= RATE_LIMIT_WINDOW_MS) {
     // New window
     rateLimitMap.set(key, { count: 1, windowStart: now });
+    evictRateLimitOverflow();
     return false;
   }
 
@@ -389,4 +407,9 @@ export function getActiveEvents(): string[] {
 export function resetHooks(): void {
   hooks.clear();
   rateLimitMap.clear();
+}
+
+/** Test hook: current rate-limit entry count (P2 cap regression check). */
+export function __rateLimitMapSizeForTesting(): number {
+  return rateLimitMap.size;
 }

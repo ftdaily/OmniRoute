@@ -12,7 +12,16 @@
 //   - a small handle registry with its own TTL/quota, cleaned up alongside the cache.
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-import sharp from "sharp";
+// Fork P2 (2.4): lazy sharp (see videoBridgeDrilldown.ts). Same loader here so
+// this module also stays sharp-free at import.
+let _sharp: typeof import("sharp") | null = null;
+async function loadSharp(): Promise<typeof import("sharp")> {
+  if (!_sharp) {
+    const specifier = "sh" + "arp";
+    _sharp = (await import(/* webpackIgnore: true */ specifier)) as typeof import("sharp");
+  }
+  return _sharp;
+}
 
 import {
   VIDEO_DRILLDOWN_MAX_ENTRY_BYTES,
@@ -162,6 +171,7 @@ async function shrinkFrameForVariant(
   preset: VideoDrilldownVariantPreset
 ): Promise<VideoDrilldownFrame> {
   if (frame.width <= preset.maxDimension && frame.height <= preset.maxDimension) return frame;
+  const sharp = (await loadSharp()).default;
   const commaIndex = frame.dataUri.indexOf(",");
   const source = Buffer.from(frame.dataUri.slice(commaIndex + 1), "base64");
   const resized = await sharp(source)

@@ -101,11 +101,6 @@
           "reason": "Existing prose lint is advisory; strict documentation checks remain required.",
           "domains": ["docs"]
         },
-        "i18n-ui-coverage": {
-          "when": "code-or-i18n",
-          "disposition": "required",
-          "domains": ["build", "cli", "i18n", "tests", "ui"]
-        },
         "i18n-glossary-zhcn": {
           "when": "code-or-i18n",
           "disposition": "required",

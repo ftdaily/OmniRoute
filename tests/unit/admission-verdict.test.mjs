@@ -214,7 +214,7 @@ test("catalog-only still requires i18n validation", () => {
       needs[id].result = "skipped";
   }
   assert.equal(run(needs).verdict, "PASS");
-  needs["i18n-ui-coverage"].result = "failure";
+  needs["i18n-glossary-zhcn"].result = "failure";
   assert.notEqual(run(needs).verdict, "PASS");
 });
 

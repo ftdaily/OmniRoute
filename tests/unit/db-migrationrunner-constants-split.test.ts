@@ -77,8 +77,8 @@ describe("migrationRunner/constants — exact small-table snapshots", () => {
 // ── large tables — count + shape + spot-checks (corruption guard) ─────────────
 
 describe("migrationRunner/constants — large-table integrity", () => {
-  it("RENAMED_MIGRATION_COMPATIBILITY has 40 well-formed entries", () => {
-    assert.equal(RENAMED_MIGRATION_COMPATIBILITY.length, 40);
+  it("RENAMED_MIGRATION_COMPATIBILITY has 44 well-formed entries", () => {
+    assert.equal(RENAMED_MIGRATION_COMPATIBILITY.length, 44);
     for (const e of RENAMED_MIGRATION_COMPATIBILITY) {
       assert.equal(typeof e.fromVersion, "string");
       assert.equal(typeof e.fromName, "string");
@@ -88,8 +88,42 @@ describe("migrationRunner/constants — large-table integrity", () => {
   });
 
   it("RENAMED_MIGRATION_COMPATIBILITY spot-checks the boundary renames", () => {
-    // Merge 3853 prepended the fork 213→217 compat entry (fork 213 renumbered
-    // to 217, upstream took 213) — first entry is no longer 022. The canonical
+    // Merge 3854: 217/218 collision repair — fork portal pair 217/218→226/227,
+    // upstream quota/mirror pair 217/218→228/229; fork 213→226 legacy alias kept.
+    assert.deepEqual(RENAMED_MIGRATION_COMPATIBILITY.slice(0, 5), [
+      {
+        fromVersion: "213",
+        fromName: "user_portal_flags_prefs_combos",
+        toVersion: "226",
+        toName: "user_portal_flags_prefs_combos",
+      },
+      {
+        fromVersion: "217",
+        fromName: "user_portal_flags_prefs_combos",
+        toVersion: "226",
+        toName: "user_portal_flags_prefs_combos",
+      },
+      {
+        fromVersion: "218",
+        fromName: "retired_api_key_hashes",
+        toVersion: "227",
+        toName: "retired_api_key_hashes",
+      },
+      {
+        fromVersion: "217",
+        fromName: "quota_recovery_tickets",
+        toVersion: "228",
+        toName: "quota_recovery_tickets",
+      },
+      {
+        fromVersion: "218",
+        fromName: "proxy_subscription_mirror_urls",
+        toVersion: "229",
+        toName: "proxy_subscription_mirror_urls",
+      },
+    ]);
+    // Merge 3853 added the fork 213 compat entry (fork 213 renumbered;
+    // upstream took 213) — first entry is no longer 022. The canonical
     // 022 rename must still exist exactly once.
     assert.deepEqual(
       RENAMED_MIGRATION_COMPATIBILITY.find(
@@ -188,8 +222,8 @@ describe("migrationRunner/constants — large-table integrity", () => {
       toVersion: "101",
       toName: "api_key_usage_limits",
     });
-    // Merge 3853: fork 213 renumbered to 217 (upstream took 213) — Tencent
-    // compat entry so old 213-named state resolves to canonical 217.
+    // Merge 3854: fork 213 resolves to canonical 226 (portal pair 217/218→226
+    // /227) — Tencent compat entry so old 213-named state converges.
     assert.deepEqual(
       RENAMED_MIGRATION_COMPATIBILITY.find(
         (e) => e.fromVersion === "213" && e.fromName === "user_portal_flags_prefs_combos"
@@ -197,7 +231,7 @@ describe("migrationRunner/constants — large-table integrity", () => {
       {
         fromVersion: "213",
         fromName: "user_portal_flags_prefs_combos",
-        toVersion: "217",
+        toVersion: "226",
         toName: "user_portal_flags_prefs_combos",
       }
     );

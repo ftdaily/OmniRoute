@@ -520,6 +520,12 @@ jobs:
           # PR acceleration is not release-candidate provenance.
           cache: ${{ github.event_name == 'pull_request' }}
       - name: CHANGELOG integrity (nenhum bullet da base pode sumir no merge-result)
+        # Push (post-merge) has no PR base: point the base at the pushed branch
+        # itself (fetch-depth 0 has it), so the check compares the new tip
+        # against its own previous commit — mine-vs-mine — instead of the
+        # stale origin/release/v* fallback the script picks with no base.
+        env:
+          CHANGELOG_BASE_REF: ${{ github.event_name == 'push' && format('origin/{0}', github.ref_name) || '' }}
         run: npm run check:changelog-integrity
       - name: Agent-skills generator sync (SKILL.md gerado ≡ catálogo)
         run: npm run check:agent-skills-sync

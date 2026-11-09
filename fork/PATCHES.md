@@ -72,3 +72,20 @@
 - `.env.example` + `docs/reference/ENVIRONMENT.md`: documented the 5 fork P2 vars (CI `check:env-doc-sync` requires code/example/docs in sync): `OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS`, `OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS`, `OMNIROUTE_WARMUP_TICK_INTERVAL_MS`, `OMNIROUTE_PROXY_HEALTH_CACHE_MAX`, `OMNIROUTE_HOOKS_RATELIMIT_MAP_MAX`. Verified: `node scripts/check/check-env-doc-sync.mjs` green (722/1014/1031, none missing); `check:docs-counts` exit 0 (1 pre-existing soft drift: CODEBASE_DOCUMENTATION executor count).
 - `.github/workflows/ci.yml` docs-sync job: `i18n docs drift` step skipped on ftdaily/OmniRoute (no translation batch on the fork; docs/i18n frozen at upstream pin).
 - `.github/workflows/docker-publish.yml`: fork-only Docker Hub guard — `HAS_DOCKERHUB` job env (`secrets.DOCKERHUB_USERNAME != ''`) skips both `Login to Docker Hub` steps and the `Update Docker Hub description` step when absent (fork publishes ghcr.io/ftdaily/omniroute only; upstream secrets don't exist on the fork). GHCR login, builds, manifests, smoke test untouched.
+
+## M2b merge-integrity on push (replaces unpushed M2 ledger, reset)
+
+- `.github/workflows/quality.yml` (merge-integrity job, CHANGELOG integrity
+  step): on `push` set `CHANGELOG_BASE_REF: origin/<pushed-branch>`; on PRs
+  empty (script falls back to `GITHUB_BASE_REF` = PR base, unchanged).
+  checkout uses `fetch-depth: 0`, so `origin/<branch>` is present — verified.
+  Root cause: push runs have no `GITHUB_BASE_REF`, so the script fell back to
+  the newest `origin/release/v*` on the fork (stale `release/v3.8.51`,
+  pre-release CHANGELOG) and flagged 11 bullets upstream itself rewrote
+  (takedown #12440 + #12337). No ledger file needed: push compares
+  mine-tip-vs-mine-tip (empty delta, trivially green); PR runs already pass.
+  Local proof: `CHANGELOG_BASE_REF=origin/mine node
+  scripts/check/check-changelog-integrity.mjs` → `OK — no base bullets lost
+  vs origin/mine`, exit 0.
+- Supersedes: `b825ecc34f` (5,194-line reconciliation ledger, upstream file
+  churn every sync) was reset (`git reset --hard origin/mine`), never pushed.

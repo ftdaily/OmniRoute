@@ -196,3 +196,4 @@
   change recommended; RSS cost of sharp (~30-60 MB with libvips) is paid only
   on first image/video use, which is the correct laziness boundary. Verify on a
   FRESH boot (maps before first image request), do not chase further.
+- 2026-11-09 .github/workflows/docker-publish.yml: build + merge jobs define GHCR_IMAGE_NAME (= IMAGE_NAME). Upstream 535f0724d1/44e201b8ff verify steps read it; fork's GHCR-only env (f04c903529) had dropped it → 'GHCR_IMAGE_NAME: unbound variable' after image push.

@@ -295,6 +295,7 @@ jobs:
             arch: arm64
     env:
       IMAGE_NAME: ghcr.io/ftdaily/omniroute
+      GHCR_IMAGE_NAME: ghcr.io/ftdaily/omniroute  # fork: upstream verify/manifest steps read this
       # Fork has no DOCKERHUB_* secrets (upstream-only); Docker Hub steps skip.
       HAS_DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME != '' }}
     steps:
@@ -539,6 +540,7 @@ jobs:
       security-events: write
     env:
       IMAGE_NAME: ghcr.io/ftdaily/omniroute
+      GHCR_IMAGE_NAME: ghcr.io/ftdaily/omniroute  # fork: upstream verify/manifest steps read this
       # Fork has no DOCKERHUB_* secrets (upstream-only); Docker Hub steps skip.
       HAS_DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME != '' }}
       VERSION: ${{ needs.prepare.outputs.version }}

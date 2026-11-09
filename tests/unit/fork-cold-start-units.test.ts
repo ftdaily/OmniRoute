@@ -29,6 +29,10 @@ test("beta proxy forwards to the internal backend with idle exit", () => {
   assert.match(proxy, /--exit-idle-time=15min/);
   assert.match(proxy, /127\.0\.0\.1:20139/);
   assert.match(proxy, /Requires=omniroute-beta-backend\.service/);
+  // Requires= without After= starts both in parallel; first request got a reset.
+  // The proxy must wait for backend health itself (After= would be a cycle).
+  assert.match(proxy, /^ExecStartPre=.*127\.0\.0\.1:20139\/api\/health/m);
+  assert.match(proxy, /^TimeoutStartSec=120$/m);
   assert.ok(
     !/^BindsTo=/m.test(proxy),
     "proxy must not BindsTo the backend: it holds the client socket across backend restarts"

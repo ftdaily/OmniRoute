@@ -4,6 +4,7 @@ import { fetchRemoteMedia, type RemoteMediaFetchResult } from "@/shared/network/
 import type { VideoAnalysisMode } from "@/shared/constants/modalityBridgeDefaults";
 
 import { fuseVideoAndAudio, type VideoAudioFusionResult } from "./videoAudioFusion";
+import { loadSharp } from "./sharpLoader";
 import { buildVideoContactSheet } from "./videoBridgeContactSheet";
 import {
   extractVideoFramesViaBroker,
@@ -331,7 +332,7 @@ export async function compareVideoFramesByGrayscale(
   signal?: AbortSignal
 ): Promise<number> {
   throwIfVideoDedupAborted(signal);
-  const { default: sharp } = await import("sharp");
+  const sharp = (await loadSharp()).default;
   throwIfVideoDedupAborted(signal);
   const [left, right] = await Promise.all(
     [previous, current].map((frame) =>

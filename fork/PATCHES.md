@@ -26,3 +26,22 @@
 ## Phase 2 env docs (sync fix)
 
 - `.env.example` + `docs/reference/ENVIRONMENT.md`: documented the 5 fork P2 vars (CI `check:env-doc-sync` requires code/example/docs in sync): `OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS`, `OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS`, `OMNIROUTE_WARMUP_TICK_INTERVAL_MS`, `OMNIROUTE_PROXY_HEALTH_CACHE_MAX`, `OMNIROUTE_HOOKS_RATELIMIT_MAP_MAX`. Verified: `node scripts/check/check-env-doc-sync.mjs` green (722/1014/1031, none missing); `check:docs-counts` exit 0 (1 pre-existing soft drift: CODEBASE_DOCUMENTATION executor count).
+
+## P2-SHARP: one shared lazy sharp loader, sharp-free startup graph
+
+- New `src/lib/guardrails/sharpLoader.ts`: the ONE `loadSharp()` (string-split
+  specifier, cached). `videoBridgeDrilldown.ts` + `videoBridgeDrilldownLifecycle.ts`
+  dropped their duplicated private copies; `videoBridgeContactSheet.ts` +
+  `videoBridgeHelpers.ts` use it instead of bare `await import("sharp")`.
+- Startup-graph breaks (why sharp was resident at idle): `visionBridgeHelpers.ts`
+  statically imported `imageNormalize` (sharp factory) — now lazy inside
+  `fetchRemoteImageAsDataUri` only. `SELF_LOOP_KEY_ID_HEADER` moved to the leaf
+  `visionBridgeKeyScope.ts`; `audioBridgeHelpers.ts` imports it from there
+  instead of via `visionBridgeHelpers` (which had dragged imageNormalize+sharp
+  into the audio bridge's startup graph: instrumentation -> registry ->
+  audioBridge -> helpers -> visionBridgeHelpers -> imageNormalize).
+- `tests/unit/fork-sharp-lazy.test.ts`: asserts one dynamic import site in the
+  loader, no top-level sharp import and no private loader/dynamic import in the
+  9 startup-reachable modules. NOTE: not a Next-preload issue — sharp is absent
+  from `serverExternalPackages` and the bundled `import("sharp")` call sites are
+  all lazy (`Promise.resolve().then(...)` in image-optimizer/video paths).

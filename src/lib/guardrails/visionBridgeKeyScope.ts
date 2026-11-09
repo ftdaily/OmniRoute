@@ -18,6 +18,11 @@ import { hasApiKeyModelRestrictions } from "@/shared/utils/resolvedModelAccess";
 import { intersectAllowedConnectionIds } from "@/sse/handlers/chat/connectionConstraints.ts";
 import { hasUsableCredentialsForModel } from "./visionBridgeCredentials";
 
+/** Self-loop header that scopes an internal describe call to the caller's API key.
+ * Lives here (not visionBridgeHelpers) so audioBridgeHelpers can use it without
+ * dragging imageNormalize+sharp into its startup graph. */
+export const SELF_LOOP_KEY_ID_HEADER = "x-omniroute-self-loop-key-id";
+
 export interface VisionBridgeKeyScope {
   /** Id of the caller's API key; the describe self-loop is scoped to it. */
   apiKeyId: string;

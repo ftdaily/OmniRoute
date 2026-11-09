@@ -1,18 +1,8 @@
 import { createHash } from "node:crypto";
 
+import { loadSharp } from "./sharpLoader";
 import { JPEG_FRAME_DATA_URI_PREFIX } from "./videoBridgeFrameContract";
 import { resolveVideoFocusWindow, type VideoFocusWindow } from "./videoBridgeRuntime";
-
-// Fork P2 (2.4): lazy sharp loader (transformersLocal pattern). A string-split
-// specifier keeps bundlers from statically tracing it; cached after first load.
-let _sharp: typeof import("sharp") | null = null;
-async function loadSharp(): Promise<typeof import("sharp")> {
-  if (!_sharp) {
-    const specifier = "sh" + "arp";
-    _sharp = (await import(/* webpackIgnore: true */ specifier)) as typeof import("sharp");
-  }
-  return _sharp;
-}
 
 export interface VideoDrilldownFrameInput {
   dataUri: string;

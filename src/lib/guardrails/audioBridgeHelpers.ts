@@ -8,7 +8,10 @@ import { fetchRemoteImage } from "@/shared/network/remoteImageFetch";
 import { resolveSelfLoopBearer } from "@/shared/middleware/chatBodyAdmission";
 
 import { hasUsableCredentialsForModel } from "./visionBridgeCredentials";
-import { SELF_LOOP_KEY_ID_HEADER } from "./visionBridgeHelpers";
+// SELF_LOOP_KEY_ID_HEADER lives in visionBridgeKeyScope (leaf, no image deps);
+// importing it from visionBridgeHelpers would drag imageNormalize+sharp into
+// the audio bridge's startup graph.
+import { SELF_LOOP_KEY_ID_HEADER } from "./visionBridgeKeyScope";
 import type { VisionBridgeKeyScope } from "./visionBridgeKeyScope";
 
 export type AudioCredentialCheck = (model: string) => Promise<boolean | null>;

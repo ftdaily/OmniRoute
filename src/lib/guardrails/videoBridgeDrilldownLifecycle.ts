@@ -12,16 +12,7 @@
 //   - a small handle registry with its own TTL/quota, cleaned up alongside the cache.
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-// Fork P2 (2.4): lazy sharp (see videoBridgeDrilldown.ts). Same loader here so
-// this module also stays sharp-free at import.
-let _sharp: typeof import("sharp") | null = null;
-async function loadSharp(): Promise<typeof import("sharp")> {
-  if (!_sharp) {
-    const specifier = "sh" + "arp";
-    _sharp = (await import(/* webpackIgnore: true */ specifier)) as typeof import("sharp");
-  }
-  return _sharp;
-}
+import { loadSharp } from "./sharpLoader";
 
 import {
   VIDEO_DRILLDOWN_MAX_ENTRY_BYTES,

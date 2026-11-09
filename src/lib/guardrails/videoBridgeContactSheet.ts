@@ -4,6 +4,7 @@ import {
   estimateJpegFrameBytes,
 } from "./videoBridgeFrameContract";
 import { VIDEO_FRAME_MAX_BYTES } from "./videoBridgeRuntime";
+import { loadSharp } from "./sharpLoader";
 
 export interface ContactSheetFrame {
   dataUri: string;
@@ -87,7 +88,7 @@ export async function buildVideoContactSheet(
     ? AbortSignal.any([options.signal, controller.signal])
     : controller.signal;
   try {
-    const { default: sharp } = await import("sharp");
+    const sharp = (await loadSharp()).default;
     if (signal.aborted) throw new Error("Video contact sheet was aborted");
     const tiles = await Promise.all(
       frames.map(async (frame) => {

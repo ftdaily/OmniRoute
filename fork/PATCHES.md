@@ -149,3 +149,50 @@
 - `tests/unit/admission-verdict.test.mjs`: sentinel swapped to still-`code` `test-unit`; FULL_LANE now includes `test-coverage`; full-matrix gating test asserts the fork carve-out contract (upstream PR runs coverage, fork PR skips, no `changes` dep).
 - `tests/unit/ci-mergify-candidate.test.mjs`: `github.repository` added to the evaluator context (upstream value); ready-PR test asserts upstream-runs / fork-skips split for `test-coverage`.
 - actionlint: not installed locally (no binary); `if` addition is a pure `&&` term on existing contexts, YAML parsed OK.
+
+## P2-SHARP: one shared lazy sharp loader, sharp-free startup graph
+
+- New `src/lib/guardrails/sharpLoader.ts`: the ONE `loadSharp()` (string-split
+  specifier, cached). `videoBridgeDrilldown.ts` + `videoBridgeDrilldownLifecycle.ts`
+  dropped their duplicated private copies; `videoBridgeContactSheet.ts` +
+  `videoBridgeHelpers.ts` use it instead of bare `await import("sharp")`.
+- Startup-graph breaks (why sharp was resident at idle): `visionBridgeHelpers.ts`
+  statically imported `imageNormalize` (sharp factory) — now lazy inside
+  `fetchRemoteImageAsDataUri` only. `SELF_LOOP_KEY_ID_HEADER` moved to the leaf
+  `visionBridgeKeyScope.ts`; `audioBridgeHelpers.ts` imports it from there
+  instead of via `visionBridgeHelpers` (which had dragged imageNormalize+sharp
+  into the audio bridge's startup graph: instrumentation -> registry ->
+  audioBridge -> helpers -> visionBridgeHelpers -> imageNormalize).
+- `tests/unit/fork-sharp-lazy.test.ts`: asserts one dynamic import site in the
+  loader, no top-level sharp import and no private loader/dynamic import in the
+  9 startup-reachable modules. NOTE: not a Next-preload issue — sharp is absent
+  from `serverExternalPackages` and the bundled `import("sharp")` call sites are
+  all lazy (`Promise.resolve().then(...)` in image-optimizer/video paths).
+- CORRECTION (follow-up): the imageNormalize half of the "startup-graph breaks"
+  claim above did NOT land in 450acb427f (`visionBridgeHelpers.ts` stat 0 there;
+  its static `import { normalizeDataUri } from imageNormalize` survived, and the
+  test scans literal `sharp` imports only, so the package-mediated
+  imageNormalize→sharp edge was untested). It exists only as UNCOMMITTED dirt
+  in this worktree (lazy `await import(imageNormalize)` at the
+  fetchRemoteImageAsDataUri call site + const re-export), NOT reviewed, NOT in
+  CI. What 450acb427f PROVABLY did: dedup to one cached loader + const move to
+  the leaf KeyScope (no-cycle verified) + the pinning test.
+- BUNDLE FORENSICS (built artifact e700c0ba49, read-only): ZERO literal
+  `require("sharp")` and ZERO static `from "sharp"` in the whole
+  `.build/next/server` tree — no top-level preload anywhere, including
+  `instrumentation.js` (its `842482:a=>{a.exports=import("sharp")}` factory has
+  exactly 1 ref = its own definition; nothing evaluates it) and `middleware.js`
+  (1 `sharp` hit = its own factory def). All 6 consumer chunks
+  (25271/39930/52013/56124/58980/68129/89110) reference it only as
+  `Promise.resolve().then(require-bind(842482))` inside async fns — the four
+  app-level lazy sites (loadSharp ×2 deduped post-commit, contactSheet,
+  helpers grayscale) plus upstream open-sse imageNormalize/cursorImages, which
+  were ALREADY `import("sharp")` dynamic before the fork touched anything.
+  `images.unoptimized: true` is already set, so Next's image-optimizer never
+  runs. CONCLUSION: no loader-side fix is available or needed — the bundle
+  cannot load sharp at idle. The resident `.node` in the observed Beta maps
+  must have come from a request-time call (image/video path on a box that had
+  served traffic; both observed processes had), NOT from startup. No config
+  change recommended; RSS cost of sharp (~30-60 MB with libvips) is paid only
+  on first image/video use, which is the correct laziness boundary. Verify on a
+  FRESH boot (maps before first image request), do not chase further.

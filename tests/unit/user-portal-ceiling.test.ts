@@ -67,13 +67,13 @@ describe("admin ceiling ignorePersonalRestrictions", () => {
     // Prime the inference verdict (allowed), then disable and confirm the
     // inference cache does not leak allow while the catalog read stays true.
     assert.equal(await apiKeysDb.isModelAllowedForKey(raw, MODEL), true);
-    const { updateKeyPreferences, getKeyPreferences } = await import("../../src/lib/db/userPortal.ts");
-    const prefs = await getKeyPreferences((await apiKeysDb.getApiKeyById(
-      (await apiKeysDb.getApiKeys()).find((k) => k.name === "ceiling-key")!.id
-    ).catch(() => null as never)) as never).catch(() => null);
+    const { getKeyPreferences } = await import("../../src/lib/db/userPortal.ts");
+    const prefs = await getKeyPreferences(
+      (await apiKeysDb.getApiKeyById(
+        (await apiKeysDb.getApiKeys()).find((k) => k.name === "ceiling-key")!.id
+      ).catch(() => null)) as unknown as Parameters<typeof getKeyPreferences>[0]
+    ).catch(() => null);
     void prefs;
-    const { createApiKey } = await import("../../src/lib/db/apiKeys.ts");
-    void createApiKey;
     // Second key with the same model: inference allow primes, then catalog
     // projection on the FIRST key must not flip the second key's verdict.
     const second = await apiKeysDb.createApiKey("ceiling-key-2", "machine-ceiling-2", [], {

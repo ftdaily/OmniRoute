@@ -44,7 +44,7 @@ describe("tool-schema engine", () => {
     assert.equal(result.compressed, true);
     const after = JSON.stringify(result.body).length;
     assert.ok(after < before, `expected smaller: ${before} -> ${after}`);
-    const tool = (result.body.tools as Array<any>)[0].function;
+    const tool = (result.body.tools as Array<{ function: { name: string; parameters: { required: unknown; properties: Record<string, { enum?: string[]; default?: unknown; description?: unknown }> } } }>)[0].function;
     assert.equal(tool.name, "search_files");
     assert.deepEqual(tool.parameters.required, ["query"]);
     assert.equal(tool.parameters.properties.mode.enum.join(","), "fast,deep");
@@ -89,7 +89,7 @@ describe("tool-schema engine", () => {
     const result = toolSchemaEngine.apply(body, { stepConfig: { enabled: true } });
     assert.equal(result.compressed, true);
     assert.ok(JSON.stringify(result.body).length < before);
-    const out = (result.body.tools as Array<any>)[0];
+    const out = (result.body.tools as Array<{ name: string; type: string; description?: unknown; parameters: { required: unknown; properties: Record<string, { type?: string; description?: unknown }> } }>)[0];
     assert.equal(out.name, "search_files");
     assert.equal(out.type, "function");
     assert.deepEqual(out.parameters.required, ["query"]);
@@ -109,7 +109,7 @@ describe("tool-schema engine", () => {
     const body = { messages: [{ role: "user", content: "hi" }], functions: [fn] };
     const result = toolSchemaEngine.apply(body, { stepConfig: { enabled: true } });
     assert.equal(result.compressed, true);
-    const out = (result.body.functions as Array<any>)[0];
+    const out = (result.body.functions as Array<{ name: string; description?: unknown; parameters: { properties: Record<string, unknown> } }>)[0];
     assert.equal(out.name, "search_files");
     assert.deepEqual(out.parameters.properties.q, { type: "string" });
     assert.ok(String(out.description).length <= 120);
@@ -247,7 +247,7 @@ describe("tool-schema stacked wiring", () => {
     };
     const result = toolSchemaEngine.apply(body, { stepConfig: { enabled: true } });
     assert.equal(result.compressed, true);
-    const params = (result.body.tools as Array<any>)[0].function.parameters;
+    const params = (result.body.tools as Array<{ function: { parameters: { $defs: { id: { const: unknown } }; required: unknown; properties: Record<string, { $ref?: string; items?: { enum?: unknown[] } }> } } }>)[0].function.parameters;
     assert.equal(params.$defs.id.const, "fixed");
     assert.equal(params.properties.item.$ref, "#/$defs/id");
     assert.deepEqual(params.required, ["item"]);

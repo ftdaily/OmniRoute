@@ -83,7 +83,7 @@ describe("userPortal storage (p3 owned)", () => {
     const key = await createApiKey("RED portal key strict", "test-machine-strict");
     for (const bad of ["0", NaN, 1.5, -1, null, undefined]) {
       await assert.rejects(
-        () => (m.updateKeyPreferences as any)(key.id, [], bad),
+        () => (m.updateKeyPreferences as (id: string, prefs: unknown, rev: unknown) => Promise<unknown>)(key.id, [], bad),
         /non-negative integer|CONFLICT/i,
         `must reject ${String(bad)}`
       );

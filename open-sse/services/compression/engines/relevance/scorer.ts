@@ -137,7 +137,7 @@ export function scoreSentencesBm25(
   const max = Math.max(...raw);
   if (!(max > 0)) return sentences.map(() => 0);
 
-  return sentences.map((sentence, i) => {
+  return sentences.map((_sentence, i) => {
     const boilerplate = boilerplateScore(docs[i]) * cfg.boilerplateWeight;
     return Math.max(0, raw[i] / max - boilerplate);
   });

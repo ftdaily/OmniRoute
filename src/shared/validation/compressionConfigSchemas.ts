@@ -234,8 +234,6 @@ export const llmCompressorConfigSchema = z
   })
   .strict();
 
-const noConfigSchema = z.object({}).strict();
-
 const liteStepPassesSchema = z
   .object({
     whitespace: z.boolean().optional(),

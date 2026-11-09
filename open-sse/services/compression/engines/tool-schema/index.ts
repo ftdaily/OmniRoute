@@ -39,11 +39,6 @@ function truncateDesc(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
-/** Annotation-only keys: safe to drop without changing tool selection or validation. */
-function isAnnotationKey(key: string): boolean {
-  return key.startsWith("x-") || key === "examples" || key === "title" || key === "$comment";
-}
-
 interface TrimOptions {
   maxDescriptionChars: number;
   dropExamples: boolean;

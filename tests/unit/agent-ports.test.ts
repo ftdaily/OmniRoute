@@ -3,7 +3,7 @@
  * Covers: port validation, reserved-port overlap, per-port strict key auth matrix,
  * path allowlist, header stripping, actual-bind conflict (EADDRINUSE), store persistence.
  */
-import { test, describe, beforeEach, afterEach } from "node:test";
+import { test, describe, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { createHash } from "node:crypto";

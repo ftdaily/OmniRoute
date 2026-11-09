@@ -29,7 +29,7 @@ const MODEL = "openai/gpt-4o-mini";
 
 function installRecordingFetch() {
   const original = globalThis.fetch;
-  globalThis.fetch = async (url: any, init: any = {}) => {
+  globalThis.fetch = async (url: string | URL | Request, init: { body?: unknown } = {}) => {
     const body = typeof init?.body === "string" ? JSON.parse(init.body) : init?.body;
     void url;
     void body;

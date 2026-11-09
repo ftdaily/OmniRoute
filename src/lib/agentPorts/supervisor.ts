@@ -12,7 +12,6 @@
  * on key disable/delete and destroy tracked active upstream streams.
  */
 import { createServer, request as httpRequest, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import net from "node:net";
 import { createHash } from "node:crypto";
 import { getDbInstance } from "@/lib/db/core";
 import { getRuntimePorts } from "@/lib/runtime/ports";

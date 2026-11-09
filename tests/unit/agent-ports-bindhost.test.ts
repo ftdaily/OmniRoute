@@ -56,7 +56,6 @@ describe("agentPorts bind-host (deployment compat)", () => {
     const sup = await import("@/lib/agentPorts/supervisor");
     await store.ensureAgentEndpointsTable();
     process.env.AGENT_PORTS_BIND_HOST = "0.0.0.0";
-    const { getDbInstance } = await import("@/lib/db/core");
     const { createApiKey } = await import("@/lib/db/apiKeys");
     const key = await createApiKey("bindhost-key", "test-machine-bh");
     const raw = (key as { key?: string }).key!;

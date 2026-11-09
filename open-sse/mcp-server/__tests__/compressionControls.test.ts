@@ -29,10 +29,17 @@ export const NEW_COMPRESSION_CONTROL_TOOLS = [
   "omniroute_compression_compare",
 ] as const;
 
+type ToolDef = {
+  name: string;
+  description: string;
+  inputSchema: { parse: (v: unknown) => unknown; safeParse: (v: unknown) => { success: boolean } };
+  handler: (...args: never[]) => unknown;
+  scopes: string[];
+};
 describe("compression controls registration", () => {
   it("registers all seven tools in compressionControlTools with the handler contract", () => {
     for (const name of NEW_COMPRESSION_CONTROL_TOOLS) {
-      const toolDef = (compressionControlTools as Record<string, any>)[name];
+      const toolDef = (compressionControlTools as Record<string, ToolDef>)[name];
       expect(toolDef, name).toBeDefined();
       expect(toolDef.name).toBe(name);
       expect(typeof toolDef.description).toBe("string");
@@ -53,12 +60,12 @@ describe("compression controls registration", () => {
       "omniroute_compression_compare",
     ];
     for (const name of readTools) {
-      expect((compressionControlTools as Record<string, any>)[name].scopes).toContain(
+      expect((compressionControlTools as Record<string, ToolDef>)[name].scopes).toContain(
         "read:compression"
       );
     }
     expect(
-      (compressionControlTools as Record<string, any>)["omniroute_update_compression_engine"].scopes
+      (compressionControlTools as Record<string, ToolDef>)["omniroute_update_compression_engine"].scopes
     ).toContain("write:compression");
   });
 
@@ -72,7 +79,7 @@ describe("compression controls registration", () => {
   });
 
   it("validates input schemas", () => {
-    const tools = compressionControlTools as Record<string, any>;
+    const tools = compressionControlTools as Record<string, ToolDef>;
     expect(tools.omniroute_list_compression_engines.inputSchema.safeParse({}).success).toBe(true);
     expect(
       tools.omniroute_get_compression_engine.inputSchema.safeParse({ engineId: "caveman" }).success

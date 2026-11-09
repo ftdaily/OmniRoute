@@ -1,0 +1,46 @@
+[Unit]
+Description=OmniRoute Beta server (cold start, internal :20139)
+# Runs the RELEASE bundle (same layout stable uses), never the main
+# checkout. %h/.local/share/omniroute/beta-current is a symlink the parent
+# flips at promotion time (ln -sfn releases/<build> beta-current), so this
+# unit file never changes across releases.
+# Lifecycle: the proxy Requires= this backend, so both start on first
+# connection (implicit Before: the backend's start job runs first). The
+# backend BindsTo= the proxy, so proxy idle-exit stops the backend — that
+# IS the idle path (StopWhenUnneeded= is NOT used: it belongs to the proxy
+# side semantics and systemd 262 --user verify rejects it as unknown in
+# [Service]; BindsTo on the backend achieves the same stop-with-proxy).
+After=network-online.target
+Wants=network-online.target
+BindsTo=omniroute-beta-proxy.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/omniroute/beta-current
+# Same entrypoint stable uses: dev/run-standalone.mjs (prefers server-ws.mjs:
+# peer-stamp + crash-guard + WS proxy; bare server.js would drop them).
+# Node 24 pinned like stable (%h/.local/node-v24.15.0/bin/node, not /usr/bin/node v22).
+# Leading ExecStart= (empty) clears any vendor/drop-in ExecStart before setting ours.
+# No hardcoded heap flag: P2 NODE_OPTIONS=--max-old-space-size=2048 governs
+# (proven: CLI flag beats env, 4496293888 with both set).
+ExecStart=
+ExecStart=%h/.local/node-v24.15.0/bin/node dev/run-standalone.mjs
+# Readiness gate: the unit only counts as started once /api/health 200s
+# (~90 s cap: first boot compiles + warms; proxyd then forwards the held
+# client connection instead of racing it to ECONNREFUSED).
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 90); do code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 http://127.0.0.1:20139/api/health 2>/dev/null); [ "$code" = "200" ] && exit 0; sleep 1; done; echo "backend never became ready" >&2; exit 1'
+Restart=no
+Environment=NODE_ENV=production
+Environment=PORT=20139
+Environment=OMNIROUTE_PORT=20139
+Environment=HOSTNAME=127.0.0.1
+Environment=DATA_DIR=/home/zuxler/.omniroute-beta
+Environment=PROXY_HEALTH_TEST_URL=https://www.google.com
+# P2 tuning baked in (same values as omniroute-beta-p2-ram.conf).
+Environment=APP_LOG_LEVEL=warn
+Environment=NODE_OPTIONS=--max-old-space-size=2048
+Environment=OMNIROUTE_TOKEN_HEALTH_CHECK_INTERVAL_MS=300000
+Environment=OMNIROUTE_SUBSCRIPTION_SCHEDULER_INTERVAL_MS=300000
+Environment=OMNIROUTE_WARMUP_TICK_INTERVAL_MS=300000
+# Keep-alive already env-tunable upstream
+# (MAIN_SERVER_KEEPALIVE_TIMEOUT_MS, default 65 s); no fork knob needed.

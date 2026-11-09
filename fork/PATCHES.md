@@ -30,3 +30,40 @@
 - `src/lib/proxyHealth.ts`: `proxyHealthCache` capped (`PROXY_HEALTH_CACHE_MAX`, default 500, `OMNIROUTE_PROXY_HEALTH_CACHE_MAX` override floor 100) via single `cacheProxyHealth()` writer covering all set sites incl. malformed-URL/bad-host early writes + `__proxyHealthCacheSizeForTesting`. Test: `tests/unit/proxy-health-cache-cap.test.ts` (1/1); existing proxy-health suites (6246/refusal-memory/default-port, 13 tests) green.
 - Investigated, no change: `src/lib/gamification/notifications.ts` `recentUnlocks` already bounded (per-key cap 50 + 1-min entry TTL + 2-min stale-key eviction each record).
 - `fork/deploy/systemd/omniroute-beta-p2-ram.conf` (new, not deployed): Beta drop-in — `APP_LOG_LEVEL=warn`, `NODE_OPTIONS=--max-old-space-size=2048` (IGNORED on units with hardcoded ExecStart flag — proven 4496293888; real activation = user edits ExecStart or adopts the flag-free 2b server unit), 3 timer envs at 300 s.
+
+## Phase 2b cold start (Beta only, files only — not installed/enabled)
+
+- `fork/deploy/systemd/omniroute-beta.socket`: holds public `:20129`, `Accept=no`, `WantedBy=sockets.target`.
+- `fork/deploy/systemd/omniroute-beta-proxy.service`: `/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=15min 127.0.0.1:20139`, `Requires/After` the socket, `Wants/Before` the backend (proxy holds the client socket across backend restarts, so no `BindsTo` on this side).
+- `fork/deploy/systemd/omniroute-beta-backend.service`: internal `:20139` (`PORT`+`OMNIROUTE_PORT`, `HOSTNAME=127.0.0.1`, `DATA_DIR=~/.omniroute-beta`), `BindsTo/After` the proxy (proxy exit stops the backend — that is the idle path), flag-free `ExecStart` so P2 `NODE_OPTIONS=--max-old-space-size=2048` governs (proven: CLI flag beats env). P2 tuning (`APP_LOG_LEVEL=warn`, 3 timer envs at 300 s) baked in.
+- `fork/deploy/omniroute-healthcheck.sh`: repo copy of `~/.local/bin/omniroute-healthcheck.sh` + opt-in 2b (`OMNIROUTE_HEALTHCHECK_UNIT`/`_URL`/`_SOCKET` envs, defaults = prod behaviour byte-identical). Asleep-skip: socket active + backend inactive → reset fails, exit 0, no probe (probing would wake the proxy). Behaviour without the envs is unchanged.
+- Keep-alive: NO new knob — `MAIN_SERVER_KEEPALIVE_TIMEOUT_MS` already env-tunable (default 65 s, run-next.mjs applies it to the page server; finite so idle sockets drain and proxyd can reach 15 min idle). Covered by existing `tests/unit/main-server-keepalive-timeout-7003.test.ts`.
+- Rollback (~1 min): `disable --now` the socket/proxy/backend; `enable --now` the plain `omniroute-beta.service` (untouched). Plain unit + deployed healthcheck script untouched in this change set.
+- Tests (fork CI runs all three): `tests/unit/fork-cold-start-units.test.ts` (4/4: socket port, proxy idle-exit+wiring, backend port+BindsTo+flag-free+N noticed, P2 drop-in shipped), `tests/unit/healthcheck-repo-copy-sync.test.ts` (1/1: repo copy == deployed apart from 2b), `tests/shell/healthcheck-cold-start-skip.sh` (3/3 with stubbed systemctl: asleep→no probe, awake→probe, no-socket→silent exit 0). `systemd-analyze --user verify` on all three units: exit 0, no warnings.
+
+## Phase 2b v2 fixes (blocker round, 2026-11-09)
+
+- Backend runs the RELEASE bundle, never the main checkout:
+  `WorkingDirectory=%h/.local/share/omniroute/beta-current` (symlink parent
+  flips at promotion: `ln -sfn releases/<build> beta-current`),
+  `ExecStart=%h/.local/node-v24.15.0/bin/node dev/run-standalone.mjs`
+  (Node 24 like stable, same `dev/run-standalone.mjs` entrypoint stable uses
+  via `zz-candidate-8309a78183.conf` and later; leading empty `ExecStart=`
+  clears vendor/drop-in ExecStart first).
+- Readiness race fixed WITHOUT an ordering cycle: proxy
+  `Requires=omniroute-beta-backend.service` (pulls backend into the same
+  transaction, no `After=`) + backend `BindsTo=` the proxy (proxy idle-exit
+  stops the backend = the idle path) + backend `ExecStartPost=` polling
+  `http://127.0.0.1:20139/api/health` up to ~90 s, so "started" means
+  "serving" and proxyd never forwards into ECONNREFUSED. The literal
+  Requires+After/BindsTo+After in both directions fails verify with
+  "Transaction order is cyclic" (reproduced); the chosen shape verifies
+  clean. `Type=notify` not used: the Next standalone server has no
+  sd_notify integration.
+- `[Install]` removed from the proxy (socket-activated only; must not start
+  at boot); no `multi-user.target` in any user unit (does not exist for
+  `--user`; socket keeps `WantedBy=sockets.target`, backend/proxy carry no
+  `[Install]`).
+- `StopWhenUnneeded=yes` NOT used: systemd 262 `--user verify` rejects it
+  as unknown in `[Service]` (verified warning); backend `BindsTo=` the
+  proxy achieves the same stop-with-proxy.

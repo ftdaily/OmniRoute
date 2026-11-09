@@ -1145,7 +1145,7 @@ jobs:
     # failing Quality Ratchet / PR Coverage Comment / Gate / CI until a re-run.
     timeout-minutes: 45
     needs: test-unit
-    if: ${{ !cancelled() && needs.test-unit.result == 'success' }}
+    if: ${{ !cancelled() && needs.test-unit.result == 'success' && (github.event_name != 'pull_request' || github.repository != 'ftdaily/OmniRoute') }}
     env:
       JWT_SECRET: ci-test-secret-with-sufficient-length-for-validation
       API_KEY_SECRET: ci-test-api-key-secret-long

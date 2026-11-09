@@ -265,7 +265,7 @@ test("draft, bad identity, unsupported event and malformed classifier do not pas
 
 test("forks and hotfix labels do not waive an applicable required result", () => {
   const needs = needsFor("ci");
-  needs["test-coverage"].result = "skipped";
+  needs["test-unit"].result = "skipped";
   assert.notEqual(run(needs, { ...context, fork: true, labels: ["hotfix"] }).verdict, "PASS");
 });
 
@@ -372,10 +372,13 @@ const FULL_LANE = Object.entries(policy.profiles.ci.jobs)
   .filter(([, job]) => job.when.startsWith("full-"))
   .map(([id]) => id);
 
+// Fork CI-COV (push-only coverage): test-coverage joined the full-matrix lane
+// (full-code) so ordinary PRs skip it; push / dispatch / merge_group and the
+// Mergify queue candidate still require it.
 test("full-matrix lanes cover the heavy jobs and nothing the fast lane needs", () => {
-  for (const id of ["test-e2e", "electron-package-smoke", "package-artifact", "test-integration"])
+  for (const id of ["test-e2e", "electron-package-smoke", "package-artifact", "test-integration", "test-coverage"])
     assert.ok(FULL_LANE.includes(id), `${id} belongs to the full-matrix lane`);
-  for (const id of ["lint", "build", "test-unit", "test-vitest", "test-coverage", "test-security"])
+  for (const id of ["lint", "build", "test-unit", "test-vitest", "test-security"])
     assert.ok(!FULL_LANE.includes(id), `${id} must keep running on every code PR`);
 });
 
@@ -406,7 +409,19 @@ test("ci.yml gates every full-matrix job on the queue candidate, not on PR readi
   const workflow = loadYaml(
     readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8")
   );
-  for (const id of FULL_LANE) {
+  // Fork CI-COV carve-out: test-coverage is full-matrix per POLICY (so ordinary
+  // PRs may skip it) but its workflow `if` is the cheaper fork-PR-only skip —
+  // it keeps `needs: test-unit` alone (no `changes` dep) and still runs on
+  // upstream PRs, push, dispatch and merge_group (upstream's cost; we never
+  // push upstream). Assert that narrower contract here instead of the uniform
+  // queueCandidate gate the other full-matrix jobs use.
+  const coverageIf = String(workflow.jobs["test-coverage"].if ?? "");
+  assert.ok(
+    coverageIf.includes("github.event_name != 'pull_request'") &&
+      coverageIf.includes("github.repository != 'ftdaily/OmniRoute'"),
+    "test-coverage: if must admit non-PR events and skip fork PRs only"
+  );
+  for (const id of FULL_LANE.filter((job) => job !== "test-coverage")) {
     const cond = String(workflow.jobs[id].if ?? "");
     assert.ok(
       cond.includes("github.event_name != 'pull_request'") &&

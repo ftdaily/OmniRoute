@@ -226,7 +226,7 @@
           ]
         },
         "test-coverage": {
-          "when": "code",
+          "when": "full-code",
           "disposition": "required",
           "domains": [
             "build",

@@ -26,6 +26,9 @@ const ready = {
   "needs.changes.outputs.testsOnly": "false",
   "needs.lint.result": "success",
   "needs.test-unit.result": "success",
+  // Fork CI-COV (push-only coverage): test-coverage's `if` reads github.repository.
+  // Upstream repo value here; fork-PR behavior is covered by the dedicated tests below.
+  "github.repository": "diegosouzapw/OmniRoute",
 };
 // The one event that skips the matrix: a description edit on a Mergify queue draft.
 const QUEUE_DRAFT_EDIT =
@@ -164,12 +167,19 @@ const fullLane = new Set(
 );
 
 test("ready PRs run the fast lane, skip the full matrix, and classification still rules", () => {
-  for (const id of required)
+  // Fork CI-COV carve-out: test-coverage is full-matrix per policy but the
+  // workflow `if` still schedules it on UPSTREAM PRs (upstream's runners,
+  // upstream's cost — we never push upstream). Only FORK PRs skip it.
+  for (const id of required.filter((job) => job !== "test-coverage"))
     assert.equal(
       scheduled(id, jobValues(ready)),
       !fullLane.has(id),
       `${id} ${fullLane.has(id) ? "is full-matrix only" : "must run on a ready PR"}`
     );
+  assert.ok(fullLane.has("test-coverage"), "test-coverage is full-matrix per policy");
+  assert.equal(scheduled("test-coverage", jobValues(ready)), true, "upstream PR still runs coverage");
+  const forkReady = jobValues({ ...ready, "github.repository": "ftdaily/OmniRoute" });
+  assert.equal(scheduled("test-coverage", forkReady), false, "fork PR skips coverage");
   const docsOnly = jobValues({
     ...queue,
     "needs.changes.outputs.code": "false",

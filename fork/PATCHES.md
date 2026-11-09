@@ -141,3 +141,11 @@
   untouched except sharing the helper shape.
 - `fork/deploy/test_tencent_release.py`: 18 unittest (RED->GREEN: 8
   failures + 2 errors on unfixed scripts) wired into `fork-ci.yml`.
+
+## CI-COV: coverage push-only on the fork (saves ~40 min per fork PR round)
+
+- `.github/workflows/ci.yml` `test-coverage.if`: `... && (github.event_name != 'pull_request' || github.repository != 'ftdaily/OmniRoute')` — fork PRs skip the ~45 min job; push / dispatch / merge_group and upstream PRs still run it (upstream cost, we never push upstream). Downstream needs no change: `quality-gate` already tolerates skipped coverage (`--allow-missing`, `continue-on-error`), `coverage-pr-comment` degrades (`continue-on-error`, `!= cancelled`), `sonarqube` only ran on `success` anyway, and both `admission-verdict` (skipped non-applicable = PASS) and `ci-summary` (SKIPPED row) handle it.
+- `config/quality/admission-policy.json` `test-coverage.when`: `code` → `full-code` (push/dispatch/merge_group + Mergify queue candidate; ordinary fork PRs may skip). Upstream semantics would also move coverage off plain PRs — accepted, we never push upstream.
+- `tests/unit/admission-verdict.test.mjs`: sentinel swapped to still-`code` `test-unit`; FULL_LANE now includes `test-coverage`; full-matrix gating test asserts the fork carve-out contract (upstream PR runs coverage, fork PR skips, no `changes` dep).
+- `tests/unit/ci-mergify-candidate.test.mjs`: `github.repository` added to the evaluator context (upstream value); ready-PR test asserts upstream-runs / fork-skips split for `test-coverage`.
+- actionlint: not installed locally (no binary); `if` addition is a pure `&&` term on existing contexts, YAML parsed OK.

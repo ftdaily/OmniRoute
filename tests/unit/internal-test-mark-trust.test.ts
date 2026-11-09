@@ -102,8 +102,22 @@ const REJECTED_CLIENTS: Array<[string, () => Record<string, string>]> = [
   ["the mark in another case", () => ({ "x-INTERNAL-test": "combo-health-check" })],
   ["a forged self-hop token", () => ({ ...MARK, [SELF_HOP_HEADER]: "0".repeat(64) })],
   ["an empty self-hop token", () => ({ ...MARK, [SELF_HOP_HEADER]: "" })],
-  ["an unknown bearer", () => ({ ...MARK, Authorization: "Bearer sk-not-internal" })],
 ];
+
+test("a client sending an unknown bearer is rejected as Invalid API key (never anonymous)", async () => {
+  // Fork #670/#14481: an EXPLICIT credential that fails validation must 401 —
+  // never fall through to anonymous local mode, even with REQUIRE_API_KEY=false.
+  // Upstream #19292 predates this hardening and expected 503 here.
+  await seedSuppressedConnection();
+  const calls = countUpstreamCalls();
+
+  const response = await chatRoute.POST(
+    chatRequest({ ...MARK, Authorization: "Bearer dummykey134" })
+  );
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(calls, []);
+});
 
 for (const [name, headers] of REJECTED_CLIENTS) {
   test(`a client sending ${name} stays out of a cooled-down connection`, async () => {

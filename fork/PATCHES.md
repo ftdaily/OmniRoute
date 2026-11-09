@@ -45,3 +45,31 @@
   9 startup-reachable modules. NOTE: not a Next-preload issue — sharp is absent
   from `serverExternalPackages` and the bundled `import("sharp")` call sites are
   all lazy (`Promise.resolve().then(...)` in image-optimizer/video paths).
+- CORRECTION (follow-up): the imageNormalize half of the "startup-graph breaks"
+  claim above did NOT land in 450acb427f (`visionBridgeHelpers.ts` stat 0 there;
+  its static `import { normalizeDataUri } from imageNormalize` survived, and the
+  test scans literal `sharp` imports only, so the package-mediated
+  imageNormalize→sharp edge was untested). It exists only as UNCOMMITTED dirt
+  in this worktree (lazy `await import(imageNormalize)` at the
+  fetchRemoteImageAsDataUri call site + const re-export), NOT reviewed, NOT in
+  CI. What 450acb427f PROVABLY did: dedup to one cached loader + const move to
+  the leaf KeyScope (no-cycle verified) + the pinning test.
+- BUNDLE FORENSICS (built artifact e700c0ba49, read-only): ZERO literal
+  `require("sharp")` and ZERO static `from "sharp"` in the whole
+  `.build/next/server` tree — no top-level preload anywhere, including
+  `instrumentation.js` (its `842482:a=>{a.exports=import("sharp")}` factory has
+  exactly 1 ref = its own definition; nothing evaluates it) and `middleware.js`
+  (1 `sharp` hit = its own factory def). All 6 consumer chunks
+  (25271/39930/52013/56124/58980/68129/89110) reference it only as
+  `Promise.resolve().then(require-bind(842482))` inside async fns — the four
+  app-level lazy sites (loadSharp ×2 deduped post-commit, contactSheet,
+  helpers grayscale) plus upstream open-sse imageNormalize/cursorImages, which
+  were ALREADY `import("sharp")` dynamic before the fork touched anything.
+  `images.unoptimized: true` is already set, so Next's image-optimizer never
+  runs. CONCLUSION: no loader-side fix is available or needed — the bundle
+  cannot load sharp at idle. The resident `.node` in the observed Beta maps
+  must have come from a request-time call (image/video path on a box that had
+  served traffic; both observed processes had), NOT from startup. No config
+  change recommended; RSS cost of sharp (~30-60 MB with libvips) is paid only
+  on first image/video use, which is the correct laziness boundary. Verify on a
+  FRESH boot (maps before first image request), do not chase further.

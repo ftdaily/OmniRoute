@@ -13,3 +13,20 @@
 - `src/shared/constants/agentSkills.ts`: omni-mcp description says 117 tools (live fork count via `countUniqueMcpTools`) instead of pin-stale 110; `skills/omni-mcp/SKILL.md` (117) regenerates idempotent (`Generated: 0`). Upstream must set its own number on merge (fork has 7 extra tools).
 - `config/quality/admission-policy.json`: dropped the `i18n-ui-coverage` CI job entry (fork Phase A5 removed the job from ci.yml; fork never retranslates 51 upstream locales). `tests/unit/admission-verdict.test.mjs` failure sentinel swapped to still-required `i18n-glossary-zhcn` (same `code-or-i18n` trigger) — no weakening.
 - `.github/workflows/ci.yml` docs-sync job: `i18n docs drift` step skipped on ftdaily/OmniRoute (no translation batch on the fork; docs/i18n frozen at upstream pin).
+
+## M2b merge-integrity on push (replaces unpushed M2 ledger, reset)
+
+- `.github/workflows/quality.yml` (merge-integrity job, CHANGELOG integrity
+  step): on `push` set `CHANGELOG_BASE_REF: origin/<pushed-branch>`; on PRs
+  empty (script falls back to `GITHUB_BASE_REF` = PR base, unchanged).
+  checkout uses `fetch-depth: 0`, so `origin/<branch>` is present — verified.
+  Root cause: push runs have no `GITHUB_BASE_REF`, so the script fell back to
+  the newest `origin/release/v*` on the fork (stale `release/v3.8.51`,
+  pre-release CHANGELOG) and flagged 11 bullets upstream itself rewrote
+  (takedown #12440 + #12337). No ledger file needed: push compares
+  mine-tip-vs-mine-tip (empty delta, trivially green); PR runs already pass.
+  Local proof: `CHANGELOG_BASE_REF=origin/mine node
+  scripts/check/check-changelog-integrity.mjs` → `OK — no base bullets lost
+  vs origin/mine`, exit 0.
+- Supersedes: `b825ecc34f` (5,194-line reconciliation ledger, upstream file
+  churn every sync) was reset (`git reset --hard origin/mine`), never pushed.

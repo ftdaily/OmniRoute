@@ -519,6 +519,7 @@ export default function ModelRow({
               saveModelCompatFlags(model.id, { compatByProtocol: { [protocol]: payload } })
             }
             showDeveloperToggle={showDeveloperToggle}
+            compact
             disabled={compatDisabled}
           />
         </div>

@@ -171,3 +171,10 @@ test("model card: icon + full name on top, copy pinned top-right, details below"
   );
   assert.match(row, /absolute right-2 top-2 rounded p-0\.5/);
 });
+
+test("model card: Compatibility trigger is icon-only (card is narrower than the viewport)", () => {
+  // The label hides on viewport width (sm:), but AutoGrid cards stay ~260px wide, so a
+  // labelled trigger pushed line 2 past the card edge on desktop. Tooltip + aria-label keep the name.
+  const row = read(`${providerComponents}/ModelRow.tsx`);
+  assert.match(row, /<ModelCompatPopover[\s\S]*?\n\s+compact\n[\s\S]*?\/>/);
+});

@@ -377,3 +377,38 @@ def types_ctx(tmp):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NewColumnsPolicy(unittest.TestCase):
+    """--new-columns: release-added column excluded from the hash only while all NULL."""
+
+    def _db(self, d, value):
+        p = os.path.join(d, "s.sqlite")
+        c = sqlite3.connect(p)
+        for t in set(tr.TABLES):
+            c.execute('CREATE TABLE "%s" (id TEXT)' % t)
+        c.execute('CREATE TABLE key_value (namespace TEXT, key TEXT, value TEXT)')
+        c.execute("INSERT INTO api_keys VALUES ('k1')")
+        c.execute("ALTER TABLE api_keys ADD COLUMN five_hour_usage_limit_usd REAL")
+        c.execute("UPDATE api_keys SET five_hour_usage_limit_usd = ?", (value,))
+        c.commit()
+        c.close()
+        return p
+
+    def _ctx(self, cols):
+        return SimpleNamespace(policy_format="c3854-v1", new_tables=set(), new_columns=cols)
+
+    def test_null_column_excluded(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._db(d, None)
+            for mod in (tr, lr):
+                with_col = mod.policy(self._ctx(set()), p)["api_keys"]["sha256"]
+                without = mod.policy(self._ctx({"api_keys.five_hour_usage_limit_usd"}), p)["api_keys"]["sha256"]
+                self.assertNotEqual(with_col, without)
+
+    def test_non_null_column_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._db(d, 5.0)
+            for mod in (tr, lr):
+                with self.assertRaisesRegex(RuntimeError, "new column not all NULL"):
+                    mod.policy(self._ctx({"api_keys.five_hour_usage_limit_usd"}), p)

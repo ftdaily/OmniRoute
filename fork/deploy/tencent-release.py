@@ -66,6 +66,8 @@ def build_parser():
     ap.add_argument("--approval", default="parent-approved.json")
     ap.add_argument("--policy-format", default="c3854-v1")
     ap.add_argument("--new-tables", default="quota_recovery_tickets,sso_identities")
+    ap.add_argument("--new-columns", default="",
+                    help="table.col added by this release; excluded from the policy hash, must be all NULL")
     ap.add_argument("--heap-mb", type=int, default=1024)
     ap.add_argument("--min-free-gb", type=float, default=2.0)
     ap.add_argument("--min-avail-mb", type=float, default=600.0)
@@ -99,6 +101,7 @@ class Ctx:
             Path(f"/etc/systemd/system/{args.unit}.d/zz-release.conf"))
         self.node = args.node
         self.new_tables = set(t for t in args.new_tables.split(",") if t)
+        self.new_columns = set(t for t in getattr(args, "new_columns", "").split(",") if t)
         self.heap = args.heap_mb
         self.policy_format = args.policy_format
         self.min_free = int(args.min_free_gb * 1024 ** 3)
@@ -190,7 +193,15 @@ def policy(ctx, db):
     have = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     for table in TABLES:
         got = [r[1] for r in c.execute("PRAGMA table_info(" + table + ")")
-               if not (table == "api_keys" and r[1] == "last_used_at")]
+               if not (table == "api_keys" and r[1] == "last_used_at")
+               and table + "." + r[1] not in getattr(ctx, "new_columns", ())]
+        for nc in sorted(x for x in getattr(ctx, "new_columns", ()) if x.split(".")[0] == table):
+            col = nc.split(".", 1)[1]
+            if col in {r[1] for r in c.execute("PRAGMA table_info(" + table + ")")}:
+                n = c.execute('SELECT COUNT(*) FROM "' + table + '" WHERE "' + col + '" IS NOT NULL').fetchone()[0]
+                if n:
+                    c.close()
+                    raise RuntimeError("policy: new column not all NULL: " + nc)
         if not got:
             if table in ctx.new_tables and table not in have:
                 continue
